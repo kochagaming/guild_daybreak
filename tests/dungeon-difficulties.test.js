@@ -62,5 +62,8 @@ const skillResult = game.Battle.resolve({ seed: 17, timeMultiplier: 1, partyIds:
 }] }, { id: "skill-test", name: "称号技試験", shortName: "試験", duration: 30, difficulty: 1, difficultyId: "abyss", encounters: [{ name: "粘液観測", groups: [["slime"]] }], rewards: { gold: [0, 0], exp: [0, 0] }, drops: [] });
 game.GameData.monsters.slime.hp = slimeHp; game.GameData.monsters.slime.attack = slimeAttack;
 assert(skillResult.battleLog.some(entry => entry.kind === "enemy-skill" && entry.text.includes("粘液波") && entry.text.includes("3ターン周期")), "Titled monster skill appears in the battle log on its configured cycle");
+assert.deepStrictEqual(Array.from(skillResult.monsterObservations.slime.difficultySkillIds), ["viscous_wave"], "Only skills actually used in battle become observations");
+game.Encyclopedia.recordBattle(skillResult.monsterEncounters, {}, skillResult.monsterObservations, "abyss");
+assert.deepStrictEqual(Array.from(game.Encyclopedia.monster("slime").difficulties.abyss.skillIds), ["viscous_wave"], "Observed titled skills remain known even when the party does not defeat the monster");
 
-console.log("Dungeon difficulty test passed: progression, names, time/reward/stat scaling, inherited titled drops and data-driven titled monster skills");
+console.log("Dungeon difficulty test passed: progression, names, time/reward/stat scaling, inherited titled drops and observed data-driven monster skills");

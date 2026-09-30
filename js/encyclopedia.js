@@ -1,15 +1,15 @@
 (function () {
   "use strict";
 
-  function blankObservations() { return { incomingAttempts: 0, incomingHits: 0, enemyTurns: 0, maxAttackCount: 0, magicAttack: false, rearTargeting: false, attackElements: [], statusAttacks: [], elementWeaknesses: [], elementResistances: [], statusResisted: [], statusLanded: [], burstRounds: [], drops: [] }; }
-  function blankDifficulty() { return { encountered: 0, defeated: 0, drops: [] }; }
+  function blankObservations() { return { incomingAttempts: 0, incomingHits: 0, enemyTurns: 0, maxAttackCount: 0, magicAttack: false, rearTargeting: false, attackElements: [], statusAttacks: [], elementWeaknesses: [], elementResistances: [], statusResisted: [], statusLanded: [], burstRounds: [], difficultySkillIds: [], drops: [] }; }
+  function blankDifficulty() { return { encountered: 0, defeated: 0, drops: [], skillIds: [] }; }
   function blankMonster() { return { encountered: 0, defeated: 0, observations: blankObservations(), difficulties: {} }; }
-  function blank() { return { version: 4, items: {}, monsters: {}, unreadItems: [], unreadMonsters: [] }; }
+  function blank() { return { version: 5, items: {}, monsters: {}, unreadItems: [], unreadMonsters: [] }; }
   function normalizeMonster(entry) {
     const normalized = Object.assign(blankMonster(), entry || {});
     normalized.observations = Object.assign(blankObservations(), entry?.observations || {});
     normalized.difficulties = Object.fromEntries(Object.entries(entry?.difficulties || {}).map(([id, value]) => [id, Object.assign(blankDifficulty(), value || {})]));
-    if (!normalized.difficulties.normal && normalized.encountered) normalized.difficulties.normal = { encountered: normalized.encountered, defeated: normalized.defeated, drops: normalized.observations.drops.slice() };
+    if (!normalized.difficulties.normal && normalized.encountered) normalized.difficulties.normal = { encountered: normalized.encountered, defeated: normalized.defeated, drops: normalized.observations.drops.slice(), skillIds: [] };
     return normalized;
   }
   function ensure() {
@@ -19,8 +19,8 @@
       // This is an additive extension of the current save format. Persist it on startup.
       window.GameState.needsInitialSave = true;
       bootstrap(state.encyclopedia);
-    } else if (state.encyclopedia.version !== 4 || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters)) {
-      state.encyclopedia.version = 4;
+    } else if (state.encyclopedia.version !== 5 || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters)) {
+      state.encyclopedia.version = 5;
       state.encyclopedia.unreadItems = Array.isArray(state.encyclopedia.unreadItems) ? state.encyclopedia.unreadItems : [];
       state.encyclopedia.unreadMonsters = Array.isArray(state.encyclopedia.unreadMonsters) ? state.encyclopedia.unreadMonsters : [];
       Object.keys(state.encyclopedia.monsters || {}).forEach(id => { state.encyclopedia.monsters[id] = normalizeMonster(state.encyclopedia.monsters[id]); });
@@ -52,7 +52,7 @@
     target.maxAttackCount = Math.max(target.maxAttackCount, incoming.maxAttackCount || 0);
     target.magicAttack = target.magicAttack || Boolean(incoming.magicAttack);
     target.rearTargeting = target.rearTargeting || Boolean(incoming.rearTargeting);
-    ["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "drops"].forEach(key => {
+    ["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "difficultySkillIds", "drops"].forEach(key => {
       target[key] = Array.from(new Set(target[key].concat(incoming[key] || [])));
     });
   }
@@ -80,6 +80,7 @@
         difficulty.encountered = Math.max(difficulty.encountered, result.monsterEncounters?.[id] || 0);
         difficulty.defeated = Math.max(difficulty.defeated, result.monsterCounts?.[id] || 0);
         difficulty.drops = Array.from(new Set(difficulty.drops.concat(observation.drops || [])));
+        difficulty.skillIds = Array.from(new Set(difficulty.skillIds.concat(observation.difficultySkillIds || [])));
         entry.difficulties[difficultyId] = difficulty;
         book.monsters[id] = entry;
       });
@@ -116,6 +117,7 @@
       difficulty.defeated += Math.max(0, defeats?.[id] || 0);
       difficulty.encountered = Math.max(difficulty.encountered, difficulty.defeated);
       difficulty.drops = Array.from(new Set(difficulty.drops.concat(incoming.drops || [])));
+      difficulty.skillIds = Array.from(new Set(difficulty.skillIds.concat(incoming.difficultySkillIds || [])));
       entry.difficulties[difficultyId] = difficulty;
       book.monsters[id] = entry;
     });

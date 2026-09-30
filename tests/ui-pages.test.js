@@ -68,13 +68,14 @@ async function run() {
   assert(html().includes("入手元を確認") && html().includes("風鳴りの草原") && html().includes("スライムを討伐") && html().includes("通常・魔境・神域"));
   await click("archive-view", { view: "monsters" });
   assert(html().includes("モンスター図鑑") && html().includes("風鳴りの草原") && html().includes("未遭遇") && !html().includes("ギルド依頼掲示板"));
-  const observation = drops => ({ incomingAttempts: 1, incomingHits: 1, drops });
+  const observation = (drops, difficultySkillIds = []) => ({ incomingAttempts: 1, incomingHits: 1, difficultySkillIds, drops });
   game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: observation(["sticky_fluid", "wooden_sword"]) }, "normal");
-  game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: observation(["abyss_slime_core"]) }, "abyss");
+  game.Encyclopedia.recordBattle({ slime: 1 }, {}, { slime: observation(["abyss_slime_core"], ["viscous_wave"]) }, "abyss");
   game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: observation(["divine_slime_core"]) }, "divine");
   game.UI.navigate("archives");
   assert(html().includes("通常") && html().includes("魔境のスライム") && html().includes("神域のスライム"));
   assert(html().includes("ねばねばした液体") && html().includes("魔境の粘核") && html().includes("神域の虹粘核"));
+  assert(html().includes("粘液波・3T") && html().includes("固有技 未確認 2種"), "Observed skills are revealed after a failed battle while unobserved divine skills remain hidden");
   assert(!html().includes("木の剣"), "Shop equipment must not be listed in monster drop records");
   await click("archive-view", { view: "origins" });
   assert(html().includes("冒険者体系") && html().includes("職業15・種族15・生まれ15"));

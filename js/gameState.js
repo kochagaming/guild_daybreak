@@ -64,7 +64,7 @@
       recruitment: { version: 2, nextId: 1, pending: null },
       commissions: { version: 1, progress: {}, claimed: [] },
       recurringMissions: window.RecurringMissions ? window.RecurringMissions.initialState() : { version: 1, groups: {} },
-      encyclopedia: { version: 4, items: { wooden_sword: 1, cloth_clothes: 1 }, monsters: {}, unreadItems: [], unreadMonsters: [] },
+      encyclopedia: { version: 5, items: { wooden_sword: 1, cloth_clothes: 1 }, monsters: {}, unreadItems: [], unreadMonsters: [] },
       observationJournal: { version: 1, readIds: [] },
       dailyShop: { version: 1, dateKey: null, offers: [] },
       autoSell: { version: 2, enabled: false, nextId: 1, rules: [] },

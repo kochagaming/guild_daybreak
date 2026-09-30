@@ -93,7 +93,7 @@
       });
     } else check(Object.values(recurring.groups).every(current => object(current) && Array.isArray(current.selectedIds) && object(current.progress) && Array.isArray(current.claimed)), "定期依頼の進行データが不正です。");
     const encyclopedia = state.encyclopedia;
-    check(object(encyclopedia) && encyclopedia.version === 4 && object(encyclopedia.items) && object(encyclopedia.monsters) && Array.isArray(encyclopedia.unreadItems) && Array.isArray(encyclopedia.unreadMonsters), "図鑑データが不正です。");
+    check(object(encyclopedia) && encyclopedia.version === 5 && object(encyclopedia.items) && object(encyclopedia.monsters) && Array.isArray(encyclopedia.unreadItems) && Array.isArray(encyclopedia.unreadMonsters), "図鑑データが不正です。");
     check(Object.entries(encyclopedia.items).every(([id, count]) => known(data.items, id) && integer(count) && count > 0), "アイテム図鑑が不正です。");
     check(new Set(encyclopedia.unreadItems).size === encyclopedia.unreadItems.length && encyclopedia.unreadItems.every(id => known(data.items, id) && encyclopedia.items[id] > 0), "アイテム図鑑の新着情報が不正です。");
     check(new Set(encyclopedia.unreadMonsters).size === encyclopedia.unreadMonsters.length && encyclopedia.unreadMonsters.every(id => known(data.monsters, id) && encyclopedia.monsters[id]), "モンスター図鑑の新着情報が不正です。");
@@ -101,11 +101,13 @@
       if (!known(data.monsters, id) || !object(entry) || !integer(entry.encountered) || entry.encountered <= 0 || !integer(entry.defeated) || entry.defeated > entry.encountered || !object(entry.observations)) return false;
       const observed = entry.observations;
       if (!["incomingAttempts", "incomingHits", "enemyTurns", "maxAttackCount"].every(key => integer(observed[key])) || observed.incomingHits > observed.incomingAttempts || typeof observed.magicAttack !== "boolean" || typeof observed.rearTargeting !== "boolean") return false;
-      if (!["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "drops"].every(key => Array.isArray(observed[key]) && new Set(observed[key]).size === observed[key].length)) return false;
+      if (!["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "difficultySkillIds", "drops"].every(key => Array.isArray(observed[key]) && new Set(observed[key]).size === observed[key].length)) return false;
+      if (!observed.difficultySkillIds.every(id => known(data.monsterSkills, id))) return false;
       if (!object(entry.difficulties)) return false;
       return Object.entries(entry.difficulties).every(([difficultyId, difficulty]) => ["normal", "abyss", "divine"].includes(difficultyId) && object(difficulty)
         && integer(difficulty.encountered) && difficulty.encountered > 0 && integer(difficulty.defeated) && difficulty.defeated <= difficulty.encountered
-        && Array.isArray(difficulty.drops) && new Set(difficulty.drops).size === difficulty.drops.length && difficulty.drops.every(id => known(data.items, id)));
+        && Array.isArray(difficulty.drops) && new Set(difficulty.drops).size === difficulty.drops.length && difficulty.drops.every(id => known(data.items, id))
+        && Array.isArray(difficulty.skillIds) && new Set(difficulty.skillIds).size === difficulty.skillIds.length && difficulty.skillIds.every(id => known(data.monsterSkills, id)));
     }), "モンスター図鑑が不正です。");
     const observationJournal = state.observationJournal;
     const observationIds = new Set((data.observationNotes || []).map(entry => entry.id));
@@ -329,7 +331,7 @@
       if (result.memberReports != null) check(Array.isArray(result.memberReports) && result.memberReports.length <= 6 && result.memberReports.every(member => object(member) && text(member.name) && ["damageDealt", "damageTaken", "healingDone", "criticalHits", "remainingHp", "maxHp"].every(key => integer(member[key])) && ["attackAttempts", "attackHits"].every(key => member[key] == null || integer(member[key])) && (member.attackHits == null || member.attackAttempts == null || member.attackHits <= member.attackAttempts) && known(data.jobs, member.jobId)));
       ["encountersCleared", "totalEncounters", "monstersDefeated"].forEach(key => check(result[key] == null || integer(result[key])));
       for (const key of ["monsterCounts", "monsterEncounters"]) if (result[key] != null) check(object(result[key]) && Object.entries(result[key]).every(([id, count]) => known(data.monsters, id) && integer(count)));
-      if (result.monsterObservations != null) check(object(result.monsterObservations) && Object.entries(result.monsterObservations).every(([id, observed]) => known(data.monsters, id) && object(observed) && ["incomingAttempts", "incomingHits", "enemyTurns", "maxAttackCount"].every(key => integer(observed[key])) && observed.incomingHits <= observed.incomingAttempts && typeof observed.magicAttack === "boolean" && typeof observed.rearTargeting === "boolean" && ["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "drops"].every(key => Array.isArray(observed[key]))));
+      if (result.monsterObservations != null) check(object(result.monsterObservations) && Object.entries(result.monsterObservations).every(([id, observed]) => known(data.monsters, id) && object(observed) && ["incomingAttempts", "incomingHits", "enemyTurns", "maxAttackCount"].every(key => integer(observed[key])) && observed.incomingHits <= observed.incomingAttempts && typeof observed.magicAttack === "boolean" && typeof observed.rearTargeting === "boolean" && ["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "difficultySkillIds", "drops"].every(key => Array.isArray(observed[key])) && observed.difficultySkillIds.every(skillId => known(data.monsterSkills, skillId))));
     }
     return state;
   }

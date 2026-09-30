@@ -79,7 +79,7 @@
   }
 
   function blankObservation() {
-    return { incomingAttempts: 0, incomingHits: 0, enemyTurns: 0, maxAttackCount: 0, magicAttack: false, rearTargeting: false, attackElements: [], statusAttacks: [], elementWeaknesses: [], elementResistances: [], statusResisted: [], statusLanded: [], burstRounds: [], drops: [] };
+    return { incomingAttempts: 0, incomingHits: 0, enemyTurns: 0, maxAttackCount: 0, magicAttack: false, rearTargeting: false, attackElements: [], statusAttacks: [], elementWeaknesses: [], elementResistances: [], statusResisted: [], statusLanded: [], burstRounds: [], difficultySkillIds: [], drops: [] };
   }
 
   function remember(list, value) { if (value != null && !list.includes(value)) list.push(value); }
@@ -91,7 +91,7 @@
     target.maxAttackCount = Math.max(target.maxAttackCount || 0, source.maxAttackCount || 0);
     target.magicAttack = target.magicAttack || Boolean(source.magicAttack);
     target.rearTargeting = target.rearTargeting || Boolean(source.rearTargeting);
-    ["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "drops"].forEach(key => (source[key] || []).forEach(value => remember(target[key], value)));
+    ["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "burstRounds", "difficultySkillIds", "drops"].forEach(key => (source[key] || []).forEach(value => remember(target[key], value)));
     return target;
   }
 
@@ -372,6 +372,7 @@
     const skill = skills.find(entry => round >= (entry.offset || entry.period) && (round - (entry.offset || 0)) % entry.period === 0);
     if (!skill) return false;
     monster.skillRoundUsed = round;
+    remember(monster.observation.difficultySkillIds, skill.id);
     const candidates = living(heroes);
     const chooseTarget = () => {
       if (skill.targetRule === "rear") return candidates.slice().sort((a, b) => b.position - a.position)[0];
