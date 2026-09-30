@@ -12,8 +12,8 @@ function load() {
   return context.window;
 }
 let game = load();
-assert.strictEqual(game.GameData.commissions.length, 20);
-assert.strictEqual(new Set(game.GameData.commissions.map(quest => quest.id)).size, 20);
+assert.strictEqual(game.GameData.commissions.length, 22);
+assert.strictEqual(new Set(game.GameData.commissions.map(quest => quest.id)).size, 22);
 for (const quest of game.GameData.commissions) {
   assert(game.GameData.dungeons[quest.dungeonId]);
   if (quest.type === "kills") assert(game.GameData.monsters[quest.monsterId]);
@@ -25,7 +25,8 @@ for (const [dungeonId, monsterId, materialId, seals] of [
   ["hourglass_palace", "time_queen", "royal_spring", 3],
   ["night_bloom_sanctuary", "nightbloom_oracle", "saint_thorn", 3],
   ["aurora_summit", "aurora_warden", "aurora_feather", 3],
-  ["eclipsed_throne", "eclipse_regent", "eclipse_shard", 3]
+  ["eclipsed_throne", "eclipse_regent", "eclipse_shard", 3],
+  ["blackmoon_core", "blackmoon_heart", "royal_eclipse_fragment", 3]
 ]) {
   const clear = game.GameData.commissions.find(quest => quest.id === `first_${dungeonId}`);
   const hunt = game.GameData.commissions.find(quest => quest.id === `hunt_${dungeonId}`);

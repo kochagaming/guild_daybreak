@@ -15,6 +15,6 @@ assert(readme.includes(`現在のセーブ形式はバージョン${saveVersion}
 assert(!/現在のセーブ形式は(?:バージョン)?9です/.test(readme), "obsolete save-version statements must be removed");
 
 const chapterFiles = Array.from(html.matchAll(/src="data\/chapters\/chapter(\d+)\.js"/g), match => Number(match[1]));
-assert.deepStrictEqual(chapterFiles, [4, 5, 6, 7, 8, 9]);
+assert.deepStrictEqual(chapterFiles, [4, 5, 6, 7, 8, 9, 10]);
 chapterFiles.forEach(number => assert(readme.includes(`chapters/chapter${number}.js`), `README needs chapter${number}.js in the file map`));
 console.log(`Documentation consistency test passed: ${readmeVersion}, save v${saveVersion}, chapter files ${chapterFiles.join(", ")}`);

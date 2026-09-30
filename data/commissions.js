@@ -11,7 +11,8 @@
     ["hourglass_palace", "time_queen", 2100, "royal_spring", 2, 3],
     ["night_bloom_sanctuary", "nightbloom_oracle", 3000, "saint_thorn", 2, 3],
     ["aurora_summit", "aurora_warden", 4000, "aurora_feather", 2, 3],
-    ["eclipsed_throne", "eclipse_regent", 5200, "eclipse_shard", 2, 3]
+    ["eclipsed_throne", "eclipse_regent", 5200, "eclipse_shard", 2, 3],
+    ["blackmoon_core", "blackmoon_heart", 6600, "royal_eclipse_fragment", 2, 3]
   ];
   rows.forEach(([dungeonId, monsterId, gold, materialId, quantity, seals]) => {
     const dungeon = window.GameData.dungeons[dungeonId], monster = window.GameData.monsters[monsterId];

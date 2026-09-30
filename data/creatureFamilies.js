@@ -65,7 +65,13 @@
     blackwing_acolyte: ["humanoid", "demon"], feather_blade: ["humanoid", "celestial"], blackwing_marquis: ["humanoid", "demon", "celestial"],
     starforged_soldier: ["construct", "humanoid"], furnace_wisp: ["spirit"], foundry_keeper: ["construct", "giant"],
     eclipse_priest: ["humanoid", "demon"], throne_guard: ["construct", "celestial"], eclipse_regent: ["humanoid", "celestial", "demon"],
-    void_archon: ["celestial", "demon", "spirit"]
+    void_archon: ["celestial", "demon", "spirit"],
+    moon_skiff_raider: ["humanoid", "celestial"], lunar_hound: ["beast", "demon"], mooring_warden: ["construct", "celestial"],
+    memory_leech: ["amorphous", "demon"], sealed_librarian: ["humanoid", "spirit"], archive_jailer: ["construct", "demon"],
+    silver_chain_knight: ["humanoid", "celestial"], chain_wisp: ["spirit", "demon"], chain_matriarch: ["humanoid", "celestial"],
+    dream_eater: ["beast", "demon"], sleepwalker_guard: ["humanoid", "spirit"], nightmare_oracle: ["spirit", "demon"],
+    blackmoon_priest: ["humanoid", "demon"], lunar_automaton: ["construct", "celestial"], blackmoon_heart: ["construct", "demon", "celestial"],
+    exiled_king: ["humanoid", "celestial", "undead"]
   };
 
   data.monsterLoot = { normalChance: .1, bossChance: .2, weaponWeight: .62 };

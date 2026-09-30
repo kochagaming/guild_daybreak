@@ -4,7 +4,7 @@
   window.GameData = window.GameData || {};
   window.GameData.characterGrowth = Object.freeze({
     // 現在の武器・防具マスター全体の平均重量。装備追加時はテストで実平均との差を検出する。
-    averageEquipmentWeight: 6.56,
+    averageEquipmentWeight: 6.975,
     equipmentCapacityMilestones: Object.freeze([
       [1, 1], [3, 2], [6, 3], [9, 4], [12, 5], [16, 6], [20, 7], [25, 8], [30, 9],
       [36, 10], [42, 11], [49, 12], [58, 13], [67, 14], [77, 15], [89, 16],

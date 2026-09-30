@@ -11,7 +11,8 @@
       { chapterId: "clockwork_desert", maximum: 13 },
       { chapterId: "blackwood_pilgrimage", maximum: 15 },
       { chapterId: "thunder_snow_peaks", maximum: 17 },
-      { chapterId: "falling_sky_castle", maximum: 19 }
+      { chapterId: "falling_sky_castle", maximum: 19 },
+      { chapterId: "black_moon_prison", maximum: 21 }
     ],
     bonus: { weapon: { attack: 2, defense: 0, hp: 0 }, armor: { attack: 0, defense: 2, hp: 3 } },
     goldPerTierAndLevel: 30

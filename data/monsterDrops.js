@@ -43,7 +43,13 @@
     blackwing_acolyte: { material: "black_wing_feather", equipment: "eclipse_staff" }, feather_blade: { material: "fallen_star_iron", equipment: "starpiercer_rapier" }, blackwing_marquis: { material: "black_wing_feather", equipment: "starpiercer_rapier" },
     starforged_soldier: { material: "fallen_star_iron", equipment: "blackwing_plate" }, furnace_wisp: { material: "eclipse_shard", equipment: "eclipse_staff" }, foundry_keeper: { material: "fallen_star_iron", equipment: "blackwing_plate" },
     eclipse_priest: { material: "eclipse_shard", equipment: "eclipse_staff" }, throne_guard: { material: "floating_core", equipment: "starpiercer_rapier" }, eclipse_regent: { material: "eclipse_shard", equipment: "eclipse_staff" },
-    void_archon: { material: "void_star_crystal", equipment: "blackwing_plate" }
+    void_archon: { material: "void_star_crystal", equipment: "blackwing_plate" },
+    moon_skiff_raider: { material: "moon_silver", equipment: "moonchain_katana" }, lunar_hound: { material: "dream_dust", equipment: "dreamweave_robe" }, mooring_warden: { material: "chain_core", equipment: "jailer_shield" },
+    memory_leech: { material: "sealed_memory", equipment: "dreamweave_robe" }, sealed_librarian: { material: "sealed_memory", equipment: "dreamweave_robe" }, archive_jailer: { material: "sealed_memory", equipment: "jailer_shield" },
+    silver_chain_knight: { material: "moon_silver", equipment: "moonchain_katana" }, chain_wisp: { material: "chain_core", equipment: "dreamweave_robe" }, chain_matriarch: { material: "chain_core", equipment: "jailer_shield" },
+    dream_eater: { material: "dream_dust", equipment: "dreamweave_robe" }, sleepwalker_guard: { material: "moon_silver", equipment: "moonchain_katana" }, nightmare_oracle: { material: "dream_dust", equipment: "dreamweave_robe" },
+    blackmoon_priest: { material: "sealed_memory", equipment: "dreamweave_robe" }, lunar_automaton: { material: "chain_core", equipment: "jailer_shield" }, blackmoon_heart: { material: "royal_eclipse_fragment", equipment: "moonchain_katana" },
+    exiled_king: { material: "royal_eclipse_fragment", equipment: "moonchain_katana" }
   };
 
   Object.entries(definitions).forEach(([monsterId, definition]) => {
