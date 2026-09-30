@@ -1,0 +1,41 @@
+const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
+const root = path.resolve(__dirname, ".."), storage = new Map();
+function load() {
+  const context = vm.createContext({ window: {}, Date, Math, Blob, console });
+  const files = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["js/ui.js", "js/main.js"].includes(file));
+  files.forEach(file => { vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file }); if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => 1700000000000, random: () => .5 }); if (file === "js/storage.js") context.window.SaveStorage.use({ get: key => storage.get(key) || null, set: (key, value) => storage.set(key, value), remove: key => storage.delete(key) }); });
+  return context.window;
+}
+let game = load();
+const created = require("./helpers").createCharacter(game, "行動率テスト", "cleric", "human", "sacred");
+const rates = { attack: 10, technique: 10, spell: 10, healing: 70 };
+assert(game.Characters.setActionRates(created.id, rates).ok);
+assert(game.Characters.setActionRates(created.id, { attack: 30, technique: 80, spell: 60, healing: 50 }).ok);
+assert(!game.Characters.setActionRates(created.id, { attack: 101, technique: 10, spell: 10, healing: 10 }).ok);
+assert(game.Characters.setActionRates(created.id, rates).ok);
+assert(!game.Characters.setActionRates("missing", rates).ok);
+game.Party.toggle(created.id);
+assert(game.Dungeon.start("meadow").ok);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameState.data.expeditions[0].partySnapshot[0].actionRates)), rates);
+const before = JSON.stringify(game.GameState.data.expeditions[0]);
+assert(game.Characters.setActionRates(created.id, { attack: 100, technique: 0, spell: 0, healing: 0 }).ok);
+assert.strictEqual(JSON.stringify(game.GameState.data.expeditions[0]), before);
+game = load();
+assert.strictEqual(game.Characters.get(created.id).actionRates.attack, 100);
+assert.strictEqual(game.GameState.data.expeditions[0].partySnapshot[0].actionRates.healing, 70);
+assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
+const invalid = JSON.parse(JSON.stringify(game.GameState.data)); invalid.characters[0].actionRates.attack = 101;
+assert(!game.SaveTransfer.parse(JSON.stringify(invalid)).ok);
+
+const sequential = { attack: 30, technique: 80, spell: 60, healing: 50 };
+const allAvailable = { attack: true, technique: true, spell: true, healing: true };
+const choose = values => game.Battle.chooseHeroAction(() => values.shift(), sequential, allAvailable);
+assert.strictEqual(choose([.49]), "healing");
+assert.strictEqual(choose([.5, .59]), "spell");
+assert.strictEqual(choose([.5, .6, .79]), "technique");
+assert.strictEqual(choose([.5, .6, .8, .29]), "attack");
+assert.strictEqual(choose([.5, .6, .8, .3]), "defend");
+let draws = 0;
+assert.strictEqual(game.Battle.chooseHeroAction(() => { draws += 1; return .2; }, sequential, { attack: true, technique: false, spell: false, healing: false }), "attack");
+assert.strictEqual(draws, 1, "Unavailable actions must be skipped without consuming a probability check");
+console.log("Action rate test passed: independent rates, sequential priority, defense fallback, persistence and snapshot isolation");

@@ -1,0 +1,108 @@
+const fs = require("fs"), path = require("path"), vm = require("vm"), assert = require("assert");
+const root = path.resolve(__dirname, ".."), storage = new Map(), nodes = new Map(), listeners = {};
+let now = 1700000000000;
+function node(id) {
+  if (!nodes.has(id)) nodes.set(id, { innerHTML: "", textContent: "", value: "1", classList: { toggle() {} }, querySelectorAll: () => [], addEventListener() {} });
+  return nodes.get(id);
+}
+const document = { getElementById: node, querySelector: node, querySelectorAll: () => [], addEventListener(type, handler) { listeners[type] = handler; } };
+const context = vm.createContext({ window: {}, document, Date, Math, Blob, console, setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0,
+  localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) } });
+for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g)) {
+  if (file === "js/main.js") continue;
+  vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
+  if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => now, random: () => .5 });
+}
+const game = context.window;
+const html = () => node("app").innerHTML;
+async function click(action, data = {}) {
+  const button = { dataset: { action, ...data }, classList: { contains: () => false } };
+  await listeners.click({ target: { closest: () => button } });
+}
+async function run() {
+  game.UI.init();
+  assert.strictEqual(node("status-gold").textContent, "500 G");
+  assert.strictEqual(node("status-seals").textContent, "4");
+  assert(/^\d{2}:\d{2}:\d{2}$/.test(node("status-clock").textContent), "Persistent status bar shows the current clock");
+  assert(node("main-nav").innerHTML.includes("冒険者資料室") && node("main-nav").innerHTML.includes("ギルド運営") && node("main-nav").innerHTML.includes("設定"));
+  assert(node("main-nav").innerHTML.includes("mobile-primary") && node("main-nav").innerHTML.includes("mobile-secondary") && node("main-nav").innerHTML.includes("mobile-menu-button"));
+  const styles = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
+  assert(styles.includes("position: fixed; z-index: 25") && styles.includes("grid-template-columns: repeat(5,minmax(0,1fr))") && styles.includes("mobile-nav-sheet"));
+  assert(styles.includes(".global-statusbar { position: fixed") && styles.includes("bottom: calc(64px + env(safe-area-inset-bottom))"), "Persistent resources sit above the mobile navigation");
+  assert(html().includes("GUILD CHRONICLE"));
+  assert(!node("main-nav").innerHTML.includes('data-page="dungeons"'));
+  for (const text of ["facilities-panel", "セーブのバックアップ", "現在の探索", "LATEST REPORT", "ギルド記録", "commission-grid"]) assert(!html().includes(text), text);
+  assert(!fs.readFileSync(path.join(root, "index.html"), "utf8").includes('data-action="reset-save"'), "Reset is not a global sidebar action");
+  await click("mobile-nav", { page: "shop" });
+  assert.strictEqual(node("page-title").textContent, "商店");
+  game.UI.navigate("home");
+  game.UI.navigate("guild");
+  assert(html().includes("facilities-panel") && html().includes("ギルド記録") && !html().includes("commission-card"));
+  for (const text of ["生産量", "保管庫", "作業速度", "data-action=\"upgrade-facility\"", "素材を使って設備を改修"]) assert(html().includes(text), `Guild facilities show ${text}`);
+  assert(!html().includes("セーブのバックアップ") && !html().includes("GUILD CHRONICLE"));
+  game.UI.navigate("archives");
+  assert(html().includes("冒険者資料室") && html().includes("ギルド依頼掲示板") && html().includes("commission-card"));
+  await click("archive-view", { view: "observations" });
+  assert(html().includes("観察日記") && html().includes("迷った時ほど、先に傷を見る") && html().includes("回復 → 呪文 → 技 → 攻撃"));
+  assert(html().includes("observation-new-badge") && html().includes("archive-tab-notice"), "Unread journal pages are announced");
+  await click("observation-read", { note: "choosing_an_action" });
+  assert(!html().includes("observation-new-badge") && !html().includes("archive-tab-notice"), "Reading clears the initial notice");
+  assert(html().includes("未整理の観察記録") && html().includes("灯りの鉱山を攻略すると記録されます"));
+  assert(!html().includes("同じ剣を百本、床に並べた夜"), "Locked journal titles remain undisclosed");
+  game.Items.add("sticky_fluid", 1);
+  await click("archive-view", { view: "items" });
+  assert(html().includes("アイテム図鑑") && html().includes("武器・剣") && html().includes("武器・杖") && html().includes("防具・布装備") && html().includes("防具・盾") && html().includes(">素材<") && html().includes("木の剣") && html().includes("？？？") && !html().includes("commission-card"));
+  assert(html().includes("入手元を確認") && html().includes("風鳴りの草原") && html().includes("スライムを討伐") && html().includes("通常・魔境・神域"));
+  await click("archive-view", { view: "monsters" });
+  assert(html().includes("モンスター図鑑") && html().includes("風鳴りの草原") && html().includes("未遭遇") && !html().includes("ギルド依頼掲示板"));
+  const observation = drops => ({ incomingAttempts: 1, incomingHits: 1, drops });
+  game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: observation(["sticky_fluid", "wooden_sword"]) }, "normal");
+  game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: observation(["abyss_slime_core"]) }, "abyss");
+  game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: observation(["divine_slime_core"]) }, "divine");
+  game.UI.navigate("archives");
+  assert(html().includes("通常") && html().includes("魔境のスライム") && html().includes("神域のスライム"));
+  assert(html().includes("ねばねばした液体") && html().includes("魔境の粘核") && html().includes("神域の虹粘核"));
+  assert(!html().includes("木の剣"), "Shop equipment must not be listed in monster drop records");
+  await click("archive-view", { view: "origins" });
+  assert(html().includes("冒険者体系") && html().includes("職業15・種族15・生まれ15"));
+  for (const text of ["戦士", "攻めの心得", "人間", "血統の力", "平凡な家", "幼き日の鍛錬", "能力補正", "装備適性", "習得スキル", "初期", "Lv.100"]) assert(html().includes(text), text);
+  assert(html().includes("Lv.1") && html().includes("未解放") && html().includes("達成で解放"));
+  assert(!html().includes("commission-card") && !html().includes("codex-grid"));
+  game.UI.navigate("settings");
+  for (const action of ["export-save", "import-save", "export-before-import", "reset-save"]) assert(html().includes('data-action="' + action + '"'));
+  assert(html().includes('data-feature="party_expansion_trial"') && html().includes('data-feature="half_exploration_trial"'), "Each unlock has its own code input area");
+  for (const feature of ["double_experience_trial", "double_gold_trial", "double_quality_trial", "double_item_rate_trial"]) assert(html().includes(`data-feature="${feature}"`));
+  assert(!html().includes("facilities-panel") && !html().includes("LATEST REPORT"));
+  await click("reset-save"); await click("close-modal");
+  const a = require("./helpers").createCharacter(game, "第一隊", "warrior").id;
+  game.Characters.get(a).level = 30;
+  game.Party.toggle(a);
+  game.UI.navigate("home");
+  assert(html().includes('data-action="party-view" data-view="adventure"'));
+  await click("party-view", { view: "adventure" });
+  await click("quick-start-party", { party: "0" });
+  assert.strictEqual(node("page-title").textContent, "パーティ");
+  assert(html().includes('data-countdown="0"') && html().includes("第一隊"));
+  now += 30000; await game.GameClient.execute("expedition.collect");
+  require("./helpers").completeThrough(game, "seal");
+  game.GameState.data.unlockedPartyCount = 2;
+  const b = require("./helpers").createCharacter(game, "第二隊", "mage").id;
+  game.Party.toggle(b, 1);
+  await game.GameClient.execute("expedition.start", { dungeonId: "cave", partyIndex: 1 });
+  game.UI.navigate("party");
+  await click("party-view", { view: "results" });
+  assert(html().includes("第1パーティの直近の探索結果") && html().includes("最新の探索報告"));
+  await click("party-back");
+  assert(html().includes('data-countdown="1"'), "Party top includes the other party countdown");
+  await click("select-party", { party: "1" });
+  assert(html().includes('data-countdown="1"') && html().includes("第二隊"));
+  await click("party-view", { view: "results" });
+  assert(html().includes("第2パーティの直近の探索結果") && !html().includes("最新の探索報告"));
+  game.UI.navigate("home");
+  assert(!html().includes("第一隊") && !html().includes('data-countdown=') && !html().includes("最新の探索報告"));
+  const before = JSON.stringify(game.GameState.data);
+  game.UI.navigate("guild"); game.UI.navigate("archives"); game.UI.navigate("settings"); game.UI.navigate("party");
+  assert.strictEqual(JSON.stringify(game.GameState.data), before, "Navigation must not mutate saved progress");
+  console.log("UI pages test passed: story-only home, archives with requests/adventurer system/codices, guild facilities/logs, settings/save actions, departure routing, party report isolation and non-mutating navigation");
+}
+run().catch(error => { console.error(error); process.exitCode = 1; });

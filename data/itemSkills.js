@@ -1,0 +1,54 @@
+(function () {
+  "use strict";
+  const data = window.GameData = window.GameData || {};
+  const assignments = {
+    wooden_sword: ["physical_power_3"], iron_sword: ["physical_power_3", "attack_105"], steel_sword: ["attack_105", "hp_105"],
+    short_bow: ["accuracy_4"], hunter_bow: ["accuracy_4", "physical_power_3", "beast_slayer_10"],
+    arcane_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105"],
+    cloth_clothes: ["magic_defense_105"], slimecloth_mantle: ["magic_defense_105", "evasion_4"], abyss_slime_mantle: ["magic_defense_105", "evasion_4", "hp_105"], divine_slime_mantle: ["magic_defense_105", "evasion_4", "hp_105", "magic_healing_105"], leather_armor: ["evasion_4", "speed_2"], iron_armor: ["defense_105", "hp_105"],
+    bronze_rapier: ["accuracy_4"], silver_rapier: ["accuracy_4", "critical_4", "undead_slayer_20"], moon_rapier: ["accuracy_4", "attack_count_1", "magic_attack_105"],
+    iron_katana: ["physical_power_3"], steel_katana: ["physical_power_3", "critical_4"], dragon_nodachi: ["attack_105", "physical_power_3", "critical_4", "dragon_slayer_10"],
+    wooden_shield: ["defense_105"], iron_shield: ["defense_105", "hp_105"], tower_shield: ["defense_105", "magic_defense_105", "defense_to_hp_2"],
+    leather_gloves: ["accuracy_4"], iron_gauntlets: ["attack_105", "accuracy_4"], rune_gauntlets: ["attack_105", "accuracy_4", "magic_defense_105", "construct_slayer_15"],
+    starsteel_sword: ["attack_105", "physical_power_3", "hp_105"], starwoven_robe: ["magic_defense_105", "magic_healing_105", "magic_attack_to_hp_1"],
+    tempest_bow: ["physical_power_3", "accuracy_4", "attack_count_1"], fang_blade: ["attack_105", "attack_to_hp_1"], hide_robe: ["hp_105", "evasion_4"],
+    spirit_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105"], wolf_fang_bow: ["physical_power_3", "critical_4", "accuracy_4"],
+    golem_plate: ["defense_105", "hp_105", "defense_to_hp_2"], sentinel_staff: ["magic_healing_105", "healing_power_5", "magic_healing_to_hp_1"],
+    greenwood_staff: ["magic_healing_105"], windrunner_vest: ["speed_2", "evasion_4"], hornstring_bow: ["accuracy_4", "physical_power_3"],
+    glowsteel_sword: ["attack_105", "magic_attack_105"], silkweave_robe: ["magic_defense_105", "evasion_4"], delver_shield: ["defense_105", "hp_105"],
+    relic_rapier: ["accuracy_4", "attack_count_1", "critical_4"], soul_veil: ["magic_defense_105", "magic_healing_105", "hp_105"],
+    grave_gauntlets: ["attack_105", "accuracy_4", "defense_105"], comet_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105"],
+    stormcloak: ["evasion_4", "speed_2", "magic_defense_105", "chill_resistance_20"], astral_katana: ["attack_105", "physical_power_3", "critical_4"],
+    dawn_rapier: ["accuracy_4", "attack_count_1", "critical_4"], ember_bulwark: ["defense_105", "magic_defense_105", "hp_105", "paralysis_resistance_20"],
+    ashweave_mantle: ["evasion_4", "speed_2", "magic_defense_105", "burn_resistance_20"], ash_crown_plate: ["defense_105", "hp_105", "defense_to_hp_2"],
+    elder_wyrm_blade: ["attack_105", "physical_power_3", "critical_4", "attack_to_hp_1"],
+    tideglass_bow: ["physical_power_3", "accuracy_4", "attack_count_1", "evasion_4"],
+    frostseal_robe: ["magic_defense_105", "magic_healing_105", "healing_power_5", "hp_105", "chill_resistance_35"],
+    abyssal_gauntlets: ["attack_105", "accuracy_4", "defense_105", "speed_2"],
+    mirror_queen_rapier: ["accuracy_4", "attack_count_1", "critical_4", "magic_attack_105"],
+    abyss_whale_shield: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2"],
+    chronoglass_rapier: ["accuracy_4", "attack_count_1", "critical_4", "magic_attack_105", "plant_slayer_15"],
+    brasswall_shield: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "paralysis_resistance_35"],
+    memory_robe: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "magic_attack_to_hp_1", "poison_resistance_20", "demon_slayer_15"],
+    gear_king_blade: ["attack_105", "physical_power_3", "defense_105", "construct_slayer_15"],
+    titan_clock_armor: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2"],
+    moonleaf_bow: ["physical_power_3", "accuracy_4", "attack_count_1", "critical_4", "plant_slayer_15"],
+    thornplate_gauntlets: ["attack_105", "defense_105", "accuracy_4", "construct_slayer_15"],
+    nightbloom_robe: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "poison_resistance_35", "burn_resistance_35"],
+    saint_thorn_sword: ["attack_105", "physical_power_3", "critical_4", "hp_105"],
+    worldroot_mail: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2"],
+    thundersteel_katana: ["attack_105", "physical_power_3", "critical_4", "dragon_slayer_10"],
+    cloudweave_mantle: ["evasion_4", "speed_2", "magic_defense_105", "chill_resistance_35"],
+    aurora_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "paralysis_resistance_35"],
+    sky_monk_gauntlets: ["attack_105", "accuracy_4", "critical_4", "speed_2"],
+    white_dragon_shield: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "chill_resistance_35"],
+    starpiercer_rapier: ["accuracy_4", "attack_count_1", "critical_4", "attack_105"],
+    blackwing_plate: ["defense_105", "magic_defense_105", "hp_105", "demon_slayer_15"],
+    eclipse_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "burn_resistance_35"],
+    winglord_bow: ["physical_power_3", "accuracy_4", "attack_count_1", "critical_4"],
+    void_archon_robe: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "hp_105"]
+  };
+  Object.values(data.items).filter(item => item.type === "weapon" || item.type === "armor").forEach(item => {
+    item.skillIds = (assignments[item.id] || []).slice();
+  });
+})();

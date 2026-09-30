@@ -1,0 +1,70 @@
+const fs = require("fs"), vm = require("vm"), path = require("path"), assert = require("assert");
+const root = path.resolve(__dirname, ".."), storage = new Map();
+let now = 1700000000000;
+const context = vm.createContext({ window: {}, Date, Math, Blob, console });
+for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g)) {
+  if (["js/ui.js", "js/main.js"].includes(file)) continue;
+  vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
+  if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => now, random: () => .5 });
+  if (file === "js/storage.js") context.window.SaveStorage.use({ get: key => storage.get(key) || null, set: (key, value) => storage.set(key, value), remove: key => storage.delete(key) });
+}
+const game = context.window, state = game.GameState.data;
+const ids = Array.from({ length: 12 }, (_, index) => require("./helpers").createCharacter(game, "仲間" + index, "warrior").id);
+assert.strictEqual(game.Party.memberLimit(), 3);
+ids.slice(0, 3).forEach(id => assert(game.Party.toggle(id).ok));
+assert(!game.Party.toggle(ids[3]).ok);
+require("./helpers").completeThrough(game, "roadside");
+assert.strictEqual(game.Party.memberLimit(), 4);
+assert(game.Party.toggle(ids[3]).ok);
+assert(!game.Party.toggle(ids[4]).ok);
+require("./helpers").completeChapter(game, "seal");
+state.unlockedPartyCount = 2;
+assert.strictEqual(game.Party.memberLimit(), 5);
+assert(game.Party.toggle(ids[4]).ok);
+assert(!game.Party.toggle(ids[5]).ok);
+require("./helpers").completeChapter(game, "starfall");
+assert.strictEqual(game.Party.memberLimit(), 6);
+assert(game.Party.toggle(ids[5]).ok);
+assert(!game.Party.toggle(ids[6]).ok);
+assert(game.Party.move(ids[5], -1).ok);
+assert(game.Party.move(ids[5], 1).ok);
+ids.slice(6).forEach(id => assert(game.Party.toggle(id, 1).ok));
+assert(!game.Party.toggle(ids[0], 1).ok);
+assert(game.Presets.save(0, "六人編成", 0).ok);
+assert(game.Party.toggle(ids[5], 0).ok);
+assert(game.Presets.apply(0, 0).ok);
+assert.strictEqual(state.parties[0].length, 6);
+for (const range of ["melee", "ranged"]) {
+  const values = Array.from({ length: 6 }, (_, position) => game.Battle.formationMultiplier({ weaponRange: range, position, formationSize: 6 }));
+  assert.strictEqual(values[0], range === "melee" ? 1 : .62);
+  assert.strictEqual(values[5], range === "melee" ? .62 : 1);
+  for (let i = 1; i < values.length; i++) assert(range === "melee" ? values[i] < values[i - 1] : values[i] > values[i - 1]);
+}
+assert.strictEqual(game.Battle.formationMultiplier({ weaponRange: "melee", position: 1, formationSize: 3 }), .82);
+const saved = JSON.stringify(state);
+assert(game.SaveTransfer.parse(saved).ok);
+const invalid = JSON.parse(saved);
+invalid.story.completed = ["prologue"]; invalid.story.facts.clears = [];
+assert(!game.SaveTransfer.parse(JSON.stringify(invalid)).ok);
+const completed = state.story.completed;
+state.story.completed = ["prologue"];
+assert(!game.Presets.check(0, 0).ok);
+state.story.completed = completed;
+async function run() {
+  assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
+  assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 1 })).ok);
+  assert(!("battleVersion" in state.expeditions[0]));
+  assert.strictEqual(state.expeditions[0].partySnapshot.length, 6);
+  assert(game.SaveTransfer.parse(JSON.stringify(state)).ok);
+  now += 30000;
+  assert((await game.GameClient.execute("expedition.collect")).ok);
+  assert.strictEqual(state.partyResults[0].memberReports.length, 6);
+  assert.strictEqual(state.partyResults[1].memberReports.length, 6);
+  assert(state.partyResults[0].battleLog.some(entry => entry.text.includes("6列目")));
+  assert(game.SaveTransfer.parse(JSON.stringify(state)).ok);
+  const gold = state.gold;
+  await game.GameClient.execute("expedition.collect");
+  assert.strictEqual(state.gold, gold);
+  console.log("Party size test passed: chapter caps 3/4/5/6, disjoint dual parties, six-member presets/snapshots/logs/results, formation scaling, backup validation and once-only offline collection");
+}
+run().catch(error => { console.error(error); process.exitCode = 1; });

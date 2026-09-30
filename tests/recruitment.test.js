@@ -1,0 +1,181 @@
+const fs = require("fs"), vm = require("vm"), path = require("path"), assert = require("assert");
+const root = path.resolve(__dirname, ".."), storage = new Map();
+let now = 1700000000000, randomValue = .4, fail = false;
+function load() {
+  const context = vm.createContext({ window: {}, Date, Math, Blob, console: { warn() {} } });
+  const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["js/ui.js", "js/main.js"].includes(file));
+  for (const file of scripts) {
+    vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context);
+    if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => now, random: () => randomValue });
+    if (file === "js/storage.js") context.window.SaveStorage.use({ get: key => storage.get(key) || null, set: (key, value) => { if (fail) throw new Error("quota"); storage.set(key, value); }, remove: key => storage.delete(key) });
+  }
+  return context.window;
+}
+let game = load();
+const command = (type, payload) => game.GameClient.execute(type, payload);
+const clone = () => JSON.parse(JSON.stringify(game.GameState.data));
+async function run() {
+  const namePattern = /^[ァ-ヶー]{2,5}$/;
+  for (const gender of ["male", "female"]) {
+    const groups = game.GameData.recruitment.names[gender];
+    assert.deepStrictEqual(Object.keys(groups), ["japanese", "german", "chinese", "english", "russian"]);
+    Object.values(groups).forEach(names => assert.strictEqual(names.length, 10));
+    const names = Object.values(groups).flat();
+    assert.strictEqual(names.length, 50);
+    assert.strictEqual(new Set(names).size, 50);
+    assert(names.every(name => namePattern.test(name)), `${gender} names must be 2-5 katakana characters`);
+  }
+  assert.deepStrictEqual(Array.from(game.Recruitment.availableIds("jobs")), ["warrior", "thief", "mage", "cleric"]);
+  assert.strictEqual(game.Recruitment.availableIds("races").length, 4);
+  assert.strictEqual(game.Recruitment.availableIds("births").length, 5);
+  assert(game.Recruitment.unlocked(game.GameData.recruitment.fields[0]));
+  assert(!game.Recruitment.unlocked(game.GameData.recruitment.fields[1]));
+  const openQuote = game.Recruitment.postingQuote({});
+  assert.strictEqual(openQuote.itemId, "guild_seal");
+  assert.strictEqual(openQuote.quantity, 1);
+  assert.deepStrictEqual(Array.from(openQuote.applicants), [2, 4]);
+  assert.strictEqual(openQuote.owned, 4);
+  const jobQuote = game.Recruitment.postingQuote({ jobId: "cleric" });
+  assert.strictEqual(jobQuote.selections, 1);
+  assert.strictEqual(jobQuote.quantity, 2);
+  const skillPreview = game.Recruitment.requirementPreview({ jobId: "cleric" });
+  assert.strictEqual(skillPreview.sources.length, 1);
+  assert.strictEqual(skillPreview.sources[0].skills.filter(skill => skill.initial).length, 4);
+  assert.deepStrictEqual(Array.from(skillPreview.sources[0].skills.filter(skill => !skill.initial).map(skill => skill.level)), [10, 40, 70, 100]);
+  const previewHtml = game.GameUIViews.recruitment.requirementPreview({ escape: value => String(value) }, { jobId: "cleric" });
+  assert(previewHtml.includes("希望が通った場合の構成") && previewHtml.includes("初期4・成長4") && previewHtml.includes("Lv.100"));
+  assert(!(await command("character.create", { name: "直接作成" })).ok);
+  assert(!(await command("recruitment.post", { jobId: "constructor" })).ok);
+  assert(!(await command("recruitment.post", { raceId: "elf" })).ok);
+  assert(!(await command("recruitment.post", { birthId: "sacred" })).ok);
+  assert(!(await command("recruitment.post", { focus: "hardy" })).ok);
+  const initial = JSON.stringify(game.GameState.data);
+  fail = true;
+  assert(!(await command("recruitment.post", { jobId: "cleric" })).ok);
+  assert.strictEqual(JSON.stringify(game.GameState.data), initial);
+  fail = false;
+  assert((await command("recruitment.post", { jobId: "cleric" })).ok);
+  assert.strictEqual(game.GameState.data.inventory.materials.guild_seal, 2);
+  const pending = JSON.parse(JSON.stringify(game.Recruitment.state().pending));
+  pending.candidates.forEach(candidate => {
+    assert(game.Characters.matchingPortraits(candidate).some(portrait => portrait.id === candidate.portraitId), "Applicants should receive one of their nine matching portraits");
+    assert(["male", "female"].includes(candidate.gender));
+    assert(game.GameData.recruitment.names[candidate.gender][candidate.nameCulture].includes(candidate.name));
+  });
+  assert(pending.candidates.length >= 2 && pending.candidates.length <= 4);
+  assert(pending.candidates.some(candidate => candidate.jobId === "cleric"));
+  assert.strictEqual(game.GameState.data.characters.length, 0);
+  assert.strictEqual(game.GameState.data.meta.nextCharacterId, 1);
+  assert(!(await command("recruitment.post")).ok);
+  assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
+  game = load();
+  assert.strictEqual(JSON.stringify(game.Recruitment.state().pending), JSON.stringify(pending));
+  const invalid = mutate => { const state = clone(); mutate(state); assert(!game.SaveTransfer.parse(JSON.stringify(state)).ok); };
+  invalid(state => { state.recruitment.pending.candidates = []; });
+  invalid(state => { state.recruitment.pending.candidates.push(...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates); });
+  invalid(state => { state.recruitment.pending.candidates[0].base.attack = 999; });
+  invalid(state => { state.recruitment.pending.candidates[0].id = "applicant-999-1"; });
+  invalid(state => { state.recruitment.pending.requirements.raceId = "elf"; });
+  invalid(state => { state.recruitment.nextId = 1; });
+  const applicant = pending.candidates.find(candidate => candidate.jobId === "cleric");
+  const hiringCost = game.Recruitment.cost(applicant), breakdown = game.Recruitment.costBreakdown(applicant);
+  assert.strictEqual(hiringCost, breakdown.total);
+  assert.strictEqual(hiringCost % 5, 0);
+  assert(hiringCost > 0 && hiringCost < 500);
+  assert(game.Recruitment.cost(Object.assign({}, applicant, { base: Object.assign({}, applicant.base, { attack: applicant.base.attack + 1 }) })) > hiringCost, "Higher initial ability raises the hiring cost");
+  assert.notStrictEqual(game.Recruitment.cost(Object.assign({}, applicant, { jobId: "mage" })), game.Recruitment.cost(Object.assign({}, applicant, { jobId: "thief" })), "Jobs have distinct contract costs");
+  assert.notStrictEqual(game.Recruitment.cost(Object.assign({}, applicant, { raceId: "human" })), game.Recruitment.cost(Object.assign({}, applicant, { raceId: "beastkin" })), "Races have distinct contract costs");
+  game.GameState.data.gold = hiringCost - 1; game.GameState.save();
+  const unaffordable = JSON.stringify(game.GameState.data);
+  assert(!(await command("recruitment.hire", { applicantId: applicant.id })).ok);
+  assert.strictEqual(JSON.stringify(game.GameState.data), unaffordable, "Failed hiring keeps gold and applicants unchanged");
+  game.GameState.data.gold = 500; game.GameState.save();
+  const active = JSON.stringify(game.GameState.data), saved = storage.get(game.SaveSystem.exportKey);
+  fail = true;
+  assert(!(await command("recruitment.hire", { applicantId: applicant.id })).ok);
+  assert.strictEqual(JSON.stringify(game.GameState.data), active);
+  assert.strictEqual(storage.get(game.SaveSystem.exportKey), saved);
+  assert(!(await command("recruitment.dismiss")).ok);
+  assert.strictEqual(JSON.stringify(game.GameState.data), active);
+  fail = false;
+  const [hired, duplicated] = await Promise.all([
+    command("recruitment.hire", { applicantId: applicant.id, name: "新しい仲間" }),
+    command("recruitment.hire", { applicantId: applicant.id })
+  ]);
+  assert(hired.ok && !duplicated.ok);
+  const hero = game.Characters.get(hired.id);
+  assert.strictEqual(hero.name, "新しい仲間"); assert.strictEqual(hero.portraitId, applicant.portraitId);
+  assert.strictEqual(hero.gender, applicant.gender); assert.strictEqual(hero.nameCulture, applicant.nameCulture);
+  assert.strictEqual(hero.jobId, applicant.jobId); assert.strictEqual(hero.raceId, applicant.raceId); assert.strictEqual(hero.birthId, applicant.birthId);
+  assert.strictEqual(JSON.stringify(hero.base), JSON.stringify(applicant.base));
+  assert.strictEqual(JSON.stringify(game.Characters.stats(hero)), JSON.stringify(game.Characters.stats(game.Recruitment.preview(applicant))));
+  assert.strictEqual(hero.level, 1); assert.strictEqual(hero.exp, 0);
+  assert.strictEqual(hired.cost, hiringCost);
+  assert.strictEqual(game.GameState.data.gold, 500 - hiringCost);
+  assert.strictEqual(game.GameState.data.characters.length, 1);
+  assert.strictEqual(game.Recruitment.state().pending, null);
+  assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
+  assert((await command("party.toggle", { characterId: hero.id })).ok);
+  assert((await command("expedition.start", { dungeonId: "meadow" })).ok);
+  require("./helpers").completeThrough(game, "roadside");
+  assert(game.Recruitment.unlocked(game.GameData.recruitment.fields[1]));
+  assert.strictEqual(game.Recruitment.availableIds("jobs").length, 8);
+  assert.strictEqual(game.Recruitment.availableIds("races").length, 8);
+  assert.strictEqual(game.Recruitment.availableIds("births").length, 8);
+  assert(!game.Recruitment.unlocked(game.GameData.recruitment.fields[2]));
+  assert((await command("recruitment.post", { raceId: "elf" })).ok);
+  const priorId = game.Recruitment.state().pending.candidates[0].id;
+  assert((await command("recruitment.dismiss")).ok);
+  assert(!(await command("recruitment.hire", { applicantId: priorId })).ok);
+  require("./helpers").completeChapter(game, "seal");
+  assert(game.Recruitment.unlocked(game.GameData.recruitment.fields[2]));
+  assert.strictEqual(game.Recruitment.availableIds("jobs").length, 12);
+  assert.strictEqual(game.Recruitment.availableIds("races").length, 12);
+  assert.strictEqual(game.Recruitment.availableIds("births").length, 12);
+  assert(!(await command("recruitment.post", { focus: "striker" })).ok);
+  require("./helpers").completeChapter(game, "starfall");
+  assert(game.Recruitment.unlocked(game.GameData.recruitment.fields[3]));
+  assert.strictEqual(game.Recruitment.availableIds("jobs").length, 15);
+  assert.strictEqual(game.Recruitment.availableIds("races").length, 15);
+  assert.strictEqual(game.Recruitment.availableIds("births").length, 15);
+  const exactQuote = game.Recruitment.postingQuote({ jobId: "mage", raceId: "elf", birthId: "arcane", focus: "striker" });
+  assert.strictEqual(exactQuote.quantity, 5);
+  assert.deepStrictEqual(Array.from(exactQuote.applicants), [4, 5]);
+  game.GameState.data.inventory.materials.guild_seal = 4; game.GameState.save();
+  const beforeInsufficientSeals = JSON.stringify(game.GameState.data);
+  assert(!(await command("recruitment.post", { jobId: "mage", raceId: "elf", birthId: "arcane", focus: "striker" })).ok);
+  assert.strictEqual(JSON.stringify(game.GameState.data), beforeInsufficientSeals);
+  game.GameState.data.inventory.materials.guild_seal = 2500;
+  const counts = new Set(), bases = new Set();
+  let total = 0, raceMatches = 0, birthMatches = 0, focusMatches = 0;
+  for (let index = 1; index <= 400; index++) {
+    randomValue = (index * .6180339887498949) % 1;
+    assert((await command("recruitment.post", { jobId: "mage", raceId: "elf", birthId: "arcane", focus: "striker" })).ok);
+    const current = game.Recruitment.state().pending;
+    counts.add(current.candidates.length);
+    assert(current.candidates.some(candidate => candidate.jobId === "mage"));
+    for (const candidate of current.candidates) {
+      total++; raceMatches += candidate.raceId === "elf"; birthMatches += candidate.birthId === "arcane"; focusMatches += candidate.talentId === "striker";
+      bases.add(JSON.stringify(candidate.base));
+      assert(candidate.base.hp >= 45 && candidate.base.hp <= 60 && candidate.base.attack >= 8 && candidate.base.attack <= 13 && candidate.base.defense >= 6 && candidate.base.defense <= 11);
+    }
+    assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
+    assert((await command("recruitment.dismiss")).ok);
+  }
+  assert.strictEqual(counts.size, 2); assert(bases.size > 50);
+  for (const matches of [raceMatches, birthMatches, focusMatches]) assert(matches / total > .7 && matches / total < .9);
+  // Pending recruitment round-trips through export/import; applicants do not reroll.
+  assert((await command("recruitment.post", { jobId: "thief", raceId: "dwarf" })).ok);
+  const backup = clone(), pendingJson = JSON.stringify(backup.recruitment.pending);
+  assert((await command("recruitment.dismiss")).ok);
+  assert((await command("save.import", { state: backup })).ok);
+  assert.strictEqual(JSON.stringify(game.Recruitment.state().pending), pendingJson);
+  assert((await command("save.reset")).ok);
+  assert.strictEqual(game.GameState.data.inventory.materials.guild_seal, 4);
+  assert.strictEqual(game.Recruitment.state().version, 2);
+  assert.strictEqual(game.Recruitment.state().nextId, 1);
+  assert.strictEqual(game.Recruitment.state().pending, null);
+  assert(!game.Recruitment.unlocked(game.GameData.recruitment.fields[1]));
+  console.log(`Recruitment test passed: seal costs, 2–5 applicants, soft matching (${total} samples), job/race/ability hiring costs, insufficient funds, immutable pending saves, one hire, cosmetics, atomic rollback, backups and reset`);
+}
+run().catch(error => { console.error(error); process.exitCode = 1; });
