@@ -22,10 +22,18 @@ async function click(action, data = {}) {
 async function run() {
   game.UI.init(); game.UI.navigate("party");
   assert(html().includes("冒険の準備") && html().includes("パーティを編成する") && html().includes("直近ログ"));
+  assert(html().includes('data-action="rename-party" data-party="0"') && html().includes("名前を変更"), "The party name is editable from the overview");
   assert(!html().includes("募集要項") && !html().includes("LATEST REPORT"));
+  await click("rename-party", { party: "0" });
+  assert(node("modal-root").innerHTML.includes("第1パーティの名前を変更"));
+  await listeners.submit({ target: { id: "party-name-form", dataset: { party: "0" }, elements: { name: { value: "風読み隊" } } }, preventDefault() {} });
+  assert.strictEqual(game.Party.name(0), "風読み隊");
+  assert(html().includes("風読み隊"), "The renamed party is immediately updated in the overview");
   await click("party-view", { view: "adventure" });
   assert(html().includes("出撃する仲間を選んでください"));
   await click("party-view", { view: "formation" });
+  assert(html().includes("風読み隊 — メンバー編成"), "The saved party name is shown in the detail header");
+  assert(!html().includes('data-action="rename-party"'), "The formation route no longer contains a separate rename action");
   const a = require("./helpers").createCharacter(game, "先頭の戦士", "warrior", "human", "merchant").id;
   const b = require("./helpers").createCharacter(game, "後衛の魔術師", "mage", "human", "scholar").id;
   const c = require("./helpers").createCharacter(game, "控え1").id;
@@ -56,6 +64,7 @@ async function run() {
   await click("toggle-party", { character: c });
   await click("party-view", { view: "adventure" });
   assert(html().includes("DEPARTURE PARTY") && html().includes("先頭の戦士") && html().includes("後衛の魔術師"));
+  assert(html().includes("風読み隊 · 2/"), "The party name is reused in the departure summary");
   assert(html().includes("獲得・探索補正") && html().includes("魔術理論") && html().includes("後衛の魔術師の経験値 ×1.12"), "Departure screen repeats the acquisition effects that will be snapshotted");
   assert(html().indexOf("DEPARTURE PARTY") < html().indexOf("dungeon-grid"));
   assert(html().includes('data-action="select-dungeon"') && html().includes("この攻略先へ出撃") && html().includes("選択中の攻略先"));
@@ -67,11 +76,10 @@ async function run() {
   assert(html().includes("燐光の洞窟") && html().includes("第2章：地下の封印"), "Past and future chapters can be inspected");
   await click("select-dungeon-chapter", { chapter: "roadside" });
   assert(html().includes("次の攻略先") && html().includes("寄り道・高難度") === false, "The next main route is highlighted and optional routes stay separated");
-  const before = JSON.stringify(game.GameState.data);
   await listeners.change({ target: { hasAttribute: key => key === "data-exploration-dungeon", dataset: { explorationDungeon: "meadow" }, value: "5" } });
   await click("party-view", { view: "formation" }); await click("party-view", { view: "adventure" });
   assert(html().includes('<option value="5" selected>5倍'));
-  assert.strictEqual(JSON.stringify(game.GameState.data), before, "View and duration choices must not mutate game progress");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Party.plan(0))), { dungeonId: "meadow", difficultyId: "normal", timeMultiplier: 5 }, "Destination settings are saved per party");
   require("./helpers").completeThrough(game, "seal");
   game.GameState.data.unlockedPartyCount = 2;
   await click("party-open", { party: "1", view: "formation" }); await click("toggle-party", { character: d });

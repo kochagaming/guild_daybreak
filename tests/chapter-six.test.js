@@ -27,6 +27,8 @@ required.forEach((dungeon, index) => {
 });
 assert.strictEqual(state.gold, rewardGold + chapter.rewards.gold);
 assert.strictEqual(game.Items.count("royal_spring"), 2);
+assert(data.partyProgression.partySlots.unlocks.some(entry => entry.chapterNumber === 6 && entry.slot === 7));
+assert.strictEqual(game.Party.availableLimit(), 7, "Chapter six grants the seventh party right without a code");
 assert(game.Story.canEnter("forgotten_titan_tomb"));
 game.Story.recordResult({ success: true, dungeonId: "forgotten_titan_tomb" });
 assert(game.Story.optionalStories().some(entry => entry.scene.id === "forgotten_titan_clear"));

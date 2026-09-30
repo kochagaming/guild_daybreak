@@ -30,11 +30,15 @@
     "shop.daily.buy": p => window.Shop.buyDaily(p.offerId),
     "blacksmith.craft": p => window.Blacksmith.craft(p.recipeId),
     "party.select": p => window.Party.select(p.partyIndex),
+    "party.readResult": p => window.Party.markResultRead(p.partyIndex),
+    "party.setPlan": p => window.Party.setPlan(p, p.partyIndex),
+    "party.rename": p => window.Party.rename(p.name, p.partyIndex),
     "party.toggle": p => window.Party.toggle(p.characterId, p.partyIndex),
     "party.move": p => window.Party.move(p.characterId, p.direction, p.partyIndex),
     "party.unlock": p => window.Party.unlock(p.partySlot),
     "accessCode.redeem": p => window.AccessCodes.redeem(p.featureId, p.code),
     "observation.read": p => window.ObservationJournal.markRead(p.noteId),
+    "encyclopedia.read": p => p.kind === "items" ? window.Encyclopedia.markItemsRead() : p.kind === "monsters" ? window.Encyclopedia.markMonstersRead() : { ok: false, message: "図鑑の種類が不正です。" },
     "expedition.start": p => window.Dungeon.start(p.dungeonId, p.partyIndex, p.timeMultiplier, p.difficultyId),
     "expedition.collect": () => {
       const recurringChanged = window.RecurringMissions.sync();
@@ -78,10 +82,11 @@
     "autosell.add": ["instanceId"],
     "autosell.remove": ["ruleId"], "autosell.toggle": ["enabled"],
     "shop.buy": ["itemId"], "shop.daily.buy": ["offerId"], "blacksmith.craft": ["recipeId"],
-    "party.select": ["partyIndex"], "party.toggle": ["characterId", "partyIndex?"],
+    "party.select": ["partyIndex"], "party.readResult": ["partyIndex"], "party.setPlan": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier"], "party.rename": ["partyIndex", "name"], "party.toggle": ["characterId", "partyIndex?"],
     "party.move": ["characterId", "direction", "partyIndex?"], "party.unlock": ["partySlot"],
     "accessCode.redeem": ["featureId", "code"],
     "observation.read": ["noteId"],
+    "encyclopedia.read": ["kind"],
     "expedition.start": ["dungeonId", "difficultyId?", "partyIndex?", "timeMultiplier?"],
     "expedition.collect": [], "progress.sync": [], "save.reset": [], "save.import": ["state"]
   };

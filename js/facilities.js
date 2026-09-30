@@ -21,9 +21,25 @@
     const production = entry(id, "production"), storage = entry(id, "storage"), speed = entry(id, "speed");
     return { id, production, capacityMs: storage.duration, intervalMs: speed.interval };
   }
-  function addRewards(target, cycles, production, storedProgress) {
+  function stableRoll(key) {
+    let hash = 2166136261;
+    for (let index = 0; index < key.length; index++) {
+      hash ^= key.charCodeAt(index);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0) / 4294967296;
+  }
+  function addRewards(id, target, cycles, production, storedProgress, startedAt, intervalMs) {
     const rewards = production.rewards || {}, materials = { ...(target.materials || {}) }, bonusProgress = { ...(storedProgress || {}) };
     Object.entries(rewards.materials || {}).forEach(([itemId, amount]) => { materials[itemId] = (materials[itemId] || 0) + amount * cycles; });
+    (production.chanceRewards || []).forEach(bonus => {
+      let hits = 0;
+      for (let cycle = 1; cycle <= cycles; cycle++) {
+        const completedAt = startedAt + cycle * intervalMs;
+        if (stableRoll(`${id}:${bonus.id}:${completedAt}`) < bonus.chance) hits++;
+      }
+      if (hits) materials[bonus.itemId] = (materials[bonus.itemId] || 0) + hits * bonus.quantity;
+    });
     (production.periodicRewards || []).forEach(periodic => {
       const progress = (bonusProgress[periodic.id] || 0) + cycles;
       const completed = Math.floor(progress / periodic.everyCycles);
@@ -37,7 +53,7 @@
     if (!facility || !state || !unlocked(id) || state.activatedAt == null) return null;
     const current = profile(id), elapsed = Math.max(0, now - state.startedAt), freeDuration = Math.max(0, current.capacityMs - state.storedDuration);
     const cycles = Math.min(Math.floor(elapsed / current.intervalMs), Math.floor(freeDuration / current.intervalMs));
-    const rewards = addRewards(state, cycles, current.production, state.bonusProgress);
+    const rewards = addRewards(id, state, cycles, current.production, state.bonusProgress, state.startedAt, current.intervalMs);
     const storedDuration = state.storedDuration + cycles * current.intervalMs;
     const full = current.capacityMs - storedDuration < current.intervalMs, partial = elapsed - cycles * current.intervalMs;
     return { id, cycles, ticks: Math.floor(storedDuration / current.intervalMs), gold: rewards.gold, materials: rewards.materials,

@@ -35,21 +35,46 @@ async function run() {
   assert.strictEqual(game.Blacksmith.status(swordRecipe), "ready");
   assert(game.Blacksmith.query({ status: "ready" }).includes(swordRecipe));
   assert.strictEqual(game.Blacksmith.result(game.Blacksmith.query({ sort: "tierDesc" })[0]).tier, Math.max(...game.GameData.recipes.map(recipe => game.Blacksmith.result(recipe).tier || 0)));
+  const catalogRecipes = game.Blacksmith.catalog({});
+  const lockedCatalog = catalogRecipes.filter(recipe => game.Blacksmith.status(recipe) === "locked");
+  const lockedCategories = lockedCatalog.map(recipe => game.Blacksmith.category(recipe));
+  assert.strictEqual(new Set(lockedCategories).size, lockedCategories.length, "Only the next locked recipe is exposed per equipment type");
+  assert(catalogRecipes.length < game.GameData.recipes.length, "Later locked recipes stay hidden from the catalog");
+  assert(game.Blacksmith.hiddenLockedCount("weapon:sword") >= 0);
 
   create(game, "比較役", "warrior");
   game.UI.init();
   game.UI.navigate("blacksmith");
   let html = node("app").innerHTML;
-  const recipePages = Math.ceil(game.GameData.recipes.length / 12);
-  assert(html.includes('id="blacksmith-search-form"') && html.includes('data-blacksmith-filter="category"') && html.includes('data-blacksmith-filter="material"') && html.includes('data-blacksmith-filter="status"') && html.includes('data-blacksmith-filter="sort"'));
-  assert.strictEqual(count(html, 'class="item-card compact-item shop-item-card forge-shop-card'), 12, "One recipe page contains at most twelve shop-style entries");
-  assert(html.includes(`1/${recipePages}ページ · ${game.GameData.recipes.length}件`) && html.includes("鉄鉱石") && html.includes("3/"));
-  assert(html.includes("この装備の固有スキル") && html.includes("商店と同じように品を一覧から選び") && !html.includes("比較する冒険者") && !html.includes("標準品質・追加性能なし"));
-  assert(!html.includes("blacksmith-inspector") && !html.includes("data-blacksmith-compare"), "Character comparison and the separate inspector should be removed");
-
-  await click("recipe-page", { page: "1" });
+  assert(html.includes("鍛冶メニュー") && html.includes('data-view="craft"') && html.includes('data-view="upgrade"'));
+  assert(!html.includes("blacksmith-controls") && !html.includes("upgrade-record"), "Crafting and upgrading do not share the menu screen");
+  await click("blacksmith-open", { view: "craft" });
   html = node("app").innerHTML;
-  assert.strictEqual(count(html, 'class="item-card compact-item shop-item-card forge-shop-card'), Math.min(12, game.GameData.recipes.length - 12));
+  const recipeTypeIds = Array.from(game.GameData.equipmentTypes ? Object.values(game.GameData.equipmentTypes) : [], type => type.id)
+    .filter(typeId => catalogRecipes.some(recipe => (game.Blacksmith.result(recipe).weaponType || game.Blacksmith.result(recipe).armorType) === typeId));
+  const recipePages = Math.ceil(recipeTypeIds.length / 6);
+  const recipesOnPage = page => catalogRecipes.filter(recipe => recipeTypeIds.slice(page * 6, (page + 1) * 6).includes(game.Blacksmith.result(recipe).weaponType || game.Blacksmith.result(recipe).armorType)).length;
+  assert(html.includes('id="blacksmith-search-form"') && html.includes('data-blacksmith-filter="category"') && html.includes('data-blacksmith-filter="material"') && html.includes('data-blacksmith-filter="status"') && html.includes('data-blacksmith-filter="sort"'));
+  assert.strictEqual(count(html, 'class="item-card compact-item shop-item-card forge-shop-card'), recipesOnPage(0), "A recipe page contains whole equipment-type groups");
+  assert(html.includes(`1/${recipePages}ページ · ${recipeTypeIds.length}種・${catalogRecipes.length}件`) && html.includes("鉄鉱石") && html.includes("3/"));
+  const firstPageTypes = Array.from(html.matchAll(/data-equipment-type="([^"]+)"/g), match => match[1]);
+  assert.strictEqual(new Set(firstPageTypes).size, firstPageTypes.length, "An equipment type appears in only one group on a page");
+  assert(html.includes('data-detail="equipment-type-') && html.includes('data-detail="forge-recipe-'), "Recipe groups and open recipes have stable identities across background refreshes");
+  assert(html.includes("この装備の固有スキル") && html.includes("装備種別ごとに次に解放される1件") && !html.includes("比較する冒険者") && !html.includes("標準品質・追加性能なし"));
+  assert(!html.includes("blacksmith-inspector") && !html.includes("data-blacksmith-compare"), "Character comparison and the separate inspector should be removed");
+  await listeners.change({ target: { value: "weapon:sword", dataset: { blacksmithFilter: "category" }, hasAttribute: key => key === "data-blacksmith-filter" } });
+  html = node("app").innerHTML;
+  assert.strictEqual(count(html, 'class="equipment-type-group"'), 1, "All sword recipes share one equipment-type frame");
+  assert(html.includes("鉄の剣") && html.includes("鋼の剣"), "Unlocked and next-to-unlock swords are presented together");
+  await click("reset-blacksmith-filters");
+
+  if (recipePages > 1) {
+    await click("recipe-page", { page: "1" });
+    html = node("app").innerHTML;
+    assert.strictEqual(count(html, 'class="item-card compact-item shop-item-card forge-shop-card'), recipesOnPage(1));
+    const secondPageTypes = Array.from(html.matchAll(/data-equipment-type="([^"]+)"/g), match => match[1]);
+    assert(!secondPageTypes.some(type => firstPageTypes.includes(type)), "Equipment types are never split across recipe pages");
+  }
 
   node("blacksmith-query").value = "鉄の剣";
   await listeners.submit({ target: { id: "blacksmith-search-form" }, preventDefault() {} });
@@ -62,7 +87,7 @@ async function run() {
   assert(html.includes("条件に一致するレシピがありません"), "Combined query and status filters are applied");
   await click("reset-blacksmith-filters");
   html = node("app").innerHTML;
-  assert(html.includes(`1/${recipePages}ページ · ${game.GameData.recipes.length}件`));
-  console.log("Blacksmith catalog test passed: shop-style cards, derived categories, search, material/status filters, sorting, paging, compact costs and skill preview without character comparison");
+  assert(html.includes(`1/${recipePages}ページ · ${recipeTypeIds.length}種・${catalogRecipes.length}件`));
+  console.log("Blacksmith catalog test passed: unlocked recipes plus one next unlock per equipment type, search, filters, paging and compact recipe details");
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

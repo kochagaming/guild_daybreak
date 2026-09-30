@@ -26,6 +26,7 @@ assert.strictEqual(daily().claimed.length, 0);
 assert(daily().selectedIds.includes("login") && daily().selectedIds.length === 3, "login should be pinned beside two rotating daily requests");
 assert.strictEqual(weekly().selectedIds.length, 2);
 assert.strictEqual(weekly().claimed.length, 0);
+assert.strictEqual(game.RecurringMissions.readyCount(), 1, "The login reward is initially claimable");
 
 async function run() {
   assert(!(await game.GameClient.execute("recurringMission.claim", { groupId: "daily", missionId: "unknown" })).ok);
@@ -36,6 +37,7 @@ async function run() {
   assert.strictEqual(game.GameState.data.inventory.materials.guild_seal, seals);
   assert((await game.GameClient.execute("recurringMission.claim", { groupId: "daily", missionId: "login" })).ok);
   assert.strictEqual(game.GameState.data.inventory.materials.guild_seal, seals + 1);
+  assert.strictEqual(game.RecurringMissions.readyCount(), 0);
   assert(!(await game.GameClient.execute("recurringMission.claim", { groupId: "daily", missionId: "login" })).ok);
 
   const created = require("./helpers").createCharacter(game, "日課隊", "warrior", "human", "common");

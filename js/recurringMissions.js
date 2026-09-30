@@ -124,5 +124,9 @@
     return group && current ? current.selectedIds.map(id => mission(group, id)).filter(Boolean) : [];
   }
 
-  window.RecurringMissions = { initialState, state, definitions, periodKey, selectionFor: selectedIds, sync, record, ready, claim, claimAll, active };
+  function readyCount() {
+    return definitions().reduce((total, group) => total + active(group.id).filter(entry => ready(group.id, entry)).length, 0);
+  }
+
+  window.RecurringMissions = { initialState, state, definitions, periodKey, selectionFor: selectedIds, sync, record, ready, readyCount, claim, claimAll, active };
 })();

@@ -63,5 +63,30 @@
     });
   }
 
-  window.Blacksmith = { canCraft, craft, materialSources, result, recipeName, category, status, query, unlockOrder };
+  function lockedRecipePreviews() {
+    const sourceOrder = new Map(window.GameData.recipes.map((recipe, index) => [recipe.id, index]));
+    const previews = new Map();
+    window.GameData.recipes
+      .filter(recipe => status(recipe) === "locked")
+      .sort((a, b) => unlockOrder(a) - unlockOrder(b)
+        || (result(a).tier || 0) - (result(b).tier || 0)
+        || sourceOrder.get(a.id) - sourceOrder.get(b.id))
+      .forEach(recipe => {
+        const categoryId = category(recipe);
+        if (!previews.has(categoryId)) previews.set(categoryId, recipe);
+      });
+    return previews;
+  }
+
+  function catalog(options) {
+    const previewIds = new Set(Array.from(lockedRecipePreviews().values(), recipe => recipe.id));
+    return query(options).filter(recipe => status(recipe) !== "locked" || previewIds.has(recipe.id));
+  }
+
+  function hiddenLockedCount(categoryId) {
+    const lockedCount = window.GameData.recipes.filter(recipe => status(recipe) === "locked" && category(recipe) === categoryId).length;
+    return Math.max(0, lockedCount - (lockedRecipePreviews().has(categoryId) ? 1 : 0));
+  }
+
+  window.Blacksmith = { canCraft, craft, materialSources, result, recipeName, category, status, query, catalog, lockedRecipePreviews, hiddenLockedCount, unlockOrder };
 })();

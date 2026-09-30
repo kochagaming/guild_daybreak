@@ -16,11 +16,14 @@
     },
     definitions: {
       mine: {
-        id: "mine", name: "採掘場", description: "鉱員と設備を整え、装備製作に使う鉱石を採取します。",
+        id: "mine", name: "採掘場", description: "鉱員と設備を整え、鉄鉱石を採取します。生産設備を強化すると、まれに希少な鉱石も見つかります。",
         upgrades: {
           production: track([
-            { rewards: { materials: { iron_ore: 1 } } }, { rewards: { materials: { iron_ore: 2 } } }, { rewards: { materials: { iron_ore: 3 } } },
-            { rewards: { materials: { iron_ore: 4, magic_stone: 1 } } }, { rewards: { materials: { iron_ore: 5, magic_stone: 2, star_shard: 1 } } }
+            { rewards: { materials: { iron_ore: 1 } } },
+            { rewards: { materials: { iron_ore: 2 } }, chanceRewards: [{ id: "mine_magic_stone", itemId: "magic_stone", quantity: 1, chance: .05 }] },
+            { rewards: { materials: { iron_ore: 3 } }, chanceRewards: [{ id: "mine_magic_stone", itemId: "magic_stone", quantity: 1, chance: .10 }, { id: "mine_glow_crystal", itemId: "glow_crystal", quantity: 1, chance: .04 }] },
+            { rewards: { materials: { iron_ore: 4 } }, chanceRewards: [{ id: "mine_magic_stone", itemId: "magic_stone", quantity: 1, chance: .18 }, { id: "mine_glow_crystal", itemId: "glow_crystal", quantity: 1, chance: .08 }, { id: "mine_starsteel_ore", itemId: "starsteel_ore", quantity: 1, chance: .02 }] },
+            { rewards: { materials: { iron_ore: 5 } }, chanceRewards: [{ id: "mine_magic_stone", itemId: "magic_stone", quantity: 1, chance: .28 }, { id: "mine_glow_crystal", itemId: "glow_crystal", quantity: 1, chance: .12 }, { id: "mine_starsteel_ore", itemId: "starsteel_ore", quantity: 1, chance: .05 }, { id: "mine_star_shard", itemId: "star_shard", quantity: 1, chance: .02 }] }
           ], [{ iron_ore: 6 }, { iron_ore: 15, magic_stone: 2 }, { iron_ore: 30, magic_stone: 8 }, { magic_stone: 15, star_shard: 4 }]),
           storage: track(storageValues, [{ iron_ore: 4 }, { iron_ore: 10 }, { iron_ore: 18, magic_stone: 3 }, { magic_stone: 10, star_shard: 2 }]),
           speed: track(speedValues, [{ iron_ore: 8 }, { iron_ore: 18, magic_stone: 2 }, { iron_ore: 28, magic_stone: 6 }, { magic_stone: 12, star_shard: 3 }])

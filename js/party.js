@@ -2,7 +2,7 @@
   "use strict";
   const fallback = {
     memberLimit: { initial: 3, maximum: 6, unlocks: [{ chapterId: "roadside", size: 4 }, { chapterId: "seal", size: 5 }, { chapterId: "starfall", size: 6 }] },
-    partySlots: { initial: 1, maximum: 6, unlocks: [{ slot: 2, chapterNumber: 1, gold: 1000, seals: 2 }, { slot: 3, chapterNumber: 2, gold: 2500, seals: 4 }, { slot: 4, chapterNumber: 3, gold: 5000, seals: 6 }, { slot: 5, chapterNumber: 4, gold: 10000, seals: 8 }, { slot: 6, chapterNumber: 5, gold: 20000, seals: 10 }] }
+    partySlots: { initial: 1, maximum: 8, unlocks: [{ slot: 2, chapterNumber: 1, gold: 1000, seals: 2 }, { slot: 3, chapterNumber: 2, gold: 2500, seals: 4 }, { slot: 4, chapterNumber: 3, gold: 5000, seals: 6 }, { slot: 5, chapterNumber: 4, gold: 10000, seals: 8 }, { slot: 6, chapterNumber: 5, gold: 20000, seals: 10 }, { slot: 7, chapterNumber: 6, gold: 40000, seals: 12 }, { slot: 8, codeOnly: true, gold: 80000, seals: 15 }] }
   };
   const config = () => window.GameData.partyProgression || fallback;
   const slotConfig = slot => config().partySlots.unlocks.find(entry => entry.slot === slot);
@@ -13,7 +13,7 @@
     return Boolean(chapter && window.GameState.data.story.completed.includes(chapter.id));
   }
   function availableLimit() {
-    const storyLimit = config().partySlots.unlocks.reduce((count, entry) => chapterCompleted(entry.chapterNumber) ? Math.max(count, entry.slot) : count, config().partySlots.initial);
+    const storyLimit = config().partySlots.unlocks.filter(entry => !entry.codeOnly).reduce((count, entry) => chapterCompleted(entry.chapterNumber) ? Math.max(count, entry.slot) : count, config().partySlots.initial);
     const bonus = window.AccessCodes ? window.AccessCodes.partySlotBonus() : 0;
     return Math.min(maximum(), storyLimit + bonus);
   }
@@ -25,7 +25,7 @@
     return {
       ok: chapterReady && affordable, slot, gold: entry.gold, seals: entry.seals, chapterNumber: entry.chapterNumber,
       chapterReady, affordable,
-      message: !chapterReady ? `第${entry.chapterNumber}章をクリアすると増設できます。` : !affordable ? "所持金またはギルド印章が足りません。" : `第${slot}パーティを増設できます。`
+      message: !chapterReady ? (entry.codeOnly ? "設定で追加パーティ増設権のコードを解放すると増設できます。" : `第${entry.chapterNumber}章をクリアすると増設できます。`) : !affordable ? "所持金またはギルド印章が足りません。" : `第${slot}パーティを増設できます。`
     };
   }
   function unlock(slot = limit() + 1) {
@@ -48,8 +48,39 @@
     return `${index + 1}列目${index === 0 ? "（最前列）" : index === size - 1 ? "（最後列）" : ""}`;
   }
   function selected() { return window.GameState.data.activeParty || 0; }
+  function name(index = selected()) { return window.GameState.data.partyNames[index] || `第${index + 1}パーティ`; }
+  function rename(value, index = selected()) {
+    if (!Number.isInteger(index) || index < 0 || index >= limit()) return { ok: false, message: "このパーティはまだ増設されていません。" };
+    const next = String(value || "").trim();
+    if (!next || next.length > 20 || /[\u0000-\u001f\u007f]/.test(next)) return { ok: false, message: "パーティ名は1〜20文字で入力してください。" };
+    window.GameState.data.partyNames[index] = next;
+    window.GameState.save();
+    return { ok: true, message: `パーティ名を「${next}」に変更しました。` };
+  }
   function ids(index = selected()) { return window.GameState.data.parties[index] || []; }
   function expedition(index = selected()) { return window.GameState.data.expeditions[index] || null; }
+  function result(index = selected()) { return window.GameState.data.partyResults[index] || null; }
+  function plan(index = selected()) { return window.GameState.data.partyPlans[index] || null; }
+  function setPlan(next, index = selected()) {
+    if (!Number.isInteger(index) || index < 0 || index >= limit()) return { ok: false, message: "このパーティはまだ増設されていません。" };
+    if (expedition(index)) return { ok: false, message: "探索中は出撃先を変更できません。" };
+    const dungeon = window.GameData.dungeons[next.dungeonId];
+    const difficultyId = next.difficultyId || "normal", timeMultiplier = Number(next.timeMultiplier || 1);
+    if (!dungeon || !window.Story.canEnter(dungeon.id)) return { ok: false, message: "この攻略先はまだ選択できません。" };
+    if (!window.DungeonDifficulty.unlocked(dungeon.id, difficultyId)) return { ok: false, message: "この難易度はまだ解放されていません。" };
+    if (!window.Exploration.valid(timeMultiplier)) return { ok: false, message: "探索時間は1〜6倍で指定してください。" };
+    window.GameState.data.partyPlans[index] = { dungeonId: dungeon.id, difficultyId, timeMultiplier };
+    window.GameState.save();
+    return { ok: true, plan: window.GameState.data.partyPlans[index] };
+  }
+  function unreadResultCount() { return window.GameState.data.partyResults.slice(0, limit()).filter(entry => entry && entry.viewed !== true).length; }
+  function markResultRead(index = selected()) {
+    if (!Number.isInteger(index) || index < 0 || index >= limit()) return { ok: false, message: "このパーティはまだ増設されていません。" };
+    const report = result(index);
+    if (!report) return { ok: false, message: "探索結果はまだありません。" };
+    if (report.viewed !== true) { report.viewed = true; window.GameState.save(); }
+    return { ok: true };
+  }
   function select(index) {
     if (!Number.isInteger(index) || index < 0 || index >= limit()) return { ok: false, message: "このパーティはまだ増設されていません。" };
     window.GameState.data.activeParty = index;
@@ -95,5 +126,5 @@
       return total + stat.attack * stat.physicalPower * formation * 2.1 * attackCountFactor + stat.defense * 1.6 + stat.hp * .34 + stat.speed * .7 + character.level * 6 + supportBonus;
     }, 0);
   }
-  window.Party = { toggle, move, members, power, ids, selected, select, limit, maximum, availableLimit, unlockQuote, unlock, memberLimit, positionName, expedition };
+  window.Party = { toggle, move, members, power, ids, selected, select, name, rename, limit, maximum, availableLimit, unlockQuote, unlock, memberLimit, positionName, expedition, result, plan, setPlan, unreadResultCount, markResultRead };
 })();

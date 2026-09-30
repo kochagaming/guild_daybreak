@@ -23,5 +23,10 @@
     window.GameState.save();
     return { ok: true, message: `「${quest.title}」の報酬を受け取りました。` };
   }
-  window.Commissions = { state, recordResult, claim };
+  function readyCount() {
+    const current = state();
+    return window.GameData.commissions.filter(quest => window.Story.canEnter(quest.dungeonId)
+      && !current.claimed.includes(quest.id) && (current.progress[quest.id] || 0) >= quest.target).length;
+  }
+  window.Commissions = { state, recordResult, claim, readyCount };
 })();

@@ -1,6 +1,22 @@
 (function () {
   "use strict";
 
+  function historySummary(result) {
+    const equipment = [], materialTotals = {};
+    (result.drops || []).forEach(drop => {
+      const item = window.GameData.items[drop.itemId];
+      if (!item) return;
+      if (["weapon", "armor"].includes(item.type)) equipment.push({ itemId: drop.itemId, name: drop.displayName || item.name, quantity: drop.quantity || 1 });
+      else if (item.type === "material") materialTotals[drop.itemId] = (materialTotals[drop.itemId] || 0) + (drop.quantity || 1);
+    });
+    (result.autoSold || []).forEach(drop => equipment.push({ itemId: drop.itemId, name: drop.displayName, quantity: 1, autoSold: true }));
+    return {
+      id: result.id, completedAt: result.completedAt, dungeonId: result.dungeonId, difficultyId: result.difficultyId,
+      success: result.success, gold: result.gold, exp: result.exp,
+      equipment, materials: Object.entries(materialTotals).map(([itemId, quantity]) => ({ itemId, quantity }))
+    };
+  }
+
   function start(dungeonId, partyIndex = window.Party.selected(), timeMultiplier = 1, difficultyId = "normal") {
     const acquisitionApi = window.AcquisitionSkills || { resolve: () => null, durationMs: (seconds, multiplier) => seconds * multiplier * 1000 };
     const state = window.GameState.data;
@@ -50,7 +66,7 @@
       power: Math.round(power),
       seed: Math.floor(window.GameRuntime.random() * 2147483646) + 1
     };
-    window.GameState.addLog(`第${partyIndex + 1}パーティが${dungeon.name}へ出発しました。`, "info");
+    window.GameState.addLog(`${window.Party.name(partyIndex)}が${dungeon.name}へ出発しました。`, "info");
     if (window.Story) window.Story.recordDeparture(dungeonId);
     if (window.RecurringMissions) window.RecurringMissions.record("departure");
     window.GameState.save();
@@ -66,12 +82,13 @@
     const dungeon = window.DungeonDifficulty ? window.DungeonDifficulty.variant(baseDungeon, expedition.difficultyId || "normal") : baseDungeon;
     const outcome = window.Battle.resolve(expedition, dungeon);
     state.gold += outcome.gold;
-    const grantedDrops = [], autoSold = [];
+    const grantedDrops = [], autoSold = [], newItemIds = new Set();
     let autoSellGold = 0;
     const acquisitionApi = window.AcquisitionSkills || { normalize: () => ({ qualityRate: { multiplier: 1, flat: 0 } }), memberExperience: base => base };
     const acquisitionBonuses = acquisitionApi.normalize(expedition.acquisitionBonuses);
     const qualityRate = acquisitionBonuses.qualityRate;
     outcome.drops.forEach((drop, dropIndex) => {
+      const newDiscovery = window.Encyclopedia ? !window.Encyclopedia.item(drop.itemId) : false;
       const grant = window.Items.add(drop.itemId, drop.quantity, {
         source: "drop", seed: expedition.seed + (dropIndex + 1) * 100003,
         qualityRateMultiplier: qualityRate.multiplier
@@ -79,11 +96,12 @@
       if (grant.instances.length) {
         grant.instances.forEach((instance) => grantedDrops.push({
           itemId: drop.itemId, quantity: 1, instanceId: instance.id,
-          displayName: window.Items.displayName(instance), qualityId: instance.qualityId
+          displayName: window.Items.displayName(instance), qualityId: instance.qualityId, newDiscovery
         }));
       } else if (grant.material) {
-        grantedDrops.push({ itemId: drop.itemId, quantity: drop.quantity });
+        grantedDrops.push({ itemId: drop.itemId, quantity: drop.quantity, newDiscovery });
       }
+      if (newDiscovery) newItemIds.add(drop.itemId);
       if (grant.autoSold?.length) autoSold.push(...grant.autoSold);
       autoSellGold += grant.autoSellGold || 0;
     });
@@ -98,9 +116,9 @@
     });
     state.lastResult = {
       id: `result-${window.GameRuntime.now()}-${partyIndex}`, partyIndex, dungeonId: baseDungeon.id, difficultyId: expedition.difficultyId || "normal", dungeonName: dungeon.name, completedAt: window.GameRuntime.now(),
-      success: outcome.success, gold: outcome.gold, exp: outcome.exp, experienceGains,
+      success: outcome.success, gold: outcome.gold, exp: outcome.exp, experienceGains, viewed: false,
       timeMultiplier: expedition.timeMultiplier || 1,
-      drops: grantedDrops, autoSold, autoSellGold, levelUps,
+      drops: grantedDrops, autoSold, autoSellGold, levelUps, newItemIds: Array.from(newItemIds),
       partyNames: expedition.partySnapshot
         ? expedition.partySnapshot.map((member) => member.name)
         : expedition.partyIds.map(window.Characters.get).filter(Boolean).map((c) => c.name),
@@ -126,8 +144,10 @@
     if (window.RecurringMissions && outcome.success) window.RecurringMissions.record("clear");
     if (window.Encyclopedia) window.Encyclopedia.recordBattle(outcome.monsterEncounters, outcome.monsterCounts, outcome.monsterObservations, expedition.difficultyId || "normal");
     state.partyResults[partyIndex] = state.lastResult;
+    state.partyHistory[partyIndex].unshift(historySummary(state.lastResult));
+    state.partyHistory[partyIndex] = state.partyHistory[partyIndex].slice(0, 10);
     window.GameState.addLog(
-      `第${partyIndex + 1}パーティ：${dungeon.shortName}の探索は${outcome.success ? "成功" : "失敗"}。${outcome.gold}Gを獲得${autoSellGold ? `、装備${autoSold.length}点を${autoSellGold}Gで自動売却` : ""}しました。`,
+      `${window.Party.name(partyIndex)}：${dungeon.shortName}の探索は${outcome.success ? "成功" : "失敗"}。${outcome.gold}Gを獲得${autoSellGold ? `、装備${autoSold.length}点を${autoSellGold}Gで自動売却` : ""}しました。`,
       outcome.success ? "success" : "danger"
     );
     window.GameState.save();

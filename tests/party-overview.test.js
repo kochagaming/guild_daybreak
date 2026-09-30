@@ -40,6 +40,8 @@ document.querySelectorAll = selector => {
 async function run() {
   game.UI.init(); game.UI.navigate("party");
   assert(row(0).includes("未編成") && row(1).includes("未解放"));
+  assert(row(0).includes('data-action="rename-party" data-party="0"') && !row(0).includes('class="fleet-party-select" data-action="party-open"'), "Tapping the overview party name opens rename rather than formation");
+  assert(!html().includes('data-party-overview="2"') && html().includes("さらに6枠のパーティを増設できます"), "Only the next locked slot is shown to keep the initial list compact");
   assert(!row(1).includes("data-action"), "Locked party cannot be opened");
   const a = require("./helpers").createCharacter(game, "鉱石収集隊").id;
   const b = require("./helpers").createCharacter(game, "洞窟攻略隊", "mage").id;
@@ -47,9 +49,12 @@ async function run() {
   require("./helpers").completeThrough(game, "seal");
   game.GameState.data.unlockedPartyCount = 2;
   game.Party.toggle(a, 0); game.Party.toggle(b, 1);
-  assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
-  assert((await game.GameClient.execute("expedition.start", { dungeonId: "cave", partyIndex: 1 })).ok);
+  assert((await game.GameClient.execute("party.setPlan", { dungeonId: "meadow", difficultyId: "normal", timeMultiplier: 1, partyIndex: 0 })).ok);
+  assert((await game.GameClient.execute("party.setPlan", { dungeonId: "cave", difficultyId: "normal", timeMultiplier: 1, partyIndex: 1 })).ok);
   game.UI.render();
+  assert(html().includes("待機隊を一斉出撃 (2)"));
+  await click("depart-ready-parties");
+  assert(game.GameState.data.expeditions.slice(0, 2).every(Boolean), "Manual batch departure starts every ready party with a saved plan");
   assert(html().includes("2/2隊が探索中"));
   assert(row(0).includes("草原") && row(0).includes("鉱石収集隊") && row(0).includes('data-countdown="0"'));
   assert(row(1).includes("洞窟") && row(1).includes("洞窟攻略隊") && row(1).includes('data-countdown="1"'));
@@ -63,22 +68,39 @@ async function run() {
   now += 15000; await tick();
   await click("party-back");
   assert(row(0).includes("攻略成功") && row(0).includes("is-last-success") && row(0).includes(game.GameData.dungeons.meadow.name));
+  assert(row(0).includes("has-unread-result") && row(0).includes("直近ログ・新着") && node("main-nav").innerHTML.includes("nav-notice party"));
   game.GameState.data.partyResults[0].drops = [
-    { itemId: "wooden_sword", quantity: 1, displayName: "上質な木の剣", qualityId: "fine" },
+    { itemId: "wooden_sword", quantity: 1, displayName: "上質な木の剣", qualityId: "fine", newDiscovery: true },
     { itemId: "iron_ore", quantity: 3 }
   ];
+  game.GameState.data.partyResults[0].newItemIds = ["wooden_sword"];
   game.UI.render();
-  assert(row(0).includes("EXP +") && row(0).includes("装備 1点") && row(0).includes("上質な木の剣") && row(0).includes("素材 3個") && row(0).includes("鉄鉱石×3"));
+  assert(row(0).includes("初発見 1種") && row(0).includes("EXP +") && row(0).includes("装備 1点") && row(0).includes("上質な木の剣") && row(0).includes("素材 3個") && row(0).includes("鉄鉱石×3"));
   assert(row(1).includes("探索中") && row(1).includes('data-countdown="1"'));
   assert.strictEqual(game.Party.selected(), 1, "A different party's return must not change the selected party");
   assert(html().includes("1/2隊が探索中"));
   await click("party-open", { party: "0", view: "results" });
   assert.strictEqual(game.Party.selected(), 0); assert(html().includes("第1パーティの直近の探索結果"));
+  assert.strictEqual(game.GameState.data.partyResults[0].viewed, true);
+  assert(!node("main-nav").innerHTML.includes("nav-notice party"), "Opening the only unread report clears the party notice");
+  assert(html().includes("初めての品を1種類発見しました") && html().includes("is-new-discovery") && html().includes("アイテム図鑑で確認"));
   const firstGold = game.GameState.data.gold;
   await tick(); assert.strictEqual(game.GameState.data.gold, firstGold, "Viewing results does not collect duplicate rewards");
+  assert.strictEqual(game.GameState.data.partyHistory[0].length, 1, "A compact return summary is retained per party");
+  assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
+  game.UI.navigate("blacksmith"); await click("blacksmith-open", { view: "craft" });
+  const mainArea = node(".main-area"); mainArea.scrollTop = 347;
+  assert(html().includes("製作レシピ") && html().includes("data-detail=\"forge-recipe-"));
   now += 30000; await tick();
+  assert.strictEqual(node("page-title").textContent, "鍛冶屋");
+  assert.strictEqual(mainArea.scrollTop, 347, "A party return preserves the blacksmith scroll position");
+  assert(html().includes("製作レシピ") && html().includes("鍛冶メニュー"), "A party return keeps the current blacksmith route open");
+  game.UI.navigate("party");
   await click("party-back");
   assert(row(0).includes("攻略成功") && row(1).includes("攻略成功"));
+  assert.strictEqual(game.GameState.data.partyHistory[0].length, 2, "New returns are added without discarding the prior summary");
+  assert(row(0).includes("過去の帰還 1件") && row(0).includes("装備") && row(0).includes("素材"), "Older rewards are available from the compact party history");
+  assert.strictEqual(game.Party.unreadResultCount(), 2, "Both newly returned parties have unread reports");
   assert(!html().includes("data-countdown") && html().includes("0/2隊が探索中"));
   game.GameState.data.partyResults[0].success = false; game.UI.render();
   assert(row(0).includes("撤退") && row(0).includes("is-last-failure") && row(0).includes('fleet-result-mark failure'));

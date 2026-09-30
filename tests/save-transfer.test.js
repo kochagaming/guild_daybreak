@@ -47,6 +47,8 @@ invalid(state => state.parties[0].push(created.id));
 invalid(state => state.meta.nextItemId = 1);
 invalid(state => state.expeditions[0].partySnapshot[0].stats.attack = "<script>");
 invalid(state => state.expeditions[0].partySnapshot[0].skillIds = ["invalid"]);
+invalid(state => { state.partyPlans[0] = { dungeonId: "missing", difficultyId: "normal", timeMultiplier: 1 }; });
+invalid(state => { state.partyNames[0] = " "; });
 assert(!transfer.parse("{broken").ok);
 assert(!transfer.parse('{"__proto__": {}}').ok);
 assert(!transfer.parse(" ".repeat(transfer.MAX_BYTES + 1)).ok);

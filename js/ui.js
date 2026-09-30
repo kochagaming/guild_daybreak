@@ -15,7 +15,18 @@
   const partyViews = Array.from({ length: window.Party.maximum() }, (_, index) => window.Party.expedition(index) ? "adventure" : "formation");
   let partyScreen = "overview";
   let partyOverviewScrollTop = 0;
-  const explorationChoices = Array.from({ length: window.Party.maximum() }, () => ({}));
+  const explorationChoices = Array.from({ length: window.Party.maximum() }, (_, index) => {
+    const plan = window.Party.plan(index);
+    return plan ? { dungeonId: plan.dungeonId, chapterId: window.GameData.dungeons[plan.dungeonId]?.chapterId, [plan.dungeonId]: plan.timeMultiplier, [`${plan.dungeonId}:difficulty`]: plan.difficultyId } : {};
+  });
+  function reloadExplorationChoices() {
+    explorationChoices.forEach((choices, index) => {
+      Object.keys(choices).forEach(key => delete choices[key]);
+      const plan = window.Party.plan(index);
+      if (!plan) return;
+      Object.assign(choices, { dungeonId: plan.dungeonId, chapterId: window.GameData.dungeons[plan.dungeonId]?.chapterId, [plan.dungeonId]: plan.timeMultiplier, [`${plan.dungeonId}:difficulty`]: plan.difficultyId });
+    });
+  }
   let toastTimer;
   let pendingImport = null;
   let pendingPresetAction = null;
@@ -24,6 +35,8 @@
   let importRequest = 0;
   const inventoryView = { kind: "all", quality: "all", equipped: "all", lock: "all", sort: "newest", page: 0 };
   const blacksmithView = { query: "", category: "all", material: "all", status: "all", sort: "ready", page: 0 };
+  const upgradeView = { query: "", kind: "all", status: "all", sort: "ready", page: 0 };
+  let blacksmithScreen = "menu";
   const characterView = { query: "", job: "all", sort: "level", page: 0 };
   let characterScreen = "overview";
   let selectedCharacterId = null;
@@ -33,6 +46,7 @@
   let equipmentReturnToParty = false;
   let selectedPartyCharacterId = null;
   let equipmentChangeNotice = null;
+  let facilityNoticeCount = -1;
   let equipmentChangeTimer = null;
 
   const escape = (text) => String(text).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
@@ -111,7 +125,7 @@
     if (!result) return `<div class="notice muted"><span class="notice-icon">◇</span><div><strong>まだ探索記録はありません</strong><p>パーティを編成し、最初の探索へ送り出しましょう。</p></div></div>`;
     const dungeon = window.DungeonDifficulty.variant(result.dungeonId, result.difficultyId || "normal");
     const drops = result.drops.length
-      ? result.drops.map((drop) => `<span class="loot-chip ${drop.qualityId || ""}">${window.GameData.items[drop.itemId].icon} ${escape(drop.displayName || itemName(drop.itemId))}${drop.quantity > 1 ? ` ×${drop.quantity}` : ""}</span>`).join("")
+      ? result.drops.map((drop) => `<span class="loot-chip ${drop.qualityId || ""} ${drop.newDiscovery ? "is-new-discovery" : ""}">${drop.newDiscovery ? '<b>NEW</b> ' : ""}${window.GameData.items[drop.itemId].icon} ${escape(drop.displayName || itemName(drop.itemId))}${drop.quantity > 1 ? ` ×${drop.quantity}` : ""}</span>`).join("")
       : `<span class="muted-text">装備・素材の発見なし</span>`;
     const levels = result.levelUps.length ? `<p class="level-up">レベルアップ：${result.levelUps.map((entry) => `${escape(entry.name)} Lv.${entry.level}`).join("、")}</p>` : "";
     const autoSales = result.autoSold?.length
@@ -129,12 +143,15 @@
     const newObservations = Array.isArray(result.newObservationIds) && result.newObservationIds.length
       ? `<section class="result-observation-unlock"><span class="label">NEW FIELD NOTES</span><strong>観察日記に${result.newObservationIds.length}頁が加わりました</strong><p>${result.newObservationIds.map(id => window.ObservationJournal.note(id)?.title).filter(Boolean).map(escape).join("、")}</p><button class="button ghost" data-action="open-observations">観察日記を読む</button></section>`
       : "";
+    const newItems = Array.isArray(result.newItemIds) && result.newItemIds.length
+      ? `<section class="result-new-discoveries"><span class="label">FIRST DISCOVERY</span><strong>初めての品を${result.newItemIds.length}種類発見しました</strong><p>${result.newItemIds.map(id => `${window.GameData.items[id]?.icon || "◇"} ${escape(itemName(id))}`).join("　")}</p><button class="button ghost" data-action="open-item-codex">アイテム図鑑で確認</button></section>`
+      : "";
     return `<article class="result-card ${result.success ? "success" : "failure"}">
       <div class="result-seal">${result.success ? "勝" : "退"}</div><div class="result-body">
       <div class="card-heading"><div><span class="label">最新の探索報告</span><h3>${escape(result.dungeonName || dungeon.name)} · ${result.timeMultiplier || 1}倍探索</h3></div><span class="badge ${result.success ? "good" : "bad"}">${result.success ? "探索成功" : "撤退"}</span></div>
       <p>${escape(result.partyNames.join("、"))}が帰還しました。</p>
       <div class="reward-line"><strong>+${formatGold(result.gold)}</strong>${experience}</div>
-      <div class="loot-list">${drops}</div>${autoSales}${levels}${newObservations}${storyMoments}${(result.storyCompleted || []).map(id => window.GameData.storyChapters.find(chapter => chapter.id === id)).filter(Boolean).map(chapter => `<div class="story-objective"><strong>${escape(chapter.title)}・達成</strong><p>解放・章報酬：${escape(chapter.unlockText)}</p></div>`).join("")}${tacticalReportPanel(result)}${memberReportPanel(result)}${completedJournalPanel(result)}</div></article>`;
+      <div class="loot-list">${drops}</div>${autoSales}${levels}${newItems}${newObservations}${storyMoments}${(result.storyCompleted || []).map(id => window.GameData.storyChapters.find(chapter => chapter.id === id)).filter(Boolean).map(chapter => `<div class="story-objective"><strong>${escape(chapter.title)}・達成</strong><p>解放・章報酬：${escape(chapter.unlockText)}</p></div>`).join("")}${tacticalReportPanel(result)}${memberReportPanel(result)}${completedJournalPanel(result)}</div></article>`;
   }
 
   function tacticalReportPanel(result) {
@@ -182,7 +199,7 @@
 
   function partyReportPanel() {
     const index = window.Party.selected();
-    return `<section class="panel party-report"><div class="section-heading"><div><span class="label">LATEST REPORT</span><h3>第${index + 1}パーティの直近の探索結果</h3></div></div>${resultCard(window.GameState.data.partyResults[index])}<button class="button secondary" data-action="party-view" data-view="adventure">出撃先を選ぶ</button></section>`;
+    return `<section class="panel party-report"><div class="section-heading"><div><span class="label">LATEST REPORT</span><h3>${escape(window.Party.name(index))}の直近の探索結果</h3></div></div>${resultCard(window.GameState.data.partyResults[index])}<button class="button secondary" data-action="party-view" data-view="adventure">出撃先を選ぶ</button></section>`;
   }
 
   function facilitiesPanel() {
@@ -437,11 +454,12 @@
   function partyPage() {
     if (partyScreen === "overview") return `<div class="party-route party-route-overview">${partyOverview()}</div>`;
     const index = window.Party.selected(), view = partyViews[index];
-    const links = [["formation", "メンバー編成"], ["adventure", window.Party.expedition(index) ? "探索ログ" : "出撃先指定"], ["results", "直近ログ"]];
+    const unreadResult = window.Party.result(index) && window.Party.result(index).viewed !== true;
+    const links = [["formation", "メンバー編成"], ["adventure", window.Party.expedition(index) ? "探索ログ" : "出撃先指定"], ["results", `直近ログ${unreadResult ? "・新着" : ""}`]];
     const titles = { formation: "メンバー編成", adventure: window.Party.expedition(index) ? "探索ログ" : "出撃先を指定", results: "直近の探索結果" };
     const body = view === "adventure" ? adventureContent() : view === "results" ? partyReportPanel() : formationPage();
     const status = window.Party.expedition(index) ? "探索中" : `${window.Party.members(index).length}/${window.Party.memberLimit()}人`;
-    const header = window.GameUIViews.navigation.routeHeader({ backAction: "party-back", backLabel: "パーティ一覧", kicker: `PARTY ${index + 1}`, title: titles[view], status });
+    const header = window.GameUIViews.navigation.routeHeader({ backAction: "party-back", backLabel: "パーティ一覧", kicker: `PARTY ${index + 1}`, title: `${window.Party.name(index)} — ${titles[view]}`, status });
     return `<div class="party-route party-route-detail">${header}<nav class="party-workflow" aria-label="パーティの操作">${links.map(([id, label]) => `<button type="button" class="button ${view === id ? "primary" : "ghost"}" data-action="party-view" data-view="${id}" ${view === id ? 'aria-current="page"' : ""}>${label}</button>`).join("")}</nav><div class="party-workspace">${body}</div></div>`;
   }
 
@@ -569,7 +587,7 @@
   }
   function departureSummary() {
     const members = window.Party.members();
-    return `<section class="panel departure-summary"><div class="section-heading"><div><span class="label">DEPARTURE PARTY</span><h3>第${window.Party.selected() + 1}パーティ · ${members.length}/${window.Party.memberLimit()}人</h3></div><button class="button ghost" data-action="party-view" data-view="formation">編成・装備を見直す</button></div><ol class="departure-members">${members.map((member, position) => `<li>${portraitEditButton(member)}<span><strong>${escape(member.name)}</strong><small>${window.Party.positionName(position, Math.max(3, members.length))} · Lv.${member.level} · ${escape(window.Characters.jobName(member))}</small></span></li>`).join("")}</ol><p class="small-note">上記の隊列・装備で出撃します。出撃後の変更は次回から反映されます。総合戦力 ${Math.round(window.Party.power())}</p></section>${acquisitionSkillsPanel(members, true)}`;
+    return `<section class="panel departure-summary"><div class="section-heading"><div><span class="label">DEPARTURE PARTY</span><h3>${escape(window.Party.name())} · ${members.length}/${window.Party.memberLimit()}人</h3></div><button class="button ghost" data-action="party-view" data-view="formation">編成・装備を見直す</button></div><ol class="departure-members">${members.map((member, position) => `<li>${portraitEditButton(member)}<span><strong>${escape(member.name)}</strong><small>${window.Party.positionName(position, Math.max(3, members.length))} · Lv.${member.level} · ${escape(window.Characters.jobName(member))}</small></span></li>`).join("")}</ol><p class="small-note">上記の隊列・装備で出撃します。出撃後の変更は次回から反映されます。総合戦力 ${Math.round(window.Party.power())}</p></section>${acquisitionSkillsPanel(members, true)}`;
   }
 
   function adventureContent() {
@@ -700,25 +718,40 @@
   }
 
   function catalogViewContext() {
-    return { escape, forgeEquipmentStats, formatGold, itemCard, itemName, blacksmithView };
+    return { escape, forgeEquipmentStats, formatGold, itemCard, itemName, blacksmithView, upgradeView };
   }
 
   function blacksmithPage() {
-    return window.GameUIViews.catalog.blacksmith(catalogViewContext());
+    const context = catalogViewContext();
+    if (blacksmithScreen === "menu") return window.GameUIViews.catalog.blacksmithMenu(context);
+    const title = blacksmithScreen === "upgrade" ? "装備を強化する" : "装備を製作する";
+    const content = blacksmithScreen === "upgrade" ? upgradesPanel() : window.GameUIViews.catalog.blacksmith(context);
+    return `<div class="blacksmith-subnav"><button class="button ghost" type="button" data-action="blacksmith-back">‹ 鍛冶メニュー</button><div><span class="label">BLACKSMITH</span><h3>${title}</h3></div></div>${content}`;
   }
 
   const renderers = { home: homePage, archives: archivePage, guild: guildPage, settings: settingsPage, characters: charactersPage, party: partyPage, shop: shopPage, blacksmith: blacksmithPage, inventory: inventoryPage };
 
+  function archiveNoticeCounts() {
+    const observations = window.ObservationJournal.unread().length;
+    const rewards = window.Commissions.readyCount() + window.RecurringMissions.readyCount();
+    const discoveries = window.Encyclopedia.unreadItems().length + window.Encyclopedia.unreadMonsters().length;
+    return { observations, rewards, discoveries, total: observations + rewards + discoveries };
+  }
+
   function openMobileNavigation() {
     const secondary = pages.filter(page => !mobilePrimaryPages.has(page[0]));
-    const unreadObservations = window.ObservationJournal.unread().length;
-    document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop mobile-nav-backdrop" data-action="close-modal"><div class="modal mobile-nav-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-nav-title"><div class="modal-heading"><div><span class="label">GUILD MENU</span><h3 id="mobile-nav-title">その他の施設</h3></div><button class="modal-close" data-action="close-modal" aria-label="メニューを閉じる">×</button></div><div class="mobile-nav-grid">${secondary.map(page => `<button type="button" class="mobile-nav-link ${page[0] === currentPage ? "active" : ""}" data-action="mobile-nav" data-page="${page[0]}"><span aria-hidden="true">${page[1]}</span><strong>${escape(page[2])}</strong><small>${escape(page[3])}</small>${page[0] === "archives" && unreadObservations ? `<i class="nav-notice">新着 ${unreadObservations}</i>` : ""}</button>`).join("")}</div><p class="mobile-nav-guide">ホーム・冒険者・パーティ・所持品は、画面下部からいつでも開けます。</p></div></div>`;
+    const notices = archiveNoticeCounts();
+    const facilities = window.Facilities.collectable().length;
+    document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop mobile-nav-backdrop" data-action="close-modal"><div class="modal mobile-nav-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-nav-title"><div class="modal-heading"><div><span class="label">GUILD MENU</span><h3 id="mobile-nav-title">その他の施設</h3></div><button class="modal-close" data-action="close-modal" aria-label="メニューを閉じる">×</button></div><div class="mobile-nav-grid">${secondary.map(page => `<button type="button" class="mobile-nav-link ${page[0] === currentPage ? "active" : ""}" data-action="mobile-nav" data-page="${page[0]}"><span aria-hidden="true">${page[1]}</span><strong>${escape(page[2])}</strong><small>${escape(page[3])}</small>${page[0] === "archives" && notices.total ? `<i class="nav-notice archive" aria-label="受取可能な依頼${notices.rewards}件、観察日記の新着${notices.observations}件、図鑑の新発見${notices.discoveries}件">${notices.total}</i>` : page[0] === "guild" && facilities ? `<i class="nav-notice facility" aria-label="回収できる施設${facilities}件">${facilities}</i>` : ""}</button>`).join("")}</div><p class="mobile-nav-guide">ホーム・冒険者・パーティ・所持品は、画面下部からいつでも開けます。</p></div></div>`;
   }
 
   function renderNav() {
     const nav = document.getElementById("main-nav");
-    const unreadObservations = window.ObservationJournal.unread().length;
-    nav.innerHTML = pages.map((page) => `<button class="nav-button ${mobilePrimaryPages.has(page[0]) ? "mobile-primary" : "mobile-secondary"} ${page[0] === currentPage ? "active" : ""}" type="button" data-page="${page[0]}"><span aria-hidden="true">${page[1]}</span><strong data-short-label="${escape(page[4] || page[2])}">${page[2]}</strong>${page[0] === "archives" && unreadObservations ? `<i class="nav-notice" aria-label="観察日記に新着${unreadObservations}件">${unreadObservations}</i>` : ""}</button>`).join("") + `<button class="nav-button mobile-menu-button ${mobilePrimaryPages.has(currentPage) ? "" : "active"}" type="button" aria-haspopup="dialog"><span aria-hidden="true">☰</span><strong>メニュー</strong></button>`;
+    const notices = archiveNoticeCounts();
+    facilityNoticeCount = window.Facilities.collectable().length;
+    const unreadPartyResults = window.Party.unreadResultCount();
+    const secondaryTotal = notices.total + facilityNoticeCount;
+    nav.innerHTML = pages.map((page) => `<button class="nav-button ${mobilePrimaryPages.has(page[0]) ? "mobile-primary" : "mobile-secondary"} ${page[0] === currentPage ? "active" : ""}" type="button" data-page="${page[0]}"><span aria-hidden="true">${page[1]}</span><strong data-short-label="${escape(page[4] || page[2])}">${page[2]}</strong>${page[0] === "party" && unreadPartyResults ? `<i class="nav-notice party" aria-label="未読の探索結果${unreadPartyResults}件">${unreadPartyResults}</i>` : page[0] === "archives" && notices.total ? `<i class="nav-notice archive" aria-label="受取可能な依頼${notices.rewards}件、観察日記の新着${notices.observations}件、図鑑の新発見${notices.discoveries}件">${notices.total}</i>` : page[0] === "guild" && facilityNoticeCount ? `<i class="nav-notice facility" aria-label="回収できる施設${facilityNoticeCount}件">${facilityNoticeCount}</i>` : ""}</button>`).join("") + `<button class="nav-button mobile-menu-button ${mobilePrimaryPages.has(currentPage) ? "" : "active"}" type="button" aria-haspopup="dialog"><span aria-hidden="true">☰</span><strong>メニュー</strong>${secondaryTotal ? `<i class="nav-notice menu" aria-label="メニュー内のお知らせ${secondaryTotal}件">${secondaryTotal}</i>` : ""}</button>`;
     nav.querySelectorAll(".nav-button[data-page]").forEach((button) => button.addEventListener("click", () => {
       if (button.dataset.page === "party") partyScreen = "overview";
       if (button.dataset.page === "characters") { characterScreen = "overview"; selectedCharacterId = null; }
@@ -745,7 +778,7 @@
     const state = window.GameState.data;
     const page = pages.find((entry) => entry[0] === currentPage) || pages[0];
     const openDetails = new Set(Array.from(document.querySelectorAll("details[data-detail][open]"), detail => detail.dataset.detail));
-    document.getElementById("app").innerHTML = (currentPage === "blacksmith" ? upgradesPanel() : "") + renderers[currentPage]();
+    document.getElementById("app").innerHTML = renderers[currentPage]();
     document.querySelectorAll("details[data-detail]").forEach(detail => { detail.open = openDetails.has(detail.dataset.detail); });
     document.getElementById("page-title").textContent = page[2];
     document.getElementById("page-kicker").textContent = page[3];
@@ -759,9 +792,18 @@
     document.querySelectorAll("[data-nav]").forEach((button) => button.addEventListener("click", () => navigate(button.dataset.nav)));
   }
 
+  function renderPreservingViewport() {
+    const mainArea = document.querySelector(".main-area");
+    const scrollTop = mainArea?.scrollTop || 0;
+    render();
+    const refreshedMainArea = document.querySelector(".main-area");
+    if (refreshedMainArea) refreshedMainArea.scrollTop = scrollTop;
+  }
+
   function navigate(page) {
     window.RecruitmentReveal.cancel();
     if (page === "characters" && currentPage !== "characters") { characterScreen = "overview"; selectedCharacterId = null; }
+    if (page === "blacksmith") blacksmithScreen = "menu";
     currentPage = renderers[page] ? page : "home";
     document.querySelectorAll(".nav-button").forEach((button) => button.classList.toggle("active", button.dataset.page === currentPage));
     document.querySelector(".mobile-menu-button")?.classList.toggle("active", !mobilePrimaryPages.has(currentPage));
@@ -783,6 +825,7 @@
   }
   async function tick() {
     refreshGlobalStatus();
+    if (window.Facilities.collectable().length !== facilityNoticeCount) renderNav();
     if (tickPending) return;
     tickPending = true;
     const response = await window.GameClient.execute("expedition.collect");
@@ -799,7 +842,7 @@
         const journalNotice = completed.newObservationIds?.length ? ` 観察日記に新しい記録が${completed.newObservationIds.length}頁加わりました。` : "";
         toast((completed.success ? "探索隊が帰還しました！" : "探索隊が帰還しました。") + journalNotice, completed.success ? "success" : "error");
       }
-      render();
+      renderPreservingViewport();
       return;
     }
     document.querySelectorAll("[data-countdown]").forEach(node => { node.textContent = time(window.Dungeon.remaining(Number(node.dataset.countdown))); });
@@ -863,6 +906,7 @@
     }
     if (action === "archive-view") {
       if (!["commissions", "observations", "origins", "items", "monsters"].includes(button.dataset.view)) return;
+      if (["items", "monsters"].includes(button.dataset.view)) await window.GameClient.execute("encyclopedia.read", { kind: button.dataset.view });
       archiveView = button.dataset.view; render(); return;
     }
     if (action === "observation-read") {
@@ -881,11 +925,21 @@
       navigate("archives");
       return;
     }
+    if (action === "open-item-codex") {
+      await window.GameClient.execute("encyclopedia.read", { kind: "items" });
+      archiveView = "items";
+      navigate("archives");
+      return;
+    }
     if (action === "party-open") {
       const index = Number(button.dataset.party), view = button.dataset.view;
       if (!["formation", "adventure", "results"].includes(view)) return;
       const result = await window.GameClient.execute("party.select", { partyIndex: index });
       if (!result.ok) { toast(result.message, "error"); return; }
+      if (view === "results") {
+        const read = await window.GameClient.execute("party.readResult", { partyIndex: index });
+        if (!read.ok) { toast(read.message, "error"); return; }
+      }
       partyOverviewScrollTop = document.querySelector(".main-area")?.scrollTop || 0;
       partyViews[index] = view; partyScreen = "detail"; selectedPartyCharacterId = null;
       navigate("party"); return;
@@ -900,8 +954,18 @@
       document.querySelector(".main-area").scrollTop = partyOverviewScrollTop;
       return;
     }
+    if (action === "rename-party") {
+      const partyIndex = Number(button.dataset.party);
+      if (!Number.isInteger(partyIndex) || partyIndex < 0 || partyIndex >= window.Party.limit()) return;
+      document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop" data-action="close-modal"><form id="party-name-form" class="modal" data-party="${partyIndex}" role="dialog" aria-modal="true" aria-labelledby="party-name-title"><h3 id="party-name-title">第${partyIndex + 1}パーティの名前を変更</h3><label for="party-name-input">名前<input id="party-name-input" name="name" maxlength="20" required value="${escape(window.Party.name(partyIndex))}" autocomplete="off"></label><p class="small-note">一覧、探索ログ、帰還記録で共通して表示されます。</p><div class="modal-actions"><button class="button ghost" type="button" data-action="close-modal">戻る</button><button class="button primary" type="submit">変更する</button></div></form></div>`;
+      return;
+    }
     if (action === "party-view") {
       if (!["formation", "adventure", "results"].includes(button.dataset.view)) return;
+      if (button.dataset.view === "results" && window.Party.result()) {
+        const read = await window.GameClient.execute("party.readResult", { partyIndex: window.Party.selected() });
+        if (!read.ok) { toast(read.message, "error"); return; }
+      }
       partyViews[window.Party.selected()] = button.dataset.view;
       partyScreen = "detail";
       navigate("party"); return;
@@ -909,16 +973,22 @@
     if (action === "select-dungeon") {
       const dungeon = window.GameData.dungeons[button.dataset.dungeon];
       if (!dungeon || !window.Story.canEnter(dungeon.id) || window.Party.expedition()) return;
-      explorationChoices[window.Party.selected()].dungeonId = dungeon.id;
-      explorationChoices[window.Party.selected()].chapterId = dungeon.chapterId;
+      const index = window.Party.selected(), choices = explorationChoices[index];
+      const saved = await window.GameClient.execute("party.setPlan", { partyIndex: index, dungeonId: dungeon.id, difficultyId: choices[`${dungeon.id}:difficulty`] || "normal", timeMultiplier: Number(choices[dungeon.id] || 1) });
+      if (!saved.ok) { toast(saved.message, "error"); return; }
+      choices.dungeonId = dungeon.id;
+      choices.chapterId = dungeon.chapterId;
       render(); return;
     }
     if (action === "select-dungeon-difficulty") {
       const dungeonId = button.dataset.dungeon, difficultyId = button.dataset.difficulty;
       if (window.Party.expedition() || !window.DungeonDifficulty.unlocked(dungeonId, difficultyId)) return;
-      explorationChoices[window.Party.selected()][`${dungeonId}:difficulty`] = difficultyId;
-      explorationChoices[window.Party.selected()].dungeonId = dungeonId;
-      explorationChoices[window.Party.selected()].chapterId = window.GameData.dungeons[dungeonId].chapterId;
+      const index = window.Party.selected(), choices = explorationChoices[index];
+      const saved = await window.GameClient.execute("party.setPlan", { partyIndex: index, dungeonId, difficultyId, timeMultiplier: Number(choices[dungeonId] || 1) });
+      if (!saved.ok) { toast(saved.message, "error"); return; }
+      choices[`${dungeonId}:difficulty`] = difficultyId;
+      choices.dungeonId = dungeonId;
+      choices.chapterId = window.GameData.dungeons[dungeonId].chapterId;
       render(); return;
     }
     if (action === "select-dungeon-chapter") {
@@ -926,6 +996,23 @@
       if (!window.GameData.storyChapters.some(chapter => chapter.id === chapterId) || !window.Story.chapterDungeons(chapterId).length) return;
       explorationChoices[window.Party.selected()].chapterId = chapterId;
       render(); return;
+    }
+    if (action === "depart-ready-parties") {
+      const mainArea = document.querySelector(".main-area"), previousScrollTop = mainArea?.scrollTop || 0;
+      const ready = Array.from({ length: window.Party.limit() }, (_, index) => index).filter(index => !window.Party.expedition(index) && window.Party.members(index).length && window.Party.plan(index));
+      if (!ready.length) { toast("出撃できる待機パーティがありません。", "error"); return; }
+      button.disabled = true;
+      let departed = 0, failed = 0;
+      for (const index of ready) {
+        const plan = window.Party.plan(index);
+        const result = await window.GameClient.execute("expedition.start", { partyIndex: index, dungeonId: plan.dungeonId, difficultyId: plan.difficultyId, timeMultiplier: plan.timeMultiplier });
+        if (result.ok) departed++; else failed++;
+      }
+      toast(`${departed}隊が出発しました${failed ? `（${failed}隊は出撃できませんでした）` : ""}。`, failed && !departed ? "error" : "success");
+      render();
+      const refreshedMainArea = document.querySelector(".main-area");
+      if (refreshedMainArea) refreshedMainArea.scrollTop = previousScrollTop;
+      return;
     }
     if (action === "quick-start-party") {
       const index = Number(button.dataset.party);
@@ -988,6 +1075,16 @@
       toast(added.message, added.ok ? "success" : "error"); render(); return;
     }
     if (action === "recipe-page") { blacksmithView.page = Math.max(0, Number(button.dataset.page) || 0); render(); return; }
+    if (action === "upgrade-page") { upgradeView.page = Math.max(0, Number(button.dataset.page) || 0); render(); return; }
+    if (action === "reset-upgrade-filters") { Object.assign(upgradeView, { query: "", kind: "all", status: "all", sort: "ready", page: 0 }); render(); return; }
+    if (action === "blacksmith-open") {
+      if (!['craft', 'upgrade'].includes(button.dataset.view)) return;
+      blacksmithScreen = button.dataset.view; blacksmithView.page = 0; render();
+      document.querySelector(".main-area").scrollTop = 0; return;
+    }
+    if (action === "blacksmith-back") {
+      blacksmithScreen = "menu"; render(); document.querySelector(".main-area").scrollTop = 0; return;
+    }
     if (action === "equipment-page") { equipmentPicker.page = Math.max(0, Number(button.dataset.page) || 0); renderEquipmentModal(); return; }
     if (action === "request-upgrade") {
       const quote = window.Upgrades.quote(button.dataset.instance);
@@ -1081,6 +1178,7 @@
       if (!restored.ok) { toast(restored.message, "error"); return; }
       pendingImport = null;
       document.getElementById("modal-root").innerHTML = "";
+      reloadExplorationChoices();
       navigate("settings");
       toast("セーブを読み込みました。探索の経過時間は引き続き計算されます。", "success");
       return;
@@ -1126,7 +1224,7 @@
       return;
     }
     if (action === "close-modal") { pendingImport = null; pendingClassChange = null; importRequest += 1; equipmentReturnToParty = false; dismissEquipmentChangeNotice(); document.getElementById("modal-root").innerHTML = ""; return; }
-    if (action === "confirm-reset") { const reset = await window.GameClient.execute("save.reset"); if (!reset.ok) { toast(reset.message, "error"); return; } document.getElementById("modal-root").innerHTML = ""; currentPage = "home"; partyScreen = "overview"; partyViews.fill("formation"); explorationChoices.forEach(choices => Object.keys(choices).forEach(key => delete choices[key])); archiveView = "commissions"; Object.assign(blacksmithView, { query: "", category: "all", material: "all", status: "all", sort: "ready", page: 0 }); toast("セーブデータを初期化しました。"); renderNav(); render(); return; }
+    if (action === "confirm-reset") { const reset = await window.GameClient.execute("save.reset"); if (!reset.ok) { toast(reset.message, "error"); return; } document.getElementById("modal-root").innerHTML = ""; currentPage = "home"; partyScreen = "overview"; partyViews.fill("formation"); reloadExplorationChoices(); archiveView = "commissions"; blacksmithScreen = "menu"; Object.assign(blacksmithView, { query: "", category: "all", material: "all", status: "all", sort: "ready", page: 0 }); toast("セーブデータを初期化しました。"); renderNav(); render(); return; }
     if (result && !result.ok) toast(result.message, "error");
     else if (result && result.message) toast(result.message, "success");
     render();
@@ -1134,6 +1232,14 @@
 
   let recruitmentBusy = false;
   async function handleSubmit(event) {
+    if (event.target.id === "party-name-form") {
+      event.preventDefault();
+      const result = await window.GameClient.execute("party.rename", { partyIndex: Number(event.target.dataset.party), name: event.target.elements.name.value });
+      toast(result.message, result.ok ? "success" : "error");
+      if (result.ok) document.getElementById("modal-root").innerHTML = "";
+      render();
+      return;
+    }
     if (event.target.classList?.contains("access-code-form")) {
       event.preventDefault();
       const form = event.target, button = form.querySelector('button[type="submit"]');
@@ -1157,6 +1263,11 @@
       event.preventDefault();
       blacksmithView.query = document.getElementById("blacksmith-query").value.trim().slice(0, 60);
       blacksmithView.page = 0; render(); return;
+    }
+    if (event.target.id === "upgrade-search-form") {
+      event.preventDefault();
+      upgradeView.query = document.getElementById("upgrade-query").value.trim().slice(0, 60);
+      upgradeView.page = 0; render(); return;
     }
     if (event.target.id === "character-directory-form") {
       event.preventDefault();
@@ -1289,7 +1400,13 @@
         const multiplier = Number(event.target.value), id = event.target.dataset.explorationDungeon;
         if (window.Exploration.valid(multiplier) && window.GameData.dungeons[id]) {
           explorationChoices[window.Party.selected()][id] = multiplier;
-          if (selectedDungeonId(window.Party.selected()) === id) render();
+          if (selectedDungeonId(window.Party.selected()) === id) {
+            const index = window.Party.selected();
+            const difficultyId = window.GameUIViews.party.selectedDifficultyId(partyViewContext(), index, id);
+            const saved = await window.GameClient.execute("party.setPlan", { partyIndex: index, dungeonId: id, difficultyId, timeMultiplier: multiplier });
+            if (!saved.ok) { toast(saved.message, "error"); return; }
+            render();
+          }
         }
         return;
       }
@@ -1305,6 +1422,10 @@
         blacksmithView.page = 0;
         render();
         return;
+      }
+      if (event.target.hasAttribute("data-upgrade-filter")) {
+        upgradeView[event.target.dataset.upgradeFilter] = event.target.value;
+        upgradeView.page = 0; render(); return;
       }
     });
     render();

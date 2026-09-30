@@ -33,7 +33,7 @@
       const capacity = definition.upgrades.storage[facility.levels.storage - 1].duration;
       const production = definition.upgrades.production[facility.levels.production - 1];
       const allowedMaterials = new Set(definition.upgrades.production.flatMap(entry => [
-        ...Object.keys(entry.rewards?.materials || {}), ...(entry.periodicRewards || []).map(periodic => periodic.itemId)
+        ...Object.keys(entry.rewards?.materials || {}), ...(entry.periodicRewards || []).map(periodic => periodic.itemId), ...(entry.chanceRewards || []).map(bonus => bonus.itemId)
       ]));
       const periodicRules = new Map(definition.upgrades.production.flatMap(entry => entry.periodicRewards || []).map(periodic => [periodic.id, periodic]));
       check(facility.storedDuration <= capacity && facility.gold <= 1000000);
@@ -93,8 +93,10 @@
       });
     } else check(Object.values(recurring.groups).every(current => object(current) && Array.isArray(current.selectedIds) && object(current.progress) && Array.isArray(current.claimed)), "定期依頼の進行データが不正です。");
     const encyclopedia = state.encyclopedia;
-    check(object(encyclopedia) && encyclopedia.version === 3 && object(encyclopedia.items) && object(encyclopedia.monsters), "図鑑データが不正です。");
+    check(object(encyclopedia) && encyclopedia.version === 4 && object(encyclopedia.items) && object(encyclopedia.monsters) && Array.isArray(encyclopedia.unreadItems) && Array.isArray(encyclopedia.unreadMonsters), "図鑑データが不正です。");
     check(Object.entries(encyclopedia.items).every(([id, count]) => known(data.items, id) && integer(count) && count > 0), "アイテム図鑑が不正です。");
+    check(new Set(encyclopedia.unreadItems).size === encyclopedia.unreadItems.length && encyclopedia.unreadItems.every(id => known(data.items, id) && encyclopedia.items[id] > 0), "アイテム図鑑の新着情報が不正です。");
+    check(new Set(encyclopedia.unreadMonsters).size === encyclopedia.unreadMonsters.length && encyclopedia.unreadMonsters.every(id => known(data.monsters, id) && encyclopedia.monsters[id]), "モンスター図鑑の新着情報が不正です。");
     check(Object.entries(encyclopedia.monsters).every(([id, entry]) => {
       if (!known(data.monsters, id) || !object(entry) || !integer(entry.encountered) || entry.encountered <= 0 || !integer(entry.defeated) || entry.defeated > entry.encountered || !object(entry.observations)) return false;
       const observed = entry.observations;
@@ -220,7 +222,7 @@
       maximum: Math.max(1, state.parties?.length || 1),
       unlocks: Array.from({ length: Math.max(0, (state.parties?.length || 1) - 1) }, (_, index) => ({ slot: index + 2, chapterNumber: index + 1 }))
     };
-    const storyAvailableParties = slotRules.unlocks.reduce((count, entry) => {
+    const storyAvailableParties = slotRules.unlocks.filter(entry => !entry.codeOnly).reduce((count, entry) => {
       const chapter = chapterDefinitions.find(candidate => candidate.number === entry.chapterNumber || candidate.order === entry.chapterNumber);
       return chapter && story.completed.includes(chapter.id) ? Math.max(count, entry.slot) : count;
     }, slotRules.initial);
@@ -232,6 +234,30 @@
     check(integer(state.activeParty) && state.activeParty < state.unlockedPartyCount, "未増設のパーティが選択されています。");
     check(Array.isArray(state.expeditions) && state.expeditions.length === state.parties.length && state.expeditions.slice(state.unlockedPartyCount).every(entry => entry === null), "探索枠が不正です。");
     check(Array.isArray(state.partyResults) && state.partyResults.length === state.parties.length);
+    if (state.partyHistory != null) {
+      check(Array.isArray(state.partyHistory) && state.partyHistory.length === state.parties.length, "探索履歴のパーティ数が不正です。");
+      state.partyHistory.forEach((history, partyIndex) => {
+        check(Array.isArray(history) && history.length <= 10, "探索履歴の件数が不正です。");
+        history.forEach(entry => {
+          check(object(entry) && text(entry.id) && number(entry.completedAt) && known(data.dungeons, entry.dungeonId) && ["normal", "abyss", "divine"].includes(entry.difficultyId) && typeof entry.success === "boolean" && integer(entry.gold) && integer(entry.exp));
+          check(Array.isArray(entry.equipment) && entry.equipment.every(item => object(item) && known(data.items, item.itemId) && text(item.name) && integer(item.quantity) && item.quantity >= 1 && (item.autoSold == null || typeof item.autoSold === "boolean")));
+          check(Array.isArray(entry.materials) && entry.materials.every(item => object(item) && known(data.items, item.itemId) && data.items[item.itemId].type === "material" && integer(item.quantity) && item.quantity >= 1));
+          check(!state.partyHistory.some((other, index) => index !== partyIndex && other.some(candidate => candidate.id === entry.id)), "探索履歴が別のパーティと重複しています。");
+        });
+        check(new Set(history.map(entry => entry.id)).size === history.length, "探索履歴が重複しています。");
+      });
+    }
+    if (state.partyPlans != null) {
+      check(Array.isArray(state.partyPlans) && state.partyPlans.length === state.parties.length, "出撃先設定のパーティ数が不正です。");
+      state.partyPlans.forEach((plan, index) => {
+        if (plan === null) return;
+        check(index < state.unlockedPartyCount && object(plan) && known(data.dungeons, plan.dungeonId) && ["normal", "abyss", "divine"].includes(plan.difficultyId) && integer(plan.timeMultiplier) && plan.timeMultiplier >= 1 && plan.timeMultiplier <= 6, "出撃先設定が不正です。");
+        check(dungeonUnlocked(data.dungeons[plan.dungeonId]), "出撃先設定に未解放の探索地が含まれています。");
+        if (plan.difficultyId === "abyss") check(story.facts.clears.includes(plan.dungeonId), "魔境の出撃先設定が未解放です。");
+        if (plan.difficultyId === "divine") check(story.facts.difficultyClears.includes(`${plan.dungeonId}:abyss`), "神域の出撃先設定が未解放です。");
+      });
+    }
+    if (state.partyNames != null) check(Array.isArray(state.partyNames) && state.partyNames.length === state.parties.length && state.partyNames.every((name, index) => name === null || index < state.unlockedPartyCount && typeof name === "string" && name.trim() === name && name.length >= 1 && name.length <= 20 && !/[\u0000-\u001f\u007f]/.test(name)), "パーティ名が不正です。");
     check(object(state.meta) && integer(state.meta.nextCharacterId) && integer(state.meta.nextItemId) && number(state.meta.updatedAt));
     check(state.meta.nextCharacterId > Math.max(0, ...Array.from(characters.keys(), id => Number(id.split("-")[1]))) && state.meta.nextItemId > Math.max(0, ...Array.from(equipment.keys(), id => Number(id.split("-")[1]))));
     state.presets.slots.filter(Boolean).forEach(preset => preset.members.forEach(entry => {
@@ -288,9 +314,11 @@
       if (result.storyMoments != null) check(Array.isArray(result.storyMoments) && result.storyMoments.every(moment => object(moment) && ["opening", "discovery", "ending"].includes(moment.kind) && known(data.dungeons, moment.dungeonId) && known(data.storyScenes, moment.sceneId)));
       if (result.newObservationIds != null) check(Array.isArray(result.newObservationIds) && new Set(result.newObservationIds).size === result.newObservationIds.length && result.newObservationIds.every(id => (data.observationNotes || []).some(note => note.id === id)));
       check(object(result) && known(data.dungeons, result.dungeonId) && typeof result.success === "boolean" && integer(result.gold) && integer(result.exp) && number(result.completedAt));
+      check(result.viewed == null || typeof result.viewed === "boolean", "探索結果の既読状態が不正です。");
       if (result.experienceGains != null) check(Array.isArray(result.experienceGains) && result.experienceGains.every(entry => object(entry) && text(entry.id) && text(entry.name) && integer(entry.amount) && entry.amount >= 0));
       check(Array.isArray(result.partyNames) && result.partyNames.every(text) && Array.isArray(result.levelUps) && result.levelUps.every(entry => object(entry) && text(entry.name) && integer(entry.level)));
-      check(Array.isArray(result.drops) && result.drops.every(drop => object(drop) && known(data.items, drop.itemId) && integer(drop.quantity) && (drop.displayName == null || text(drop.displayName)) && (drop.qualityId == null || known(data.qualities, drop.qualityId))));
+      check(Array.isArray(result.drops) && result.drops.every(drop => object(drop) && known(data.items, drop.itemId) && integer(drop.quantity) && (drop.displayName == null || text(drop.displayName)) && (drop.qualityId == null || known(data.qualities, drop.qualityId)) && (drop.newDiscovery == null || typeof drop.newDiscovery === "boolean")));
+      if (result.newItemIds != null) check(Array.isArray(result.newItemIds) && new Set(result.newItemIds).size === result.newItemIds.length && result.newItemIds.every(id => known(data.items, id)));
       if (result.autoSellGold != null) check(integer(result.autoSellGold));
       if (result.autoSold != null) check(Array.isArray(result.autoSold) && result.autoSold.every(entry => object(entry) && known(data.items, entry.itemId) && text(entry.displayName) && known(data.qualities, entry.qualityId) && integer(entry.value) && typeof entry.ruleId === "string" && /^auto-sell-[1-9]\d*$/.test(entry.ruleId)));
       if (result.battleLog != null) check(Array.isArray(result.battleLog) && result.battleLog.length <= 10000 && result.battleLog.every(entry => object(entry) && text(entry.text) && ["system", "formation", "encounter", "round", "hero", "skill", "heal", "guard", "enemy", "victory", "defeat", "recovery", "warning", "burst", "weakness", "status", "arrival", "explore", "story", "treasure", "treasureGold", "treasureItem", "stairs"].includes(entry.kind)));

@@ -18,6 +18,9 @@ async function run() {
   assert.strictEqual(game.Facilities.profile("mine").capacityMs, 60 * minute, "Initial storage holds one hour");
   assert(!game.Facilities.unlocked("herb_garden") && game.Facilities.quote("herb_garden") === null, "late facilities stay locked and produce nothing before their chapter");
   assert.deepStrictEqual(Array.from(game.GameData.facilities.definitions.mine.upgrades.speed, entry => entry.interval / minute), [60, 30, 20, 15, 12], "Speed levels follow one hour divided by level");
+  const mineProduction = game.GameData.facilities.definitions.mine.upgrades.production;
+  assert.deepStrictEqual(Array.from(mineProduction, entry => (entry.chanceRewards || []).length), [0, 1, 2, 3, 4], "Production upgrades reveal more kinds of rare ore");
+  assert.deepStrictEqual(Array.from(mineProduction[4].chanceRewards, bonus => bonus.itemId), ["magic_stone", "glow_crystal", "starsteel_ore", "star_shard"]);
   const start = game.GameState.data.facilities.mine.startedAt;
   now += initialInterval - 1;
   assert.strictEqual(game.Facilities.quote("mine").storedDuration, 0);
@@ -26,6 +29,7 @@ async function run() {
   now++; game = load();
   assert.strictEqual(game.Facilities.quote("mine").materials.iron_ore, 1);
   assert.strictEqual(game.Facilities.quote("guild").gold, 20);
+  assert.deepStrictEqual(Array.from(game.Facilities.collectable()).sort(), ["guild", "mine"]);
 
   now += initialInterval / 2;
   const beforeGuild = JSON.stringify(game.GameState.data.facilities.guild);
@@ -43,6 +47,7 @@ async function run() {
   assert((await game.GameClient.execute("facility.upgrade", { facilityId: "mine", trackId: "production" })).ok);
   assert.strictEqual(game.GameState.data.facilities.mine.levels.production, 2);
   assert.strictEqual(game.Facilities.profile("mine").production.rewards.materials.iron_ore, 2);
+  assert.strictEqual(game.Facilities.profile("mine").production.chanceRewards[0].chance, .05, "Production level two can rarely yield magic stones");
   now += initialInterval;
   assert.strictEqual(game.Facilities.quote("mine").materials.iron_ore, 2, "Production upgrade changes output per cycle");
 
@@ -107,6 +112,16 @@ async function run() {
   assert.strictEqual(game.Facilities.quote("mine").storedDuration, 0);
   assert(!(await game.GameClient.execute("facility.collect", { facilityId: "unknown" })).ok);
   assert(!(await game.GameClient.execute("facility.collectAll", {})).ok);
+  const mineState = game.GameState.data.facilities.mine;
+  mineState.levels.production = 5; mineState.levels.storage = 5; mineState.levels.speed = 5; mineState.startedAt = now;
+  now += 12 * initialInterval;
+  const rareQuote = game.Facilities.quote("mine"), repeatedRareQuote = game.Facilities.quote("mine");
+  assert.strictEqual(rareQuote.materials.iron_ore, 300);
+  assert.deepStrictEqual(rareQuote.materials, repeatedRareQuote.materials, "Chance rewards are stable when the same offline production is viewed repeatedly");
+  assert(["magic_stone", "glow_crystal", "starsteel_ore", "star_shard"].some(id => (rareQuote.materials[id] || 0) > 0), "Long high-level production yields at least one rare ore roll");
+  const magicBefore = game.Items.count("magic_stone");
+  assert((await game.GameClient.execute("facility.collect", { facilityId: "mine" })).ok);
+  assert.strictEqual(game.Items.count("magic_stone"), magicBefore + (rareQuote.materials.magic_stone || 0), "Rolled ore is granted when production is collected");
   const annex = JSON.parse(JSON.stringify(game.GameData.facilities.definitions.mine));
   annex.id = "annex"; annex.name = "試験別館";
   game.GameData.facilities.definitions.annex = annex; game.GameData.facilities.order.push("annex");

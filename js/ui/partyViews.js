@@ -87,36 +87,57 @@
     const materialText = materialCount
       ? `素材 ${materialCount}個　${preview(materials.map(([id, quantity]) => `${window.GameData.items[id].name}×${quantity}`))}`
       : "素材なし";
-    return `<div class="fleet-result-loot" aria-label="直近の獲得報酬"><span class="gold">${formatGold(result.gold)}</span><span class="experience">${escape(experienceText)}</span><span class="equipment">${escape(equipmentText)}</span><span class="materials">${escape(materialText)}</span></div>`;
+    const discovery = Array.isArray(result.newItemIds) && result.newItemIds.length ? `<span class="discovery">初発見 ${result.newItemIds.length}種</span>` : "";
+    return `<div class="fleet-result-loot" aria-label="直近の獲得報酬">${discovery}<span class="gold">${formatGold(result.gold)}</span><span class="experience">${escape(experienceText)}</span><span class="equipment">${escape(equipmentText)}</span><span class="materials">${escape(materialText)}</span></div>`;
+  }
+
+  function compactHistory(history, escape, formatGold) {
+    const older = (history || []).slice(1, 4);
+    if (!older.length) return "";
+    return `<details class="fleet-history"><summary>過去の帰還 ${older.length}件</summary><div>${older.map(entry => {
+      const dungeon = window.DungeonDifficulty.variant(entry.dungeonId, entry.difficultyId || "normal");
+      const equipmentCount = entry.equipment.reduce((sum, item) => sum + item.quantity, 0);
+      const materialCount = entry.materials.reduce((sum, item) => sum + item.quantity, 0);
+      const equipmentNames = Array.from(new Set(entry.equipment.map(item => item.name))).slice(0, 2).join("・");
+      const materialNames = entry.materials.slice(0, 2).map(item => `${window.GameData.items[item.itemId].name}×${item.quantity}`).join("・");
+      return `<article class="fleet-history-entry ${entry.success ? "success" : "failure"}"><span>${entry.success ? "成功" : "撤退"}</span><strong>${escape(dungeon.name)}</strong><small>${formatGold(entry.gold)}／EXP +${entry.exp}</small><p>${equipmentCount ? `装備${equipmentCount}点 ${escape(equipmentNames)}` : "装備なし"}　${materialCount ? `素材${materialCount}個 ${escape(materialNames)}` : "素材なし"}</p></article>`;
+    }).join("")}</div></details>`;
   }
 
   function overview(context) {
     const { escape, explorationChoices, formatGold, portraitImage, time } = context;
     const selected = window.Party.selected(), state = window.GameState.data;
-    const rows = Array.from({ length: window.Party.maximum() }, (_, index) => {
+    const readyPartyCount = Array.from({ length: window.Party.limit() }, (_, index) => index)
+      .filter(index => !window.Party.expedition(index) && window.Party.members(index).length && window.Party.plan(index)).length;
+    const visiblePartyCount = Math.min(window.Party.maximum(), window.Party.limit() + 1);
+    const hiddenPartyCount = window.Party.maximum() - visiblePartyCount;
+    const rows = Array.from({ length: visiblePartyCount }, (_, index) => {
       const unlocked = index < window.Party.limit(), active = index === selected;
       if (!unlocked) {
         const slot = index + 1;
         const entry = window.GameData.partyProgression.partySlots.unlocks.find(candidate => candidate.slot === slot);
         const available = slot === window.Party.limit() + 1 && slot <= window.Party.availableLimit();
         const cost = entry ? `${formatGold(entry.gold)}・ギルド印章 ${entry.seals}` : "今後の物語で解放";
-        return `<article class="party-overview-row is-locked" data-party-overview="${index}"><div><strong>第${slot}パーティ</strong><span class="fleet-status">${available ? "増設可能" : "未解放"}</span></div><div><p class="small-note">${available ? `増設費用：${cost}` : `第${entry?.chapterNumber || slot - 1}章クリアで増設権を獲得`}</p>${available ? `<button class="button primary" data-action="unlock-party" data-party="${index}">第${slot}パーティを増設</button>` : ""}</div></article>`;
+        return `<article class="party-overview-row is-locked" data-party-overview="${index}"><div><strong>第${slot}パーティ</strong><span class="fleet-status">${available ? "増設可能" : "未解放"}</span></div><div><p class="small-note">${available ? `増設費用：${cost}` : entry?.codeOnly ? "設定で追加パーティ増設権のコードを解放" : `第${entry?.chapterNumber || slot - 1}章クリアで増設権を獲得`}</p>${available ? `<button class="button primary" data-action="unlock-party" data-party="${index}">第${slot}パーティを増設</button>` : ""}</div></article>`;
       }
       const expedition = window.Party.expedition(index), result = state.partyResults[index];
       const members = window.Party.members(index);
       const status = expedition ? "探索中" : !members.length ? "未編成" : result ? (result.success ? "攻略成功" : "撤退") : "待機中";
       const resultState = !expedition && result ? (result.success ? "success" : "failure") : "";
+      const unreadResult = Boolean(!expedition && result && result.viewed !== true);
       const percent = expedition ? Math.min(100, Math.max(0, (window.GameRuntime.now() - expedition.startedAt) / (expedition.endsAt - expedition.startedAt) * 100)) : 0;
       const destination = selectedVariant(context, index), multiplier = destination ? (explorationChoices[index][destination.baseDungeonId] || 1) : 1;
       const activeDungeon = expedition ? window.DungeonDifficulty.variant(expedition.dungeonId, expedition.difficultyId || "normal") : null;
-      const journey = expedition ? `<div class="fleet-journey" data-expedition="${index}"><strong>${escape(activeDungeon.name)} · ${expedition.timeMultiplier}倍探索</strong><span>残り <strong class="fleet-timer" data-countdown="${index}">${time(window.Dungeon.remaining(index))}</strong></span><div class="progress"><i style="width:${percent}%"></i></div><small>時間経過 <span data-overview-percent>${Math.floor(percent)}</span>%</small></div>` : `<div class="fleet-journey"><strong>${members.length && destination ? `攻略先：${escape(destination.name)} · ${multiplier}倍探索` : members.length ? "攻略先を設定してください" : "仲間を加えてパーティを編成"}</strong>${result ? `<small><span class="fleet-result-mark ${resultState}">${result.success ? "攻略成功" : "撤退"}</span>${escape(result.dungeonName || window.GameData.dungeons[result.dungeonId].name)}</small>${compactResultLoot(result, escape, formatGold)}` : "<small>探索記録なし</small>"}</div>`;
+      const journey = expedition ? `<div class="fleet-journey" data-expedition="${index}"><strong>${escape(activeDungeon.name)} · ${expedition.timeMultiplier}倍探索</strong><span>残り <strong class="fleet-timer" data-countdown="${index}">${time(window.Dungeon.remaining(index))}</strong></span><div class="progress"><i style="width:${percent}%"></i></div><small>時間経過 <span data-overview-percent>${Math.floor(percent)}</span>%</small></div>` : `<div class="fleet-journey"><strong>${members.length && destination ? `攻略先：${escape(destination.name)} · ${multiplier}倍探索` : members.length ? "攻略先を設定してください" : "仲間を加えてパーティを編成"}</strong>${result ? `<small><span class="fleet-result-mark ${resultState}">${result.success ? "攻略成功" : "撤退"}</span>${escape(result.dungeonName || window.GameData.dungeons[result.dungeonId].name)}</small>${compactResultLoot(result, escape, formatGold)}${compactHistory(state.partyHistory[index], escape, formatGold)}` : "<small>探索記録なし</small>"}</div>`;
       const memberStrip = members.length ? members.map((member, position) => {
         const stat = window.Characters.stats(member);
         return `<span class="fleet-member"><span class="fleet-member-level">Lv.${member.level}</span>${portraitImage(member, true)}<strong>${escape(member.name)}</strong><small>HP ${stat.hp}</small><i>${position + 1}</i></span>`;
       }).join("") : `<span class="fleet-empty-member">メンバーなし</span>`;
-      return `<article class="party-overview-row ${active ? "is-selected" : ""} ${expedition ? "is-exploring" : result ? `is-last-${resultState}` : ""}" data-party-overview="${index}"><div class="fleet-party"><button class="fleet-party-select" data-action="party-open" data-party="${index}" data-view="formation">第${index + 1}パーティ</button><span class="fleet-status ${expedition ? "exploring" : resultState}">${status}</span><small>${members.length}/${window.Party.memberLimit()}人</small><div class="fleet-member-strip">${memberStrip}</div></div>${journey}<div class="fleet-actions"><button class="button ghost" data-action="party-open" data-party="${index}" data-view="formation" aria-label="第${index + 1}パーティを編成する">パーティを編成する</button>${expedition ? `<button class="button ghost" data-action="party-open" data-party="${index}" data-view="adventure" aria-label="第${index + 1}パーティの探索ログ">探索ログ</button>` : `<button class="button primary" data-action="quick-start-party" data-party="${index}" aria-label="第${index + 1}パーティを${destination ? escape(destination.name) : "設定した攻略先"}へ出撃" ${!members.length || !destination ? "disabled" : ""}>出撃</button>`}<button class="button secondary" data-action="party-open" data-party="${index}" data-view="results" aria-label="第${index + 1}パーティの直近ログ" ${!result ? "disabled" : ""}>直近ログ</button></div></article>`;
+      const partyName = window.Party.name(index);
+      return `<article class="party-overview-row ${active ? "is-selected" : ""} ${expedition ? "is-exploring" : result ? `is-last-${resultState}` : ""} ${unreadResult ? "has-unread-result" : ""}" data-party-overview="${index}"><div class="fleet-party"><button class="fleet-party-select" data-action="rename-party" data-party="${index}" aria-label="${escape(partyName)}の名前を変更"><span>${escape(partyName)}</span><i aria-hidden="true">✎</i></button><span class="fleet-status ${expedition ? "exploring" : resultState}">${status}</span>${unreadResult ? '<span class="fleet-new-result">NEW</span>' : ""}<small>第${index + 1}隊 · ${members.length}/${window.Party.memberLimit()}人</small><div class="fleet-member-strip">${memberStrip}</div></div>${journey}<div class="fleet-actions"><button class="button ghost" data-action="party-open" data-party="${index}" data-view="formation" aria-label="${escape(partyName)}を編成する">パーティを編成する</button>${expedition ? `<button class="button ghost" data-action="party-open" data-party="${index}" data-view="adventure" aria-label="${escape(partyName)}の探索ログ">探索ログ</button>` : `<button class="button primary" data-action="quick-start-party" data-party="${index}" aria-label="${escape(partyName)}を${destination ? escape(destination.name) : "設定した攻略先"}へ出撃" ${!members.length || !destination ? "disabled" : ""}>出撃</button>`}<button class="button secondary ${unreadResult ? "has-notice" : ""}" data-action="party-open" data-party="${index}" data-view="results" aria-label="${escape(partyName)}の直近ログ${unreadResult ? "・未読" : ""}" ${!result ? "disabled" : ""}>直近ログ${unreadResult ? "・新着" : ""}</button></div></article>`;
     }).join("");
-    return `<section class="panel party-overview"><div class="section-heading"><div><span class="label">ADVENTURE PARTIES</span><h3>冒険の準備</h3></div><strong>${window.Dungeon.activeCount()}/${window.Party.limit()}隊が探索中</strong></div><div class="fleet-list">${rows}</div><p class="small-note">「出撃」はこの一覧から移動せず探索を開始します。編成は「パーティを編成する」、進行中の記録は「探索ログ」、前回の結果は「直近ログ」から確認できます。</p></section>`;
+    const futureSlots = hiddenPartyCount ? `<div class="fleet-future-slots"><span aria-hidden="true">＋</span><div><strong>さらに${hiddenPartyCount}枠のパーティを増設できます</strong><small>章を進めると、次の増設候補が順番に表示されます。第8枠はコード特典です。</small></div></div>` : "";
+    return `<section class="panel party-overview"><div class="section-heading fleet-overview-heading"><div><span class="label">ADVENTURE PARTIES</span><h3>冒険の準備</h3></div><div class="fleet-overview-actions"><strong>${window.Dungeon.activeCount()}/${window.Party.limit()}隊が探索中</strong><button class="button primary" data-action="depart-ready-parties" ${readyPartyCount ? "" : "disabled"}>待機隊を一斉出撃${readyPartyCount ? ` (${readyPartyCount})` : ""}</button></div></div><div class="fleet-list">${rows}</div>${futureSlots}<p class="small-note">一斉出撃は、編成済みで攻略先を保存してある待機隊だけを、押した時にまとめて出発させます。自動で再出撃はしません。個別の編成は「パーティを編成する」、進行中の記録は「探索ログ」、前回の結果は「直近ログ」から確認できます。</p></section>`;
   }
 
   function adventure(context) {

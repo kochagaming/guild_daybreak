@@ -173,6 +173,7 @@ data.facilities.order.forEach(id => {
   facility.upgrades.production.forEach(entry => {
     Object.keys(entry.rewards?.materials || {}).forEach(itemId => assert(has(data.items, itemId) && data.items[itemId].type === "material", `${id} produces an invalid material`));
     (entry.periodicRewards || []).forEach(periodic => assert(has(data.items, periodic.itemId) && data.items[periodic.itemId].type === "material" && periodic.everyCycles >= 1 && periodic.quantity >= 1, `${id} has invalid periodic production`));
+    (entry.chanceRewards || []).forEach(bonus => assert(has(data.items, bonus.itemId) && data.items[bonus.itemId].type === "material" && bonus.chance > 0 && bonus.chance < 1 && bonus.quantity >= 1, `${id} has invalid chance production`));
   });
   facility.upgrades.speed.forEach((entry, index) => assert.strictEqual(entry.interval, Math.floor(60 * 60 * 1000 / (index + 1)), `${id} speed Lv.${index + 1} must be one hour divided by level`));
   facility.upgrades.storage.forEach((entry, index, levels) => assert(index === 0 ? entry.duration === 60 * 60 * 1000 : entry.duration > levels[index - 1].duration, `${id} storage levels must start at one hour and increase`));
@@ -183,21 +184,23 @@ for (const masterKey of ["items", "skills", "jobs", "races", "births", "recipes"
 state.inventory.equipment.forEach(instance => ["name", "type", "price", "attack", "defense", "weight", "equipmentSkills"].forEach(key => assert(!(key in instance), `equipment instance duplicates master field ${key}`)));
 state.characters.forEach(character => ["job", "race", "birth", "skills"].forEach(key => assert(!(key in character), `character duplicates master field ${key}`)));
 assert.strictEqual(state.version, 11);
-assert.strictEqual(game.GameData.partyProgression.partySlots.maximum, 6);
-assert.deepStrictEqual(Array.from(game.GameData.partyProgression.partySlots.unlocks, entry => entry.chapterNumber), [1, 2, 3, 4, 5]);
+assert.strictEqual(game.GameData.partyProgression.partySlots.maximum, 8);
+assert.deepStrictEqual(Array.from(game.GameData.partyProgression.partySlots.unlocks.filter(entry => !entry.codeOnly), entry => entry.chapterNumber), [1, 2, 3, 4, 5, 6]);
+assert.strictEqual(game.GameData.partyProgression.partySlots.unlocks.filter(entry => entry.codeOnly).length, 1);
 const partyRules = game.GameData.partyProgression.partySlots;
 assert.strictEqual(partyRules.unlocks.length, partyRules.maximum - partyRules.initial);
 partyRules.unlocks.forEach((entry, index) => {
   assert.strictEqual(entry.slot, partyRules.initial + index + 1);
   assert(entry.gold >= 0 && entry.seals >= 0);
 });
-partyRules.maximum = 8;
-partyRules.unlocks.push({ slot: 7, chapterNumber: 6, gold: 30000, seals: 12 }, { slot: 8, chapterNumber: 7, gold: 45000, seals: 14 });
 game.GameState.ensurePartyCapacity(state);
 assert.strictEqual(game.Party.maximum(), 8);
 assert.strictEqual(state.parties.length, 8);
 assert.strictEqual(state.expeditions.length, 8);
 assert.strictEqual(state.partyResults.length, 8);
+assert.strictEqual(state.partyHistory.length, 8);
+assert.strictEqual(state.partyPlans.length, 8);
+assert.strictEqual(state.partyNames.length, 8);
 const codeDefinitions = Object.values(game.GameData.accessCodes);
 assert.strictEqual(new Set(codeDefinitions.map(entry => entry.id)).size, codeDefinitions.length);
 assert.strictEqual(new Set(codeDefinitions.map(entry => entry.inputArea)).size, codeDefinitions.length);

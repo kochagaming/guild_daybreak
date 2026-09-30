@@ -3,7 +3,7 @@
   window.GameData.accessCodes = {
     party_expansion_trial: {
       id: "party_expansion_trial", code: "0000", inputArea: "partyExpansion",
-      name: "追加パーティ増設権", description: "章進行とは別に、次のパーティを1枠分増設可能にします。増設費用は別途必要です。",
+      name: "追加パーティ増設権", description: "章進行で得られる最大7枠とは別に、パーティをもう1枠増設可能にします。増設費用は別途必要です。",
       effects: [{ type: "partySlotRight", amount: 1 }]
     },
     half_exploration_trial: {

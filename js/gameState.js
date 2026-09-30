@@ -43,9 +43,15 @@
 
   function ensurePartyCapacity(target) {
     const maximum = partyCapacity();
+    if (!Array.isArray(target.partyHistory)) target.partyHistory = [];
+    if (!Array.isArray(target.partyPlans)) target.partyPlans = [];
+    if (!Array.isArray(target.partyNames)) target.partyNames = [];
     while (target.parties.length < maximum) target.parties.push([]);
     while (target.expeditions.length < maximum) target.expeditions.push(null);
     while (target.partyResults.length < maximum) target.partyResults.push(null);
+    while (target.partyHistory.length < maximum) target.partyHistory.push([]);
+    while (target.partyPlans.length < maximum) target.partyPlans.push(null);
+    while (target.partyNames.length < maximum) target.partyNames.push(null);
     return target;
   }
 
@@ -58,7 +64,7 @@
       recruitment: { version: 2, nextId: 1, pending: null },
       commissions: { version: 1, progress: {}, claimed: [] },
       recurringMissions: window.RecurringMissions ? window.RecurringMissions.initialState() : { version: 1, groups: {} },
-      encyclopedia: { version: 3, items: { wooden_sword: 1, cloth_clothes: 1 }, monsters: {} },
+      encyclopedia: { version: 4, items: { wooden_sword: 1, cloth_clothes: 1 }, monsters: {}, unreadItems: [], unreadMonsters: [] },
       observationJournal: { version: 1, readIds: [] },
       dailyShop: { version: 1, dateKey: null, offers: [] },
       autoSell: { version: 2, enabled: false, nextId: 1, rules: [] },
@@ -74,6 +80,9 @@
       activeParty: 0,
       expeditions: Array(partyCapacity()).fill(null),
       partyResults: Array(partyCapacity()).fill(null),
+      partyHistory: Array.from({ length: partyCapacity() }, () => []),
+      partyPlans: Array(partyCapacity()).fill(null),
+      partyNames: Array(partyCapacity()).fill(null),
       lastResult: null,
       logs: [{ id: "welcome", at: window.GameRuntime.now(), text: "冒険者ギルドへようこそ。募集を出して最初の仲間を雇用しましょう。", tone: "info" }],
       meta: { nextCharacterId: 1, nextItemId: 3, updatedAt: window.GameRuntime.now() }

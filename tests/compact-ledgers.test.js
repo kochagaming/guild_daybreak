@@ -49,10 +49,17 @@ async function run() {
   assert(html.includes("固有スキル：物理攻撃威力+3%") && html.includes("木の剣") && html.includes("+4"));
   game.UI.navigate("blacksmith");
   html = node("app").innerHTML;
-  assert(html.includes("blacksmith-controls") && html.includes("forge-shop-card") && html.includes("blacksmith-shop-sections") && html.includes("upgrade-record") && html.includes("forge-stat-list"));
+  assert(html.includes("鍛冶メニュー") && html.includes("装備を製作する") && html.includes("装備を強化する"));
+  assert(!html.includes("blacksmith-controls") && !html.includes("upgrade-record"), "Blacksmith menu keeps both long lists closed");
+  await click("blacksmith-open", { view: "craft" });
+  html = node("app").innerHTML;
+  assert(html.includes("blacksmith-controls") && html.includes("forge-shop-card") && html.includes("blacksmith-shop-sections") && html.includes("forge-stat-list") && !html.includes("upgrade-record"));
   assert(html.includes("equipment-type-group") && html.includes("杖") && html.includes("魔法攻撃・魔法回復"), "Blacksmith groups recipes by result equipment type");
   assert(html.includes("この装備の固有スキル") && html.includes("有効なステータス"));
   assert(!html.includes("比較する冒険者") && !html.includes("blacksmith-inspector"), "Blacksmith no longer includes character comparison or a separate inspector");
+  await click("blacksmith-back"); await click("blacksmith-open", { view: "upgrade" });
+  html = node("app").innerHTML;
+  assert(html.includes("upgrade-record") && html.includes("upgrade-controls") && !html.includes("forge-shop-card") && html.includes("鍛冶メニュー"), "Upgrade has its own route, filters and back navigation");
   const styles = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
   assert(!styles.includes(".forge-shop-card > summary { grid-template-columns: 34px"), "Mobile recipe rows must not reserve a hidden icon column");
   assert(styles.includes(".forge-shop-card > summary { grid-template-columns: minmax(0,1fr) auto") && styles.includes(".forge-shop-card .item-icon { display: none; }"), "Mobile recipe rows give the item summary the full available width");

@@ -4,7 +4,7 @@
   function blankObservations() { return { incomingAttempts: 0, incomingHits: 0, enemyTurns: 0, maxAttackCount: 0, magicAttack: false, rearTargeting: false, attackElements: [], statusAttacks: [], elementWeaknesses: [], elementResistances: [], statusResisted: [], statusLanded: [], burstRounds: [], drops: [] }; }
   function blankDifficulty() { return { encountered: 0, defeated: 0, drops: [] }; }
   function blankMonster() { return { encountered: 0, defeated: 0, observations: blankObservations(), difficulties: {} }; }
-  function blank() { return { version: 3, items: {}, monsters: {} }; }
+  function blank() { return { version: 4, items: {}, monsters: {}, unreadItems: [], unreadMonsters: [] }; }
   function normalizeMonster(entry) {
     const normalized = Object.assign(blankMonster(), entry || {});
     normalized.observations = Object.assign(blankObservations(), entry?.observations || {});
@@ -19,8 +19,10 @@
       // This is an additive extension of the current save format. Persist it on startup.
       window.GameState.needsInitialSave = true;
       bootstrap(state.encyclopedia);
-    } else if (state.encyclopedia.version !== 3) {
-      state.encyclopedia.version = 3;
+    } else if (state.encyclopedia.version !== 4 || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters)) {
+      state.encyclopedia.version = 4;
+      state.encyclopedia.unreadItems = Array.isArray(state.encyclopedia.unreadItems) ? state.encyclopedia.unreadItems : [];
+      state.encyclopedia.unreadMonsters = Array.isArray(state.encyclopedia.unreadMonsters) ? state.encyclopedia.unreadMonsters : [];
       Object.keys(state.encyclopedia.monsters || {}).forEach(id => { state.encyclopedia.monsters[id] = normalizeMonster(state.encyclopedia.monsters[id]); });
       window.GameState.needsInitialSave = true;
     }
@@ -28,10 +30,12 @@
   }
   function addItem(book, id, quantity) {
     if (!window.GameData.items[id] || !Number.isInteger(quantity) || quantity <= 0) return;
+    if (!book.items[id] && !book.unreadItems.includes(id)) book.unreadItems.push(id);
     book.items[id] = (book.items[id] || 0) + quantity;
   }
   function addMonster(book, id, encountered, defeated) {
     if (!window.GameData.monsters[id]) return;
+    if (!book.monsters[id] && !book.unreadMonsters.includes(id)) book.unreadMonsters.push(id);
     const entry = normalizeMonster(book.monsters[id]);
     entry.encountered += Math.max(0, encountered || 0);
     entry.defeated += Math.max(0, defeated || 0);
@@ -118,6 +122,10 @@
   }
   function item(id) { return ensure().items[id] || 0; }
   function monster(id) { return ensure().monsters[id] || null; }
+  function unreadItems() { return ensure().unreadItems.slice(); }
+  function unreadMonsters() { return ensure().unreadMonsters.slice(); }
+  function markItemsRead() { const book = ensure(); if (book.unreadItems.length) { book.unreadItems = []; window.GameState.save(); } return { ok: true }; }
+  function markMonstersRead() { const book = ensure(); if (book.unreadMonsters.length) { book.unreadMonsters = []; window.GameState.save(); } return { ok: true }; }
   function itemAcquisitionSources(id) {
     const template = window.GameData.items[id];
     if (!template) return { shop: false, recipes: [], treasures: [], monsters: [] };
@@ -163,5 +171,5 @@
   }
 
   ensure();
-  window.Encyclopedia = { ensure, recordItem, recordBattle, item, monster, itemAcquisitionSources, itemSources, monsterDungeons };
+  window.Encyclopedia = { ensure, recordItem, recordBattle, item, monster, unreadItems, unreadMonsters, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
 })();

@@ -214,9 +214,26 @@
 
   function page(context) {
     const unread = window.ObservationJournal.unread().length;
-    const tabs = [["commissions", "依頼掲示板"], ["observations", `観察日記${unread ? `<span class="archive-tab-notice">${unread}</span>` : ""}`], ["origins", "冒険者体系"], ["items", "アイテム図鑑"], ["monsters", "モンスター図鑑"]];
+    const readyRewards = window.Commissions.readyCount() + window.RecurringMissions.readyCount();
+    const unreadItems = window.Encyclopedia.unreadItems().length, unreadMonsters = window.Encyclopedia.unreadMonsters().length;
+    const itemDefinitions = Object.values(window.GameData.items), monsterDefinitions = Object.values(window.GameData.monsters), notes = window.GameData.observationNotes || [];
+    const itemFound = itemDefinitions.filter(item => window.Encyclopedia.item(item.id)).length;
+    const monsterFound = monsterDefinitions.filter(monster => window.Encyclopedia.monster(monster.id)).length;
+    const monsterDefeated = monsterDefinitions.filter(monster => window.Encyclopedia.monster(monster.id)?.defeated).length;
+    const noteFound = notes.filter(note => window.ObservationJournal.unlocked(note)).length;
+    const originDefinitions = [...Object.values(window.GameData.jobs), ...Object.values(window.GameData.races), ...Object.values(window.GameData.births)];
+    const originFound = originDefinitions.filter(window.Recruitment.entryUnlocked).length;
+    const progress = [
+      ["items", "発見した品", itemFound, itemDefinitions.length, "◇"],
+      ["monsters", "遭遇した魔物", monsterFound, monsterDefinitions.length, "◆"],
+      ["monsters", "討伐記録", monsterDefeated, monsterDefinitions.length, "⚔"],
+      ["observations", "観察日記", noteFound, notes.length, "▤"],
+      ["origins", "解放した素質", originFound, originDefinitions.length, "♙"]
+    ];
+    const dashboard = `<section class="archive-progress" aria-label="収集記録">${progress.map(([view, label, found, total, icon]) => `<button type="button" data-action="archive-view" data-view="${view}"><span aria-hidden="true">${icon}</span><small>${label}</small><strong>${found}<i>/</i>${total}</strong><em><i style="width:${total ? found / total * 100 : 0}%"></i></em></button>`).join("")}</section>`;
+    const tabs = [["commissions", `依頼掲示板${readyRewards ? `<span class="archive-tab-notice request">${readyRewards}</span>` : ""}`], ["observations", `観察日記${unread ? `<span class="archive-tab-notice observation">${unread}</span>` : ""}`], ["origins", "冒険者体系"], ["items", `アイテム図鑑${unreadItems ? `<span class="archive-tab-notice discovery">${unreadItems}</span>` : ""}`], ["monsters", `モンスター図鑑${unreadMonsters ? `<span class="archive-tab-notice discovery">${unreadMonsters}</span>` : ""}`]];
     const body = context.archiveView === "items" ? items(context) : context.archiveView === "monsters" ? monsters(context) : context.archiveView === "origins" ? origins(context) : context.archiveView === "observations" ? observations(context) : commissions(context);
-    return `<section class="panel archive-header"><div class="section-heading"><div><span class="label">ADVENTURER ARCHIVES</span><h3>冒険者資料室</h3></div></div><p>ギルドの依頼と、これまでの冒険で集めた知識を確認できます。</p><div class="archive-tabs" role="tablist" aria-label="資料の種類">${tabs.map(([id, label]) => `<button type="button" role="tab" class="button ${context.archiveView === id ? "secondary" : "ghost"}" aria-selected="${context.archiveView === id}" data-action="archive-view" data-view="${id}">${label}</button>`).join("")}</div></section>${body}`;
+    return `<section class="panel archive-header"><div class="section-heading"><div><span class="label">ADVENTURER ARCHIVES</span><h3>冒険者資料室</h3></div></div><p>ギルドの依頼と、これまでの冒険で集めた知識を確認できます。未確認の情報は伏せたまま、持ち帰った記録だけが増えていきます。</p>${dashboard}<div class="archive-tabs" role="tablist" aria-label="資料の種類">${tabs.map(([id, label]) => `<button type="button" role="tab" class="button ${context.archiveView === id ? "secondary" : "ghost"}" aria-selected="${context.archiveView === id}" data-action="archive-view" data-view="${id}">${label}</button>`).join("")}</div></section>${body}`;
   }
 
   window.GameUIViews.archives = { commissions, items, monsters, origins, observations, page };

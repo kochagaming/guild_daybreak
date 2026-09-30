@@ -21,6 +21,9 @@ async function run() {
   game.Items.add("iron_sword", 2, { source: "shop" });
   assert.strictEqual(game.Encyclopedia.item("iron_ore"), 3);
   assert.strictEqual(game.Encyclopedia.item("iron_sword"), 2);
+  assert(game.Encyclopedia.unreadItems().includes("iron_ore") && game.Encyclopedia.unreadItems().includes("iron_sword"));
+  assert((await game.GameClient.execute("encyclopedia.read", { kind: "items" })).ok);
+  assert.strictEqual(game.Encyclopedia.unreadItems().length, 0);
   const stickySources = game.Encyclopedia.itemAcquisitionSources("sticky_fluid");
   assert(stickySources.monsters.some(source => source.dungeonId === "meadow" && source.monsterId === "slime" && source.difficultyId === "normal"));
   assert(stickySources.monsters.some(source => source.dungeonId === "meadow" && source.monsterId === "slime" && source.difficultyId === "divine"), "Higher difficulties inherit lower titled drops");
@@ -49,6 +52,7 @@ async function run() {
     assert(entry.observations && entry.observations.incomingAttempts >= entry.observations.incomingHits);
   }
   assert(Object.keys(result.monsterObservations).length > 0, "Battle observations are persisted for staged research");
+  assert(game.Encyclopedia.unreadMonsters().length > 0, "First encounters remain unread until the monster codex is opened");
   for (const drop of result.drops) assert(game.Encyclopedia.item(drop.itemId) >= drop.quantity);
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
 
@@ -58,6 +62,9 @@ async function run() {
   const invalidItem = JSON.parse(JSON.stringify(game.GameState.data));
   invalidItem.encyclopedia.items.unknown_relic = 1;
   assert(!game.SaveTransfer.parse(JSON.stringify(invalidItem)).ok);
+  const invalidUnread = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidUnread.encyclopedia.unreadMonsters.push("missing_monster");
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidUnread)).ok);
 
   const prior = JSON.parse(JSON.stringify(game.GameState.data));
   delete prior.encyclopedia;
