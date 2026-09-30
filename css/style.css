@@ -918,6 +918,11 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .monster-difficulty-drop.is-unknown { opacity: .68; }
 .monster-drop-chip, .monster-drop-unknown { padding: .2rem .35rem; border-radius: 3px; font-size: .62rem; line-height: 1.35; }
 .monster-drop-chip { color: #2f4437; background: #e0e9df; border: 1px solid #b9cbb8; }
+.monster-skill-record { align-items: start; }
+.monster-skill-chip { min-width: min(100%,180px); color: #57406f; background: #eee7f3; border: 1px solid #cfc0da; border-radius: 3px; font-size: .62rem; }
+.monster-skill-chip > summary { padding: .2rem .35rem; cursor: pointer; font-weight: 700; list-style: none; }
+.monster-skill-chip > summary::-webkit-details-marker { display: none; }
+.monster-skill-chip > p { margin: 0; padding: .3rem .4rem; color: var(--muted); border-top: 1px solid #cfc0da; line-height: 1.5; }
 .monster-drop-unknown { color: #6f6960; background: #dedbd4; border: 1px dashed #aaa398; }
 .origin-codex-group { margin-top: .75rem; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: rgba(255,255,255,.42); }
 .origin-codex-group > summary { min-height: 60px; padding: .65rem .8rem; display: grid; grid-template-columns: minmax(0,1fr) auto 18px; align-items: center; gap: .7rem; list-style: none; cursor: pointer; color: #f7ecd5; background: var(--night-2); }

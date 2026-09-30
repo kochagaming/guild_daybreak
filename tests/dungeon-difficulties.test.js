@@ -35,6 +35,9 @@ assert.deepStrictEqual(Array.from(abyssSlime.signatureDropTiers, entry => entry.
 assert.deepStrictEqual(Array.from(divineSlime.signatureDropTiers, entry => entry.difficultyId), ["normal", "abyss", "divine"]);
 assert(divineSlime.signatureDropTiers.some(entry => entry.drops.materials.some(drop => drop.itemId === "divine_slime_core")));
 assert(game.Encyclopedia.itemSources("divine_slime_core").includes("神域のスライム"));
+assert.deepStrictEqual(Array.from(abyssSlime.difficultySkillIds), ["viscous_wave"]);
+assert.deepStrictEqual(Array.from(divineSlime.difficultySkillIds), ["viscous_wave", "divine_mitosis"]);
+assert(game.GameData.monsterDifficultyProfiles.blackmoon_priest.abyss.skillIds.includes("memory_seal"));
 
 Object.values(game.GameData.monsters).forEach(monster => {
   const profile = game.GameData.monsterDifficultyProfiles[monster.id];
@@ -51,4 +54,13 @@ assert(started.ok);
 assert.strictEqual(game.GameState.data.expeditions[0].difficultyId, "abyss");
 assert.strictEqual(game.GameState.data.expeditions[0].endsAt - game.GameState.data.expeditions[0].startedAt, abyss.duration * 2 * 1000);
 
-console.log("Dungeon difficulty test passed: progression, names, time/reward/stat scaling, inherited titled drops and per-monster extension profiles");
+const slimeHp = game.GameData.monsters.slime.hp, slimeAttack = game.GameData.monsters.slime.attack;
+game.GameData.monsters.slime.hp = 9999; game.GameData.monsters.slime.attack = 5;
+const skillResult = game.Battle.resolve({ seed: 17, timeMultiplier: 1, partyIds: [], partySnapshot: [{
+  id: "observer", name: "観測役", level: 1, jobId: "warrior", raceId: "human", position: 0, weaponRange: "melee", skillIds: [], equipmentSkillIds: [], actionRates: { attack: 100, technique: 0, spell: 0, healing: 0 },
+  stats: { hp: 9999, attack: 1, defense: 100, magicAttack: 1, magicDefense: 100, magicHealing: 1, speed: 10, hitRate: .99, evasionRate: 0, attackCount: 1, criticalRate: 0 }
+}] }, { id: "skill-test", name: "称号技試験", shortName: "試験", duration: 30, difficulty: 1, difficultyId: "abyss", encounters: [{ name: "粘液観測", groups: [["slime"]] }], rewards: { gold: [0, 0], exp: [0, 0] }, drops: [] });
+game.GameData.monsters.slime.hp = slimeHp; game.GameData.monsters.slime.attack = slimeAttack;
+assert(skillResult.battleLog.some(entry => entry.kind === "enemy-skill" && entry.text.includes("粘液波") && entry.text.includes("3ターン周期")), "Titled monster skill appears in the battle log on its configured cycle");
+
+console.log("Dungeon difficulty test passed: progression, names, time/reward/stat scaling, inherited titled drops and data-driven titled monster skills");

@@ -37,6 +37,17 @@ for (const [id, skill] of Object.entries(data.equipmentSkills)) {
   skill.effects.filter(effect => effect.type === "slayer").forEach(effect => assert(has(data.creatureFamilies, effect.familyId) && effect.value > 1, `${id} has an invalid slayer target`));
   skill.effects.filter(effect => effect.type === "statusResistance").forEach(effect => assert(has(data.statusEffects, effect.statusId) && effect.value > 0 && effect.value <= 1, `${id} has an invalid status resistance`));
 }
+
+for (const [id, skill] of Object.entries(data.monsterSkills || {})) {
+  assert.strictEqual(skill.id, id);
+  assert(typeof skill.name === "string" && skill.name.trim() && typeof skill.description === "string" && skill.description.trim());
+  assert(Number.isInteger(skill.period) && skill.period >= 2 && ["single", "all"].includes(skill.target));
+  assert(["physical", "magic"].includes(skill.damageType) && Number.isFinite(skill.multiplier) && skill.multiplier > 0);
+  if (skill.statusAttack) assert(has(data.statusEffects, skill.statusAttack.statusId));
+}
+for (const profile of Object.values(data.monsterDifficultyProfiles || {})) for (const tier of ["abyss", "divine"]) {
+  (profile[tier]?.skillIds || []).forEach(id => assert(has(data.monsterSkills, id), `Monster difficulty profile references unknown skill ${id}`));
+}
 assert.deepStrictEqual(Object.keys(data.upgradeSkillProgression).sort(), Object.keys(data.equipmentTypes).sort(), "Every equipment type needs upgrade skill progression");
 Object.values(data.equipmentTypes).forEach(type => assert(type.basicDamageType == null || ["physical", "magic"].includes(type.basicDamageType), `${type.id} has an invalid basic damage type`));
 for (const [typeId, progression] of Object.entries(data.upgradeSkillProgression)) {

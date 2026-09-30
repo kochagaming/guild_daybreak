@@ -94,14 +94,16 @@
       const tier = window.DungeonDifficulty.tier(difficultyId);
       const entry = record.difficulties?.[difficultyId];
       if (!entry?.encountered) return `<section class="monster-difficulty-drop is-unknown"><strong>${tier.name}</strong><span>${context.escape(tier.namePrefix + monster.name)}</span><small>未遭遇</small></section>`;
+      const titled = window.DungeonDifficulty.monster(monster, difficultyId);
       const configured = configuredDrops(monster, difficultyId);
       const observed = new Set(entry.drops || []);
+      const skills = entry.defeated ? (titled.difficultySkillIds || []).map(id => window.GameData.monsterSkills?.[id]).filter(Boolean) : [];
       const drops = configured.filter(id => observed.has(id)).map(id => {
         const item = window.GameData.items[id];
         return `<span class="monster-drop-chip">${context.escape(item?.icon || "◇")} ${context.escape(item?.name || id)}</span>`;
       }).join("");
       const unknown = configured.length - configured.filter(id => observed.has(id)).length;
-      return `<section class="monster-difficulty-drop"><strong>${tier.name}</strong><span>${context.escape(tier.namePrefix + monster.name)}</span><div>${drops || '<small>ドロップはまだ確認されていない</small>'}${unknown > 0 ? `<span class="monster-drop-unknown">未確認 ${unknown}種</span>` : ""}</div><small>遭遇 ${entry.encountered}体 ／ 討伐 ${entry.defeated}体</small></section>`;
+      return `<section class="monster-difficulty-drop"><strong>${tier.name}</strong><span>${context.escape(tier.namePrefix + monster.name)}</span><div>${drops || '<small>ドロップはまだ確認されていない</small>'}${unknown > 0 ? `<span class="monster-drop-unknown">未確認 ${unknown}種</span>` : ""}</div>${skills.length ? `<div class="monster-skill-record">${skills.map(skill => `<details class="monster-skill-chip"><summary>${context.escape(skill.name)}・${skill.period}T</summary><p>${context.escape(skill.description)}</p></details>`).join("")}</div>` : ""}<small>遭遇 ${entry.encountered}体 ／ 討伐 ${entry.defeated}体</small></section>`;
     }
     function monsterCard(monster) {
       const record = window.Encyclopedia.monster(monster.id);

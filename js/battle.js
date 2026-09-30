@@ -366,6 +366,30 @@
     pushLog(log, "guard", `${hero.name}は防御し、次に受けるダメージへ備えた。`, encounterIndex, round);
   }
 
+  function performMonsterSkill(random, monster, heroes, log, encounterIndex, round) {
+    if (monster.skillRoundUsed === round) return false;
+    const skills = (monster.difficultySkillIds || []).map(id => window.GameData.monsterSkills?.[id]).filter(Boolean);
+    const skill = skills.find(entry => round >= (entry.offset || entry.period) && (round - (entry.offset || 0)) % entry.period === 0);
+    if (!skill) return false;
+    monster.skillRoundUsed = round;
+    const candidates = living(heroes);
+    const chooseTarget = () => {
+      if (skill.targetRule === "rear") return candidates.slice().sort((a, b) => b.position - a.position)[0];
+      if (skill.targetRule === "rear_weighted") return chooseRearWeighted(random, candidates);
+      return chooseFrontWeighted(random, candidates);
+    };
+    const targets = skill.target === "all" ? candidates : [chooseTarget()].filter(Boolean);
+    pushLog(log, "enemy-skill", `【敵技・${skill.period}ターン周期】${monster.name}が「${skill.name}」を発動！`, encounterIndex, round);
+    targets.forEach(target => {
+      if (monster.currentHp <= 0 || target.currentHp <= 0) return;
+      const hit = dealDamage(random, monster, target, { id: skill.id, multiplier: skill.multiplier, damageType: skill.damageType, element: skill.element, kind: skill.target === "all" ? "area" : "single", noCritical: true });
+      pushLog(log, "enemy", hitText(monster, target, hit, skill.name), encounterIndex, round);
+      if (!hit.missed && hit.actualDamage > 0 && target.currentHp > 0 && skill.statusAttack) window.StatusCombat.apply(random, monster, target, skill.statusAttack, log, encounterIndex, round);
+      window.SkillCombat.afterDamage(random, monster, target, hit, dealDamage, log, encounterIndex, round);
+    });
+    return true;
+  }
+
   function performMonsterAction(random, monster, heroes, log, encounterIndex, round) {
     if (monster.currentHp <= 0 || monster.skipTurn || !living(heroes).length) return;
     monster.observation.enemyTurns += 1;
@@ -373,6 +397,7 @@
     monster.observation.magicAttack = monster.observation.magicAttack || monster.damageType === "magic";
     monster.observation.rearTargeting = monster.observation.rearTargeting || ["rear", "rear_weighted"].includes(monster.targetRule);
     if (monster.element && monster.element !== "neutral") remember(monster.observation.attackElements, monster.element);
+    if (performMonsterSkill(random, monster, heroes, log, encounterIndex, round)) return;
     const selectTarget = () => {
       if (monster.targetRule === "rear") return living(heroes).slice().sort((a, b) => b.position - a.position)[0];
       if (monster.targetRule === "rear_weighted") return chooseRearWeighted(random, heroes);
