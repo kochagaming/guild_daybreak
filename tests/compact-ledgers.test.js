@@ -60,6 +60,8 @@ async function run() {
   await click("blacksmith-back"); await click("blacksmith-open", { view: "upgrade" });
   html = node("app").innerHTML;
   assert(html.includes("upgrade-record") && html.includes("upgrade-controls") && !html.includes("forge-shop-card") && html.includes("鍛冶メニュー"), "Upgrade has its own route, filters and back navigation");
+  assert.strictEqual(count(html, 'class="commission-card compact-record upgrade-record"'), 3, "Identical equipment is grouped on the upgrade screen");
+  assert(html.includes("×30") && html.includes("強化する個体を選ぶ") && html.includes("3種（32点）"), "Upgrade groups show stack counts and individual selection");
   const styles = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
   assert(!styles.includes(".forge-shop-card > summary { grid-template-columns: 34px"), "Mobile recipe rows must not reserve a hidden icon column");
   assert(styles.includes(".forge-shop-card > summary { grid-template-columns: minmax(0,1fr) auto") && styles.includes(".forge-shop-card .item-icon { display: none; }"), "Mobile recipe rows give the item summary the full available width");

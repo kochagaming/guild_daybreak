@@ -58,21 +58,34 @@
       const rank = entry => entry.quote.ok ? 0 : entry.quote.level >= entry.quote.maximum ? 2 : 1;
       return rank(a) - rank(b) || a.quote.level - b.quote.level || window.Items.displayName(a.item).localeCompare(window.Items.displayName(b.item), "ja");
     });
-    const pageSize = 20, pages = Math.max(1, Math.ceil(entries.length / pageSize));
+    const entryById = new Map(entries.map(entry => [entry.item.id, entry]));
+    const equipmentGroups = window.Items.groupEquipment(entries.map(entry => entry.item)).map(group => ({
+      ...group,
+      entries: group.instances.map(item => entryById.get(item.id)).filter(Boolean)
+    }));
+    const pageSize = 20, pages = Math.max(1, Math.ceil(equipmentGroups.length / pageSize));
     view.page = Math.min(view.page, pages - 1);
-    const visible = entries.slice(view.page * pageSize, (view.page + 1) * pageSize);
+    const visible = equipmentGroups.slice(view.page * pageSize, (view.page + 1) * pageSize);
     const typeOptions = [["all", "すべて"], ["weapon", "武器すべて"], ...Object.entries(window.GameData.weaponTypes).map(([id, name]) => [`weapon:${id}`, name]), ["armor", "防具すべて"], ...Object.entries(window.GameData.armorTypes).map(([id, name]) => [`armor:${id}`, name])];
     const select = (key, label, options) => `<label>${label}<select data-upgrade-filter="${key}">${options.map(([id, name]) => `<option value="${id}" ${view[key] === id ? "selected" : ""}>${escape(name)}</option>`).join("")}</select></label>`;
     const controls = `<form id="upgrade-search-form" class="blacksmith-controls upgrade-controls"><label class="blacksmith-search">検索<input id="upgrade-query" value="${escape(view.query)}" placeholder="装備名"></label>${select("kind", "装備種別", typeOptions)}${select("status", "強化状態", [["all", "すべて"], ["ready", "強化可能"], ["missing", "素材・資金不足"], ["capped", "上限到達"]])}${select("sort", "並べ替え", [["ready", "強化可能順"], ["level", "強化値が高い順"], ["name", "名前順"]])}<button class="button secondary" type="submit">検索</button><button class="button ghost" type="button" data-action="reset-upgrade-filters">解除</button></form>`;
-    const cards = visible.map(({ item, quote }) => {
-      const owner = window.Items.equippedBy(item.id);
+    const cards = visible.map(group => {
+      const { item, quote } = group.entries[0];
       const capped = quote.level >= quote.maximum;
       const comparison = ["attack", "defense", "hp", "magicAttack", "magicDefense", "magicHealing"].filter(key => Number(quote.before[key] || 0) !== 0 || Number(quote.after[key] || 0) !== 0).map(key => `${{ attack: "攻撃", defense: "防御", hp: "HP", magicAttack: "魔法攻撃", magicDefense: "魔法防御", magicHealing: "魔法回復" }[key]} ${quote.before[key]} → ${quote.after[key]}`).join(" ／ ");
       const cost = Object.entries(quote.materials).map(([id, quantity]) => `${itemName(id)} ${window.Items.count(id)}/${quantity}`).join("・");
       const learned = quote.addedSkills.length ? `<p class="upgrade-skill-unlock">新たな装備スキル：${quote.addedSkills.map(skill => escape(skill.name)).join("、")}</p>` : "";
-      return `<details class="commission-card compact-record upgrade-record" data-detail="upgrade-${item.id}"><summary class="record-summary"><span class="record-name"><strong>${escape(window.Items.displayName(item))}</strong><small>${owner ? `${escape(owner.name)}が装備中` : "未装備"}${item.locked ? "・ロック中" : ""}</small>${forgeEquipmentStats(quote.before)}</span><span class="record-stats"><b>＋${quote.level}</b><b>${capped ? "上限到達" : `次 ＋${quote.next}`}</b></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="record-detail">${capped ? "" : `<p>${escape(comparison)}</p>${learned}<p>必要：${formatGold(quote.gold)}・${escape(cost)}</p>`}<p class="small-note">${escape(quote.message)}</p><button class="button secondary" data-action="request-upgrade" data-instance="${item.id}" ${quote.ok ? "" : "disabled"}>${capped ? "上限到達" : "強化内容を確認"}</button></div></details>`;
+      const readyCount = group.entries.filter(entry => entry.quote.ok).length;
+      const owners = group.entries.filter(entry => window.Items.equippedBy(entry.item.id)).length;
+      const instanceRows = group.entries.map((entry, index) => {
+        const owner = window.Items.equippedBy(entry.item.id);
+        const status = owner ? `${escape(owner.name)}が装備中` : entry.item.locked ? "ロック中" : "未装備";
+        return `<div class="upgrade-instance-row"><span><strong>個体 ${index + 1}</strong><small>${status} · ${escape(entry.quote.message)}</small></span><button class="button secondary" data-action="request-upgrade" data-instance="${entry.item.id}" ${entry.quote.ok ? "" : "disabled"}>${entry.quote.level >= entry.quote.maximum ? "上限到達" : `＋${entry.quote.next}へ`}</button></div>`;
+      }).join("");
+      const state = capped ? "上限到達" : readyCount ? `強化可能 ${readyCount}/${group.entries.length}` : quote.message;
+      return `<details class="commission-card compact-record upgrade-record" data-detail="upgrade-stack-${encodeURIComponent(group.key)}"><summary class="record-summary"><span class="record-name"><strong>${escape(window.Items.displayName(item))}</strong><small>${owners ? `装備中 ${owners}点 · ` : ""}${escape(state)}</small>${forgeEquipmentStats(quote.before)}</span><strong class="equipment-stack-count">×${group.entries.length}</strong><span class="record-stats"><b>＋${quote.level}</b><b>${capped ? "上限到達" : `次 ＋${quote.next}`}</b></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="record-detail">${capped ? "" : `<p>${escape(comparison)}</p>${learned}<p>必要（1点ごと）：${formatGold(quote.gold)}・${escape(cost)}</p>`}<section class="upgrade-instance-list"><h4>強化する個体を選ぶ</h4>${instanceRows}</section></div></details>`;
     }).join("");
-    return `<section class="panel upgrade-panel"><div class="section-heading"><div><span class="label">EQUIPMENT UPGRADE</span><h3>装備強化</h3></div><strong>${entries.length}/${equipment.length}点</strong></div><p>現在の上限：＋${maximum}。${escape(limits)}</p><p class="small-note">成功率100%。武器は1段階ごとに攻撃＋2、杖はさらに魔法攻撃・魔法回復＋2、防具は防御・魔法防御＋2・HP＋3。重量・品質・追加性能・固有效果は変わりません。</p>${controls}${cards ? `<div class="commission-grid">${cards}</div><nav class="pagination" aria-label="強化装備のページ"><button class="button ghost" data-action="upgrade-page" data-page="${view.page - 1}" ${view.page === 0 ? "disabled" : ""}>前へ</button><span>${view.page + 1}/${pages}ページ · ${entries.length}点</span><button class="button ghost" data-action="upgrade-page" data-page="${view.page + 1}" ${view.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav>` : `<p class="empty-line">${equipment.length ? "条件に合う装備がありません。" : "装備を入手すると強化できます。"}</p>`}</section>`;
+    return `<section class="panel upgrade-panel"><div class="section-heading"><div><span class="label">EQUIPMENT UPGRADE</span><h3>装備強化</h3></div><strong>${equipmentGroups.length}種 · ${entries.length}/${equipment.length}点</strong></div><p>現在の上限：＋${maximum}。${escape(limits)}</p><p class="small-note">成功率100%。同じ性能・強化段階の装備はまとめて表示します。武器は1段階ごとに攻撃＋2、杖はさらに魔法攻撃・魔法回復＋2、防具は防御・魔法防御＋2・HP＋3。重量・品質・追加性能・固有效果は変わりません。</p>${controls}${cards ? `<div class="commission-grid">${cards}</div><nav class="pagination" aria-label="強化装備のページ"><button class="button ghost" data-action="upgrade-page" data-page="${view.page - 1}" ${view.page === 0 ? "disabled" : ""}>前へ</button><span>${view.page + 1}/${pages}ページ · ${equipmentGroups.length}種（${entries.length}点）</span><button class="button ghost" data-action="upgrade-page" data-page="${view.page + 1}" ${view.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav>` : `<p class="empty-line">${equipment.length ? "条件に合う装備がありません。" : "装備を入手すると強化できます。"}</p>`}</section>`;
   }
 
   function blacksmith(context) {
