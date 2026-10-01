@@ -27,7 +27,7 @@ async function run() {
   assert(node("main-nav").innerHTML.includes("冒険者資料室") && node("main-nav").innerHTML.includes("ギルド運営") && node("main-nav").innerHTML.includes("設定"));
   assert(node("main-nav").innerHTML.includes("mobile-primary") && node("main-nav").innerHTML.includes("mobile-secondary") && node("main-nav").innerHTML.includes("mobile-menu-button"));
   const styles = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
-  assert(styles.includes("position: fixed; z-index: 25") && styles.includes("grid-template-columns: repeat(5,minmax(0,1fr))") && styles.includes("mobile-nav-sheet"));
+  assert(styles.includes("position: fixed; z-index: 25") && styles.includes("grid-template-columns: repeat(3,minmax(0,1fr))") && styles.includes("mobile-nav-sheet"));
   assert(styles.includes(".global-statusbar { position: fixed") && styles.includes("bottom: calc(64px + env(safe-area-inset-bottom))"), "Persistent resources sit above the mobile navigation");
   assert(html().includes("GUILD CHRONICLE"));
   assert(!node("main-nav").innerHTML.includes('data-page="dungeons"'));
@@ -46,7 +46,7 @@ async function run() {
   assert(!html().includes("セーブのバックアップ") && !html().includes("GUILD CHRONICLE"));
   game.UI.navigate("archives");
   assert(html().includes("冒険者資料室") && html().includes("ギルド依頼掲示板") && html().includes("commission-card"));
-  assert(html().includes('class="archive-progress"') && html().includes("発見した品") && html().includes("遭遇した魔物") && html().includes("討伐記録") && html().includes("解放した素質"), "Archives shows collection progress without revealing unknown entries");
+  assert(html().includes('class="archive-progress"') && html().includes("発見した品") && html().includes("遭遇した魔物") && html().includes("討伐記録") && html().includes("解放した素質") && html().includes("達成した実績"), "Archives shows collection and achievement progress without revealing unknown entries");
   assert(html().includes("archive-tab-notice request"), "Claimable request rewards are announced");
   await click("archive-view", { view: "observations" });
   assert(html().includes("観察日記") && html().includes("迷った時ほど、先に傷を見る") && html().includes("回復 → 呪文 → 技 → 攻撃"));
@@ -82,6 +82,9 @@ async function run() {
   assert(html().includes("冒険者体系") && html().includes("職業15・種族15・生まれ15"));
   for (const text of ["戦士", "攻めの心得", "人間", "血統の力", "平凡な家", "幼き日の鍛錬", "能力補正", "装備適性", "習得スキル", "初期", "Lv.100"]) assert(html().includes(text), text);
   assert(html().includes("Lv.1") && html().includes("未解放") && html().includes("達成で解放"));
+  assert(!html().includes("commission-card") && !html().includes("codex-grid"));
+  await click("archive-view", { view: "achievements" });
+  assert(html().includes("実績の記録") && html().includes("最初の契約") && html().includes("星なき夜を越えて") && html().includes("achievement-meter"));
   assert(!html().includes("commission-card") && !html().includes("codex-grid"));
   game.UI.navigate("settings");
   for (const action of ["export-save", "import-save", "export-before-import", "reset-save"]) assert(html().includes('data-action="' + action + '"'));

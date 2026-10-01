@@ -6,7 +6,7 @@ for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").ma
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
 }
 const game = context.window, data = game.GameData;
-const chapters = data.storyChapters.filter(chapter => chapter.number >= 1).sort((a, b) => a.number - b.number);
+const chapters = data.storyChapters.filter(chapter => chapter.number >= 1 && chapter.kind !== "postgame").sort((a, b) => a.number - b.number);
 assert.deepStrictEqual(Array.from(chapters, chapter => chapter.number), Array.from({ length: 15 }, (_, index) => index + 1), "Main story chapter numbers must be continuous from 1 to 15");
 assert.strictEqual(chapters.at(-1).recommendedLevelRange[1], 100, "Chapter 15 must culminate at recommended level 100");
 

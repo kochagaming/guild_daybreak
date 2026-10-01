@@ -1,6 +1,8 @@
 (function () {
   "use strict";
   const chapters = () => window.GameData.storyChapters;
+  const mainChapters = () => chapters().filter(chapter => chapter.kind !== "postgame");
+  const postgameChapters = () => chapters().filter(chapter => chapter.kind === "postgame");
   const dungeons = () => Object.values(window.GameData.dungeons);
   function ensure() {
     const story = window.GameState.data.story;
@@ -100,7 +102,8 @@
     const chapter = chapters().find(candidate => candidate.id === recipe.unlockAfter);
     return recipe.unlockAfter ? `${chapter?.title || "物語の依頼"}達成で解放` : "解放済み";
   }
-  function current() { return chapters().find(chapter => !ensure().completed.includes(chapter.id)); }
+  function current() { return mainChapters().find(chapter => !ensure().completed.includes(chapter.id)); }
+  function mainComplete() { return mainChapters().every(chapter => ensure().completed.includes(chapter.id)); }
   function dungeonOpeningScene(dungeon) { return dungeon?.openingStoryId ? scene(dungeon.openingStoryId) : null; }
   function dungeonDiscoveryScene(dungeon) { return dungeon?.discoveryStoryId ? scene(dungeon.discoveryStoryId) : null; }
   function dungeonEndingScene(dungeon) { return dungeon ? scene(dungeon.clearStoryId || dungeon.optionalStoryId) : null; }
@@ -131,7 +134,7 @@
   function focus() {
     const chapter = current();
     if (!chapter) {
-      const last = chapters().at(-1);
+      const last = mainChapters().at(-1);
       return { chapter: last, dungeon: null, scene: scene(last.clearStoryId), label: "現在公開されている物語を読了", cleared: 0, total: 0 };
     }
     const routes = chapterDungeons(chapter.id).filter(dungeon => dungeon.requiredForStory);
@@ -154,5 +157,5 @@
       return !chapters().some(chapter => chapter.id === dungeon.chapterId && chapter.clearStoryId === dungeon.clearStoryId);
     }).map(dungeon => ({ dungeon, scene: scene(dungeon.clearStoryId) }));
   }
-  window.Story = { ensure, sync, recordDeparture, recordResult, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterDungeons, chapterTimeline, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, optionalStories, routeStories };
+  window.Story = { ensure, sync, recordDeparture, recordResult, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterDungeons, chapterTimeline, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, optionalStories, routeStories, mainChapters, postgameChapters, mainComplete };
 })();

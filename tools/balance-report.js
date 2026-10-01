@@ -105,11 +105,18 @@ function equipmentScore(game, item, role, threats) {
   return physical + defense * .55 + counter;
 }
 
-function makeInstance(templateId, index) {
-  return { id: `fixture-${templateId}-${index}`, templateId, qualityId: "standard", ultraRareTitleId: null, upgradeLevel: 0, modifiers: { hp: 0, attack: 0, defense: 0 }, source: "balance" };
+function enhancementLevel(game, order, mode = "none") {
+  const maximum = (game.GameData.upgrades?.limits || []).reduce((value, entry) => chapterOrder(game, entry.chapterId) < order ? Math.max(value, entry.maximum) : value, 0);
+  if (mode === "max") return maximum;
+  if (mode === "half") return Math.ceil(maximum / 2);
+  return 0;
 }
 
-function selectEquipment(game, character, roleId, order, dungeon) {
+function makeInstance(templateId, index, upgradeLevel = 0, qualityId = "standard") {
+  return { id: `fixture-${templateId}-${index}`, templateId, qualityId, ultraRareTitleId: null, upgradeLevel, modifiers: { hp: 0, attack: 0, defense: 0 }, source: "balance" };
+}
+
+function selectEquipment(game, character, roleId, order, dungeon, fixtureOptions = {}) {
   const role = roleDefinitions[roleId];
   const threats = dungeonThreatProfile(game, dungeon);
   const maximumTier = Math.max(1, order);
@@ -122,12 +129,13 @@ function selectEquipment(game, character, roleId, order, dungeon) {
   if (!pool.length) return [];
   const targetCount = Math.max(1, Math.round(game.Characters.equipmentCapacityAtLevel(character.level)));
   const maximumWeight = game.Characters.maxWeight(character);
+  const upgradeLevel = enhancementLevel(game, order, fixtureOptions.enhancement);
   const selected = [];
   for (let index = 0; index < targetCount; index += 1) {
     let added = false;
     for (let offset = 0; offset < pool.length; offset += 1) {
       const item = pool[(index + offset) % pool.length];
-      const instance = makeInstance(item.id, index);
+      const instance = makeInstance(item.id, index, upgradeLevel, fixtureOptions.quality || "standard");
       const weight = game.Items.effects(instance).weight;
       const used = selected.reduce((sum, entry) => sum + game.Items.effects(entry).weight, 0);
       if (used + weight <= maximumWeight + 1e-9) { selected.push(instance); added = true; break; }
@@ -142,14 +150,14 @@ function weaponRange(game, equipment) {
   return ranges.size > 1 ? "mixed" : ranges.has("ranged") ? "ranged" : "melee";
 }
 
-function buildMember(game, roleId, level, order, position, profileId, dungeon) {
+function buildMember(game, roleId, level, order, position, profileId, dungeon, fixtureOptions = {}) {
   const role = roleDefinitions[roleId];
   const jobId = role.jobs.find(id => availableJob(game, id, order)) || "warrior";
   const character = {
     id: `${profileId}-${position}`, name: `${profileDefinitions[profileId].name}${position + 1}`, jobId, raceId: "human", birthId: "common",
     level, exp: 0, base: { hp: 52, attack: 10, defense: 8, magicAttack: 10, magicDefense: 8, magicHealing: 10 }, equipment: [], career: null
   };
-  const equipment = selectEquipment(game, character, roleId, order, dungeon);
+  const equipment = selectEquipment(game, character, roleId, order, dungeon, fixtureOptions);
   const templates = equipment.map(instance => game.GameData.items[instance.templateId]);
   return {
     id: character.id, name: character.name, jobId, raceId: character.raceId, level, position,
@@ -160,16 +168,16 @@ function buildMember(game, roleId, level, order, position, profileId, dungeon) {
     equipmentSkillIds: [...new Set(equipment.flatMap(instance => game.EquipmentSkills.ids(instance)))],
     specialEquipment: [...new Set(templates.filter(item => item.effectDescription).map(item => item.id))],
     stats: game.Characters.stats(character, equipment),
-    fixture: { role: roleId, equipment: templates.map(item => item.id), weight: equipment.reduce((sum, instance) => sum + game.Items.effects(instance).weight, 0), maximumWeight: game.Characters.maxWeight(character) }
+    fixture: { role: roleId, equipment: templates.map(item => item.id), qualityId: equipment[0]?.qualityId || "standard", upgradeLevel: equipment[0]?.upgradeLevel || 0, weight: equipment.reduce((sum, instance) => sum + game.Items.effects(instance).weight, 0), maximumWeight: game.Characters.maxWeight(character) }
   };
 }
 
-function buildParty(game, profileId, dungeon) {
+function buildParty(game, profileId, dungeon, fixtureOptions = {}) {
   const chapter = game.GameData.storyChapters.find(entry => entry.id === dungeon.chapterId);
   const order = chapter?.order ?? 0;
   const level = dungeon.recommendedLevel || chapter?.recommendedLevelRange?.[1] || 1;
   const size = memberLimit(game, order);
-  return profileDefinitions[profileId].roles.slice(0, size).map((role, position) => buildMember(game, role, level, order, position, profileId, dungeon));
+  return profileDefinitions[profileId].roles.slice(0, size).map((role, position) => buildMember(game, role, level, order, position, profileId, dungeon, fixtureOptions));
 }
 
 function roundCount(log) {
@@ -197,9 +205,9 @@ function defeatCauses(result) {
   ].filter(([, matched]) => matched).map(([id]) => id);
 }
 
-function simulate(game, dungeon, profileId, runs, difficultyId) {
+function simulate(game, dungeon, profileId, runs, difficultyId, fixtureOptions = {}) {
   const variant = game.DungeonDifficulty ? game.DungeonDifficulty.variant(dungeon, difficultyId) : dungeon;
-  const partySnapshot = buildParty(game, profileId, dungeon);
+  const partySnapshot = buildParty(game, profileId, dungeon, fixtureOptions);
   const totals = { wins: 0, hp: 0, encounters: 0, rounds: 0, gold: 0, exp: 0, knockouts: 0, damage: 0, healing: 0, statuses: 0, resisted: 0, timeouts: 0, attempts: 0, hits: 0, burstDamage: 0, burstKnockouts: 0, guardedBurstHits: 0, unguardedBurstHits: 0, rearDamage: 0, rearKnockouts: 0, statusDamage: 0 };
   const failures = { encounters: {}, causes: {}, roles: {}, positions: {} };
   for (let run = 1; run <= runs; run += 1) {
@@ -260,7 +268,7 @@ function simulate(game, dungeon, profileId, runs, difficultyId) {
       guardedBurstRate: burstHits ? average(totals.guardedBurstHits * 100, burstHits) : null,
       rearDamage: totals.rearDamage, rearKnockouts: totals.rearKnockouts, statusDamage: totals.statusDamage
     },
-    party: partySnapshot.map(member => ({ jobId: member.jobId, role: member.fixture.role, equipment: member.fixture.equipment, weight: member.fixture.weight, maximumWeight: member.fixture.maximumWeight }))
+    party: partySnapshot.map(member => ({ jobId: member.jobId, role: member.fixture.role, equipment: member.fixture.equipment, qualityId: member.fixture.qualityId, upgradeLevel: member.fixture.upgradeLevel, weight: member.fixture.weight, maximumWeight: member.fixture.maximumWeight }))
   };
 }
 
@@ -279,10 +287,12 @@ function warningsFor(dungeon, results) {
 }
 
 function generate(options = {}) {
-  const settings = Object.assign({ runs: 100, chapterId: null, difficulty: "normal", profiles: Object.keys(profileDefinitions) }, options);
+  const settings = Object.assign({ runs: 100, chapterId: null, difficulty: "normal", enhancement: "none", quality: "standard", profiles: Object.keys(profileDefinitions) }, options);
   if (!Number.isInteger(settings.runs) || settings.runs < 1) throw new Error("runs must be a positive integer");
   const game = loadGame();
   if (!Array.isArray(settings.profiles) || !settings.profiles.length) throw new Error("at least one profile is required");
+  if (!["none", "half", "max"].includes(settings.enhancement)) throw new Error(`Unknown enhancement mode: ${settings.enhancement}`);
+  if (!game.GameData.qualities[settings.quality]) throw new Error(`Unknown quality: ${settings.quality}`);
   if (settings.difficulty !== "all" && !game.GameData.dungeonDifficulties[settings.difficulty]) throw new Error(`Unknown difficulty: ${settings.difficulty}`);
   const difficulties = settings.difficulty === "all" ? Object.keys(game.GameData.dungeonDifficulties) : [settings.difficulty];
   const dungeons = Object.values(game.GameData.dungeons).filter(dungeon => !settings.chapterId || dungeon.chapterId === settings.chapterId)
@@ -292,15 +302,17 @@ function generate(options = {}) {
   dungeons.forEach(dungeon => difficulties.forEach(difficultyId => {
     const results = settings.profiles.map(profileId => {
       if (!profileDefinitions[profileId]) throw new Error(`Unknown profile: ${profileId}`);
-      return simulate(game, dungeon, profileId, settings.runs, difficultyId);
+      return simulate(game, dungeon, profileId, settings.runs, difficultyId, { enhancement: settings.enhancement, quality: settings.quality });
     });
     entries.push({ chapterId: dungeon.chapterId, dungeonId: dungeon.id, dungeonName: difficultyId === "normal" ? dungeon.name : game.DungeonDifficulty.variant(dungeon, difficultyId).name, difficultyId, recommendedLevel: dungeon.recommendedLevel, requiredForStory: dungeon.requiredForStory, results, warnings: warningsFor(dungeon, results) });
   }));
-  return { generatedAt: new Date().toISOString(), runs: settings.runs, profiles: settings.profiles, difficulty: settings.difficulty, entries };
+  return { generatedAt: new Date().toISOString(), runs: settings.runs, profiles: settings.profiles, difficulty: settings.difficulty, enhancement: settings.enhancement, quality: settings.quality, entries };
 }
 
 function textReport(report) {
-  const lines = [`自動バランスレポート：各編成 ${report.runs}回`, "勝率 / 残HP / 平均ターン / 戦闘不能 / 状態異常", ""];
+  const enhancementLabels = { none: "強化なし", half: "解放上限の半分", max: "解放上限" };
+  const quality = report.quality || "standard";
+  const lines = [`自動バランスレポート：各編成 ${report.runs}回・装備品質 ${quality}・装備強化 ${enhancementLabels[report.enhancement || "none"]}`, "勝率 / 残HP / 平均ターン / 戦闘不能 / 状態異常", ""];
   let chapterId = null;
   report.entries.forEach(entry => {
     if (entry.chapterId !== chapterId) { chapterId = entry.chapterId; lines.push(`■ ${chapterId}`); }
@@ -325,6 +337,8 @@ function parseArguments(argv) {
     if (argument === "--runs") options.runs = Number(argv[++index]);
     else if (argument === "--chapter") options.chapterId = argv[++index];
     else if (argument === "--difficulty") options.difficulty = argv[++index];
+    else if (argument === "--enhancement") options.enhancement = argv[++index];
+    else if (argument === "--quality") options.quality = argv[++index];
     else if (argument === "--profiles") options.profiles = argv[++index].split(",").filter(Boolean);
     else if (argument === "--json") options.jsonPath = argv[++index];
     else if (argument === "--help") options.help = true;
@@ -337,7 +351,7 @@ if (require.main === module) {
   try {
     const options = parseArguments(process.argv.slice(2));
     if (options.help) {
-      console.log("node tools/balance-report.js [--runs 100] [--chapter mirror_tide] [--difficulty normal|all] [--profiles balanced,physical,magic,no_healer] [--json report.json]");
+      console.log("node tools/balance-report.js [--runs 100] [--chapter mirror_tide] [--difficulty normal|all] [--quality standard|familiar|refined|fine] [--enhancement none|half|max] [--profiles balanced,physical,magic,no_healer] [--json report.json]");
       process.exit(0);
     }
     const report = generate(options);

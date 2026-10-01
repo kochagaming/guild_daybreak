@@ -16,7 +16,7 @@ game.UI.init();
 const html = node("app").innerHTML;
 assert(html.includes("MAIN STORY COMPLETE") && html.includes("本編完結 — 星なき夜の果て") && html.includes("15章 完結"));
 assert(html.includes("名もなき宿から始まった物語を見届けました") && html.includes("全15章を達成"));
-assert(html.includes("星後の神域") && html.includes("クリア後高難度 0/1攻略") && html.includes("クリア後の探索へ"));
+assert(html.includes("星後の神域") && html.includes("クリア後探索 0/7攻略") && html.includes("クリア後の探索へ"));
 assert(html.includes("星なき夜の終わり") && html.includes("誰のものでもない星"));
 const styles = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
 assert(styles.includes(".story-main-complete") && styles.includes(".story-completion-summary"));

@@ -76,7 +76,7 @@ async function run() {
   assert(html().includes('data-action="select-dungeon"') && html().includes("この攻略先へ出撃") && html().includes("選択中の攻略先"));
   assert(html().includes('<details class="dungeon-details"') && html().includes("依頼・噂・現地記録を見る"));
   assert(!html().includes("攻略目安") && !html().includes("次の挑戦へのヒント"));
-  assert(html().includes('data-action="select-dungeon-chapter"') && html().includes("data-dungeon-chapter-select") && html().includes("1〜5 / 15章を表示") && html().includes("本編攻略 0/5"), "Destination routes use a compact nearby tab set plus an all-chapter selector");
+  assert(html().includes('data-action="select-dungeon-chapter"') && html().includes("data-dungeon-chapter-select") && html().includes("1〜5 / 16章を表示") && html().includes("本編攻略 0/5"), "Destination routes use a compact nearby tab set plus an all-chapter selector");
   assert(!html().includes("燐光の洞窟"), "Only the active chapter routes are rendered");
   await click("select-dungeon-chapter", { chapter: "seal" });
   assert(html().includes("燐光の洞窟") && html().includes("第2章：地下の封印"), "Past and future chapters can be inspected");

@@ -918,7 +918,7 @@
       return;
     }
     if (action === "archive-view") {
-      if (!["commissions", "observations", "origins", "items", "monsters"].includes(button.dataset.view)) return;
+      if (!["commissions", "observations", "achievements", "origins", "items", "monsters"].includes(button.dataset.view)) return;
       if (["items", "monsters"].includes(button.dataset.view)) await window.GameClient.execute("encyclopedia.read", { kind: button.dataset.view });
       archiveView = button.dataset.view; render(); return;
     }

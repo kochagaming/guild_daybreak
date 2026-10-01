@@ -218,6 +218,18 @@
     return `<section class="panel archive-content observation-ledger"><div class="section-heading"><div><span class="label">KEEPER'S FIELD JOURNAL</span><h3>観察日記</h3></div><strong>${unlockedCount} / ${notes.length}頁</strong></div><p class="observation-intro">帰還した冒険者や書庫係が、実地で確かめたことを綴った日記です。物語を進め、新しい土地や戦いを経験すると、白かった頁に少しずつ記録が増えていきます。</p>${volumes}</section>`;
   }
 
+  function achievements(context) {
+    const all = window.Achievements.entries(), summary = window.Achievements.summary();
+    const categories = Array.from(new Set(all.map(entry => entry.category)));
+    const groups = categories.map(category => {
+      const entries = all.filter(entry => entry.category === category);
+      const completed = entries.filter(entry => entry.complete).length;
+      const cards = entries.map(entry => `<article class="achievement-card ${entry.complete ? "is-complete" : ""}"><span class="achievement-icon" aria-hidden="true">${context.escape(entry.icon)}</span><div class="achievement-copy"><small>${entry.complete ? "達成" : entry.category}</small><strong>${context.escape(entry.name)}</strong><p>${context.escape(entry.description)}</p><div class="achievement-meter" aria-label="${Math.min(entry.current, entry.target)} / ${entry.target}"><i style="width:${entry.ratio * 100}%"></i></div><em>${Math.min(entry.current, entry.target)} / ${entry.target}</em></div></article>`).join("");
+      return `<section class="achievement-group"><div class="achievement-group-heading"><h4>${context.escape(category)}</h4><strong>${completed}/${entries.length}</strong></div><div class="achievement-grid">${cards}</div></section>`;
+    }).join("");
+    return `<section class="panel archive-content achievement-ledger"><div class="section-heading"><div><span class="label">GUILD MILESTONES</span><h3>実績の記録</h3></div><strong>${summary.completed} / ${summary.total}</strong></div><p>仲間との出会い、踏破した土地、持ち帰った発見を一冊にまとめています。記録は現在のギルドの歩みから自動で刻まれます。</p><div class="achievement-total"><span>全体の達成度</span><div><i style="width:${summary.ratio * 100}%"></i></div><strong>${Math.round(summary.ratio * 100)}%</strong></div>${groups}</section>`;
+  }
+
   function page(context) {
     const unread = window.ObservationJournal.unread().length;
     const readyRewards = window.Commissions.readyCount() + window.RecurringMissions.readyCount();
@@ -229,18 +241,20 @@
     const noteFound = notes.filter(note => window.ObservationJournal.unlocked(note)).length;
     const originDefinitions = [...Object.values(window.GameData.jobs), ...Object.values(window.GameData.races), ...Object.values(window.GameData.births)];
     const originFound = originDefinitions.filter(window.Recruitment.entryUnlocked).length;
+    const achievementSummary = window.Achievements.summary();
     const progress = [
       ["items", "発見した品", itemFound, itemDefinitions.length, "◇"],
       ["monsters", "遭遇した魔物", monsterFound, monsterDefinitions.length, "◆"],
       ["monsters", "討伐記録", monsterDefeated, monsterDefinitions.length, "⚔"],
       ["observations", "観察日記", noteFound, notes.length, "▤"],
-      ["origins", "解放した素質", originFound, originDefinitions.length, "♙"]
+      ["origins", "解放した素質", originFound, originDefinitions.length, "♙"],
+      ["achievements", "達成した実績", achievementSummary.completed, achievementSummary.total, "★"]
     ];
     const dashboard = `<section class="archive-progress" aria-label="収集記録">${progress.map(([view, label, found, total, icon]) => `<button type="button" data-action="archive-view" data-view="${view}"><span aria-hidden="true">${icon}</span><small>${label}</small><strong>${found}<i>/</i>${total}</strong><em><i style="width:${total ? found / total * 100 : 0}%"></i></em></button>`).join("")}</section>`;
-    const tabs = [["commissions", `依頼掲示板${readyRewards ? `<span class="archive-tab-notice request">${readyRewards}</span>` : ""}`], ["observations", `観察日記${unread ? `<span class="archive-tab-notice observation">${unread}</span>` : ""}`], ["origins", "冒険者体系"], ["items", `アイテム図鑑${unreadItems ? `<span class="archive-tab-notice discovery">${unreadItems}</span>` : ""}`], ["monsters", `モンスター図鑑${unreadMonsters ? `<span class="archive-tab-notice discovery">${unreadMonsters}</span>` : ""}`]];
-    const body = context.archiveView === "items" ? items(context) : context.archiveView === "monsters" ? monsters(context) : context.archiveView === "origins" ? origins(context) : context.archiveView === "observations" ? observations(context) : commissions(context);
+    const tabs = [["commissions", `依頼掲示板${readyRewards ? `<span class="archive-tab-notice request">${readyRewards}</span>` : ""}`], ["observations", `観察日記${unread ? `<span class="archive-tab-notice observation">${unread}</span>` : ""}`], ["achievements", "実績"], ["origins", "冒険者体系"], ["items", `アイテム図鑑${unreadItems ? `<span class="archive-tab-notice discovery">${unreadItems}</span>` : ""}`], ["monsters", `モンスター図鑑${unreadMonsters ? `<span class="archive-tab-notice discovery">${unreadMonsters}</span>` : ""}`]];
+    const body = context.archiveView === "items" ? items(context) : context.archiveView === "monsters" ? monsters(context) : context.archiveView === "origins" ? origins(context) : context.archiveView === "observations" ? observations(context) : context.archiveView === "achievements" ? achievements(context) : commissions(context);
     return `<section class="panel archive-header"><div class="section-heading"><div><span class="label">ADVENTURER ARCHIVES</span><h3>冒険者資料室</h3></div></div><p>ギルドの依頼と、これまでの冒険で集めた知識を確認できます。未確認の情報は伏せたまま、持ち帰った記録だけが増えていきます。</p>${dashboard}<div class="archive-tabs" role="tablist" aria-label="資料の種類">${tabs.map(([id, label]) => `<button type="button" role="tab" class="button ${context.archiveView === id ? "secondary" : "ghost"}" aria-selected="${context.archiveView === id}" data-action="archive-view" data-view="${id}">${label}</button>`).join("")}</div></section>${body}`;
   }
 
-  window.GameUIViews.archives = { commissions, items, monsters, origins, observations, page };
+  window.GameUIViews.archives = { commissions, items, monsters, origins, observations, achievements, page };
 })();

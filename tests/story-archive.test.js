@@ -35,7 +35,7 @@ async function run() {
   game.Story.recordResult({ dungeonId: "meadow", success: false, battleLog: [{ kind: "story", sceneId: meadowDiscovery.id, text: meadowDiscovery.text }] });
   game.UI.render();
   assert(game.Story.ensure().facts.discoveries.includes("meadow") && html().includes("探索で判明") && html().includes(meadowDiscovery.text), "A clue found during a failed expedition should remain readable in the home archive");
-  const mainRoutes = game.GameData.storyChapters.slice(1).flatMap(chapter => game.Story.chapterDungeons(chapter.id).filter(dungeon => dungeon.requiredForStory).map(dungeon => dungeon.id));
+  const mainRoutes = game.Story.mainChapters().slice(1).flatMap(chapter => game.Story.chapterDungeons(chapter.id).filter(dungeon => dungeon.requiredForStory).map(dungeon => dungeon.id));
   for (const dungeonId of mainRoutes) {
     game.Story.recordResult({ dungeonId, success: true });
     game.UI.render();
@@ -45,6 +45,10 @@ async function run() {
       assert.strictEqual(html().includes(game.Story.scene(chapter.clearStoryId).text), completed);
     }
   }
+  assert.strictEqual(game.Story.ensure().completed.length, game.Story.mainChapters().length);
+  game.Story.recordResult({ dungeonId: "afterstar_sanctum", success: true });
+  require("./helpers").completeChapter(game, "afterstar_reaches_1");
+  game.UI.render();
   assert.strictEqual(game.Story.ensure().completed.length, game.GameData.storyChapters.length);
   let previous = -1;
   for (const chapter of game.GameData.storyChapters) {

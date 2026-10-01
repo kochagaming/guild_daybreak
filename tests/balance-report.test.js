@@ -30,6 +30,25 @@ report.entries.flatMap(entry => entry.results).forEach(result => {
 const text = balance.textReport(report);
 assert(text.includes("自動バランスレポート") && text.includes("白霜の海岸") && text.includes("均衡型"));
 
+const preparedReport = balance.generate({
+  runs: 1,
+  chapterId: "afterstar_reaches_1",
+  difficulty: "normal",
+  profiles: ["balanced"],
+  quality: "refined",
+  enhancement: "half"
+});
+assert.strictEqual(preparedReport.quality, "refined");
+assert.strictEqual(preparedReport.enhancement, "half");
+preparedReport.entries.flatMap(entry => entry.results).flatMap(result => result.party).forEach(member => {
+  assert.strictEqual(member.qualityId, "refined");
+  assert(member.upgradeLevel > 0);
+});
+const preparedText = balance.textReport(preparedReport);
+assert(preparedText.includes("装備品質 refined") && preparedText.includes("装備強化 解放上限の半分"));
+assert.throws(() => balance.generate({ runs: 1, quality: "unknown" }), /Unknown quality/);
+assert.throws(() => balance.generate({ runs: 1, enhancement: "unknown" }), /Unknown enhancement mode/);
+
 const blackwood = game.GameData.dungeons.night_bloom_sanctuary;
 const counterParty = balance.buildParty(game, "balanced", blackwood);
 const counterSkills = new Set(counterParty.flatMap(member => member.fixture.equipment).flatMap(itemId => game.GameData.items[itemId].skillIds || []));
@@ -43,4 +62,4 @@ const dragonAnalysis = chapterFour.entries.find(entry => entry.dungeonId === "el
 assert(dragonAnalysis.failures > 0 && dragonAnalysis.encounters.length > 0 && dragonAnalysis.causes.length > 0);
 assert(dragonAnalysis.burstDamage > 0 && dragonAnalysis.guardedBurstRate != null);
 
-console.log("Balance report test passed: real master data, chapter-available jobs/gear, four party profiles, aggregate metrics, warnings and text output");
+console.log("Balance report test passed: real master data, chapter-available jobs/gear, quality/enhancement fixtures, four party profiles, aggregate metrics, warnings and text output");
