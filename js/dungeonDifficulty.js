@@ -25,6 +25,10 @@
     clears.push(key);
     return true;
   }
+  function firstClearReward(difficultyId = "normal") {
+    const reward = tier(difficultyId).firstClearReward;
+    return reward ? { gold: reward.gold || 0, materials: { ...(reward.materials || {}) } } : null;
+  }
   function available(dungeonId, state = window.GameState.data) {
     return ids().filter(id => unlocked(dungeonId, id, state));
   }
@@ -84,5 +88,5 @@
     return result;
   }
 
-  window.DungeonDifficulty = { available, cleared, clearKey, displayName, ensureClears, ids, monster, recordClear, tier, unlocked, variant };
+  window.DungeonDifficulty = { available, cleared, clearKey, displayName, ensureClears, firstClearReward, ids, monster, recordClear, tier, unlocked, variant };
 })();

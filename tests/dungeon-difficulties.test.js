@@ -21,8 +21,8 @@ assert(!game.DungeonDifficulty.unlocked("meadow", "abyss"));
 game.GameState.data.story.facts.clears.push("meadow");
 assert(game.DungeonDifficulty.unlocked("meadow", "abyss"));
 assert(!game.DungeonDifficulty.unlocked("meadow", "divine"));
-game.DungeonDifficulty.recordClear("meadow", "abyss");
-assert(game.DungeonDifficulty.unlocked("meadow", "divine"));
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.DungeonDifficulty.firstClearReward("abyss"))), { gold: 0, materials: { guild_seal: 1 } });
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.DungeonDifficulty.firstClearReward("divine"))), { gold: 0, materials: { guild_seal: 2 } });
 
 const normalSlime = game.DungeonDifficulty.monster("slime", "normal");
 const abyssSlime = game.DungeonDifficulty.monster("slime", "abyss");
@@ -53,6 +53,15 @@ const started = game.Dungeon.start("meadow", 0, 2, "abyss");
 assert(started.ok);
 assert.strictEqual(game.GameState.data.expeditions[0].difficultyId, "abyss");
 assert.strictEqual(game.GameState.data.expeditions[0].endsAt - game.GameState.data.expeditions[0].startedAt, abyss.duration * 2 * 1000);
+const sealsBefore = game.Items.count("guild_seal");
+const firstClearResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
+assert(firstClearResult.success && firstClearResult.firstClearReward, "First hard-mode clear grants a separate reward");
+assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1);
+assert(game.DungeonDifficulty.cleared("meadow", "abyss") && game.DungeonDifficulty.unlocked("meadow", "divine"));
+assert(game.Dungeon.start("meadow", 0, 1, "abyss").ok);
+const repeatResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
+assert(repeatResult.success && !repeatResult.firstClearReward, "Repeat clears do not grant the one-time reward again");
+assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1);
 
 const slimeHp = game.GameData.monsters.slime.hp, slimeAttack = game.GameData.monsters.slime.attack;
 game.GameData.monsters.slime.hp = 9999; game.GameData.monsters.slime.attack = 5;
@@ -66,4 +75,4 @@ assert.deepStrictEqual(Array.from(skillResult.monsterObservations.slime.difficul
 game.Encyclopedia.recordBattle(skillResult.monsterEncounters, {}, skillResult.monsterObservations, "abyss");
 assert.deepStrictEqual(Array.from(game.Encyclopedia.monster("slime").difficulties.abyss.skillIds), ["viscous_wave"], "Observed titled skills remain known even when the party does not defeat the monster");
 
-console.log("Dungeon difficulty test passed: progression, names, time/reward/stat scaling, inherited titled drops and observed data-driven monster skills");
+console.log("Dungeon difficulty test passed: progression, names, scaling, one-time clear rewards, inherited titled drops and observed monster skills");

@@ -81,6 +81,8 @@
     const baseDungeon = window.GameData.dungeons[expedition.dungeonId];
     const dungeon = window.DungeonDifficulty ? window.DungeonDifficulty.variant(baseDungeon, expedition.difficultyId || "normal") : baseDungeon;
     const outcome = window.Battle.resolve(expedition, dungeon);
+    const difficultyId = expedition.difficultyId || "normal";
+    const earnsFirstClearReward = outcome.success && difficultyId !== "normal" && !window.DungeonDifficulty.cleared(baseDungeon.id, difficultyId);
     state.gold += outcome.gold;
     const grantedDrops = [], autoSold = [], newItemIds = new Set();
     let autoSellGold = 0;
@@ -115,7 +117,7 @@
       if (gained) levelUps.push({ name: character.name, levels: gained, level: character.level });
     });
     state.lastResult = {
-      id: `result-${window.GameRuntime.now()}-${partyIndex}`, partyIndex, dungeonId: baseDungeon.id, difficultyId: expedition.difficultyId || "normal", dungeonName: dungeon.name, completedAt: window.GameRuntime.now(),
+      id: `result-${window.GameRuntime.now()}-${partyIndex}`, partyIndex, dungeonId: baseDungeon.id, difficultyId, dungeonName: dungeon.name, completedAt: window.GameRuntime.now(),
       success: outcome.success, gold: outcome.gold, exp: outcome.exp, experienceGains, viewed: false,
       timeMultiplier: expedition.timeMultiplier || 1,
       drops: grantedDrops, autoSold, autoSellGold, levelUps, newItemIds: Array.from(newItemIds),
@@ -137,6 +139,19 @@
     };
     state.expeditions[partyIndex] = null;
     if (window.Story) state.lastResult.storyCompleted = window.Story.recordResult(state.lastResult);
+    if (earnsFirstClearReward) {
+      const reward = window.DungeonDifficulty.firstClearReward(difficultyId);
+      if (reward) {
+        state.gold += reward.gold;
+        const materials = Object.entries(reward.materials).map(([itemId, quantity]) => {
+          window.Items.add(itemId, quantity);
+          return { itemId, quantity };
+        });
+        state.lastResult.firstClearReward = { difficultyId, gold: reward.gold, materials };
+        const rewardParts = [reward.gold ? `${reward.gold}G` : "", ...materials.map(entry => `${window.GameData.items[entry.itemId]?.name || entry.itemId}×${entry.quantity}`)].filter(Boolean);
+        window.GameState.addLog(`${dungeon.name}を初踏破。${rewardParts.join("、")}を獲得しました。`, "success");
+      }
+    }
     state.lastResult.newObservationIds = window.ObservationJournal
       ? window.ObservationJournal.unlockedNotes().map(note => note.id).filter(id => !knownObservationIds.has(id))
       : [];

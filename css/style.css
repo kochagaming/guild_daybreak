@@ -738,6 +738,9 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-new-discoveries .label, .result-new-discoveries strong, .result-new-discoveries p { grid-column: 1; }
 .result-new-discoveries p { margin: .1rem 0 0; color: #735b27; font-size: .78rem; }
 .result-new-discoveries .button { grid-column: 2; grid-row: 1 / 4; min-height: 42px; }
+.result-first-clear { display: grid; gap: .2rem; margin: 1rem 0; padding: .85rem .9rem; color: #49391f; border: 1px solid #c9a34b; border-left: 4px solid #9c7321; border-radius: 6px; background: linear-gradient(110deg,#f9e8aa,#fffaf0 75%); }
+.result-first-clear .label { color: #8b651c; }
+.result-first-clear p { margin: .1rem 0 0; color: #674f21; }
 @keyframes discovery-glow { from { box-shadow: 0 0 18px rgba(211,165,54,.45); transform: translateY(-2px); } to { box-shadow: none; transform: none; } }
 @media (max-width: 720px) {
   .result-observation-unlock { grid-template-columns: 1fr; }
@@ -1092,6 +1095,9 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .dungeon-route-controls label { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: .5rem; color: var(--muted); font-size: .66rem; font-weight: 700; }
 .dungeon-route-controls select { min-width: 0; height: 40px; padding-block: .3rem; }
 .dungeon-route-controls .button { min-height: 40px; padding-block: .4rem; }
+.difficulty-first-clear { margin: 0; padding: .4rem .7rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: #72551d; background: #fff5cf; border-top: 1px solid #dbc486; font-size: .68rem; }
+.difficulty-first-clear span { font-weight: 800; letter-spacing: .08em; }
+.difficulty-first-clear strong { text-align: right; }
 .dungeon-route-list .dungeon-details { margin: 0; border-top: 1px solid var(--line); }
 .dungeon-route-list .dungeon-details > summary { padding: .55rem .7rem; font-size: .7rem; }
 .dungeon-route-list .dungeon-details > summary::after { content: "＋"; float: right; }

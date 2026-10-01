@@ -146,12 +146,15 @@
     const newItems = Array.isArray(result.newItemIds) && result.newItemIds.length
       ? `<section class="result-new-discoveries"><span class="label">FIRST DISCOVERY</span><strong>初めての品を${result.newItemIds.length}種類発見しました</strong><p>${result.newItemIds.map(id => `${window.GameData.items[id]?.icon || "◇"} ${escape(itemName(id))}`).join("　")}</p><button class="button ghost" data-action="open-item-codex">アイテム図鑑で確認</button></section>`
       : "";
+    const firstClearReward = result.firstClearReward
+      ? `<section class="result-first-clear"><span class="label">FIRST CLEAR</span><strong>${escape(window.DungeonDifficulty.tier(result.firstClearReward.difficultyId).name)}・初回踏破報酬</strong><p>${[result.firstClearReward.gold ? `所持金 +${formatGold(result.firstClearReward.gold)}` : "", ...result.firstClearReward.materials.map(entry => `${window.GameData.items[entry.itemId]?.icon || "◇"} ${escape(itemName(entry.itemId))}×${entry.quantity}`)].filter(Boolean).join("　")}</p></section>`
+      : "";
     return `<article class="result-card ${result.success ? "success" : "failure"}">
       <div class="result-seal">${result.success ? "勝" : "退"}</div><div class="result-body">
       <div class="card-heading"><div><span class="label">最新の探索報告</span><h3>${escape(result.dungeonName || dungeon.name)} · ${result.timeMultiplier || 1}倍探索</h3></div><span class="badge ${result.success ? "good" : "bad"}">${result.success ? "探索成功" : "撤退"}</span></div>
       <p>${escape(result.partyNames.join("、"))}が帰還しました。</p>
       <div class="reward-line"><strong>+${formatGold(result.gold)}</strong>${experience}</div>
-      <div class="loot-list">${drops}</div>${autoSales}${levels}${newItems}${newObservations}${storyMoments}${(result.storyCompleted || []).map(id => window.GameData.storyChapters.find(chapter => chapter.id === id)).filter(Boolean).map(chapter => `<div class="story-objective"><strong>${escape(chapter.title)}・達成</strong><p>解放・章報酬：${escape(chapter.unlockText)}</p></div>`).join("")}${tacticalReportPanel(result)}${memberReportPanel(result)}${completedJournalPanel(result)}</div></article>`;
+      <div class="loot-list">${drops}</div>${autoSales}${levels}${firstClearReward}${newItems}${newObservations}${storyMoments}${(result.storyCompleted || []).map(id => window.GameData.storyChapters.find(chapter => chapter.id === id)).filter(Boolean).map(chapter => `<div class="story-objective"><strong>${escape(chapter.title)}・達成</strong><p>解放・章報酬：${escape(chapter.unlockText)}</p></div>`).join("")}${tacticalReportPanel(result)}${memberReportPanel(result)}${completedJournalPanel(result)}</div></article>`;
   }
 
   function tacticalReportPanel(result) {
