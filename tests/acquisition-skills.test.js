@@ -38,7 +38,10 @@ const values = (...entries) => { let index = 0; return () => entries[index++] ??
 const plain = game.Items.createInstance("wooden_sword", { source: "drop", random: values(.6, .5), modifiers: {} });
 const qualityBoosted = game.Items.createInstance("wooden_sword", { source: "drop", random: values(.6, .5), modifiers: {}, qualityRateMultiplier: 1.5 });
 assert.strictEqual(plain.qualityId, "standard");
-assert.strictEqual(qualityBoosted.qualityId, "familiar", "Quality-rate bonus should shift the same roll into a higher quality band");
+assert(
+  game.GameData.qualities[qualityBoosted.qualityId].rank > game.GameData.qualities[plain.qualityId].rank,
+  "Quality-rate bonus should shift the same roll into a higher quality rank"
+);
 assert.strictEqual(plain.ultraRareTitleId, null);
 assert.strictEqual(qualityBoosted.ultraRareTitleId, null, "Quality rate must not alter ultra-rare title chance");
 

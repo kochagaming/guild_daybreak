@@ -45,8 +45,12 @@ async function run() {
   assert(html.includes("item-card compact-item shop-item-card") && html.includes("shop-stat-scroll"));
   assert(html.includes("equipment-type-groups") && html.includes("細剣") && html.includes("命中・攻撃回数・速度") && html.includes("盾") && html.includes("防御力・HP"), "Shop groups products by equipment type and shows each role");
   ["HP", "物攻", "物防", "魔攻", "魔防", "魔回復", "命中", "速度", "攻撃回数", "重量"].forEach(label => assert(html.includes(`<small>${label}</small>`), `Shop displays non-zero ${label}`));
-  assert(!html.includes("<small>回避</small>") && !html.includes("<small>射程</small>"), "Shop omits zero stats and duplicate range");
+  assert(html.includes("<small>回避</small>") && !html.includes("<small>射程</small>"), "Shop shows non-zero evasion but omits duplicate range");
   assert(html.includes("固有スキル：物理攻撃威力+3%") && html.includes("木の剣") && html.includes("+4"));
+  game.GameState.data.story.completed = game.GameData.storyChapters.map(chapter => chapter.id);
+  game.UI.navigate("shop");
+  html = node("app").innerHTML;
+  assert(html.includes("shop-stock-history") && html.includes("過去の品を表示") && html.includes("14点"), "A fully unlocked shop keeps only the latest two tiers visible in each equipment type");
   game.UI.navigate("blacksmith");
   html = node("app").innerHTML;
   assert(html.includes("鍛冶メニュー") && html.includes("装備を製作する") && html.includes("装備を強化する"));

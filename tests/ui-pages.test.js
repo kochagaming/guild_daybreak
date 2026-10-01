@@ -64,7 +64,8 @@ async function run() {
   assert(html().includes("archive-tab-notice discovery"), "A first item discovery is announced in the archive tabs");
   await click("archive-view", { view: "items" });
   assert(!html().includes("archive-tab-notice discovery"), "Opening the item codex marks its discoveries as read");
-  assert(html().includes("アイテム図鑑") && html().includes("武器・剣") && html().includes("武器・杖") && html().includes("防具・布装備") && html().includes("防具・盾") && html().includes(">素材<") && html().includes("木の剣") && html().includes("？？？") && !html().includes("commission-card"));
+  assert(html().includes("アイテム図鑑") && html().includes("武器・剣") && html().includes("武器・杖") && html().includes("防具・布装備") && html().includes("防具・盾") && html().includes(">素材<") && html().includes("木の剣") && html().includes("？？？") && html().includes("codex-unknown-stack") && !html().includes("commission-card"));
+  assert((html().match(/codex-unknown-stack/g) || []).length <= 11, "Unknown items are condensed to at most one card per encyclopedia category");
   assert(html().includes("入手元を確認") && html().includes("風鳴りの草原") && html().includes("スライムを討伐") && html().includes("通常・魔境・神域"));
   await click("archive-view", { view: "monsters" });
   assert(html().includes("モンスター図鑑") && html().includes("風鳴りの草原") && html().includes("未遭遇") && !html().includes("ギルド依頼掲示板"));

@@ -1,6 +1,7 @@
 (function () {
   "use strict";
   const data = () => window.GameData.recruitment;
+  const defaultActionRates = () => Object.assign({}, window.GameData.combatRules.defaultActionRates);
   function state() { return window.GameState.data.recruitment; }
   function unlocked(field) { return !field.unlockAfter || window.GameState.data.story.completed.includes(field.unlockAfter); }
   function entryUnlocked(entry) { return !entry.unlockAfter || window.GameState.data.story.completed.includes(entry.unlockAfter); }
@@ -25,7 +26,7 @@
     return random() < data().matchChance ? desired : pick(random, values.filter(value => value !== desired));
   }
   function preview(applicant) {
-    return Object.assign({}, applicant, { level: 1, exp: 0, equipment: [], actionRates: { attack: 100, technique: 25, spell: 20, healing: 15 } });
+    return Object.assign({}, applicant, { level: 1, exp: 0, equipment: [], actionRates: defaultActionRates() });
   }
   function costBreakdown(applicant) {
     const pricing = data().pricing;
@@ -120,7 +121,7 @@
       jobId: applicant.jobId, raceId: applicant.raceId, birthId: applicant.birthId,
       portraitId: applicant.portraitId, talentId: applicant.talentId,
       recruitmentId: pending.id, level: 1, exp: 0, base: Object.assign({}, applicant.base),
-      actionRates: { attack: 100, technique: 25, spell: 20, healing: 15 }, equipment: [], career: null, createdAt: window.GameRuntime.now()
+      actionRates: defaultActionRates(), equipment: [], career: null, createdAt: window.GameRuntime.now()
     });
     state().pending = null;
     window.GameState.addLog(`${window.GameData.jobs[applicant.jobId].name}の${cleanName}を${hiringCost}Gで雇用しました。ほかの応募者は退出しました。`, "success");

@@ -51,9 +51,34 @@
     dreamweave_robe: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "evasion_4", "chill_resistance_35"],
     jailer_shield: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2"],
     moonwarden_gauntlets: ["attack_105", "accuracy_4", "critical_4", "speed_2"],
-    exiled_king_blade: ["attack_105", "physical_power_3", "magic_attack_105", "hp_105", "demon_slayer_15"]
+    exiled_king_blade: ["attack_105", "physical_power_3", "magic_attack_105", "hp_105", "demon_slayer_15"],
+    originwood_bow: ["physical_power_3", "accuracy_4", "attack_count_1", "critical_4", "plant_slayer_15"],
+    starroot_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "hp_105"],
+    ancestor_leather: ["evasion_4", "speed_2", "magic_defense_105", "poison_resistance_35"],
+    first_priestess_circlet: ["magic_attack_105", "magic_healing_105", "accuracy_4", "paralysis_resistance_35"],
+    firststar_sword: ["attack_105", "physical_power_3", "magic_attack_105", "hp_105", "plant_slayer_15"],
+    starsea_rapier: ["accuracy_4", "attack_count_1", "critical_4", "speed_2", "spirit_slayer_15"],
+    abyssal_robe: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "chill_resistance_35"],
+    navigator_gauntlet: ["accuracy_4", "attack_105", "speed_2", "attack_count_1"],
+    tide_oracle_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "accuracy_4", "spirit_slayer_15"],
+    leviathan_aegis: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "dragon_slayer_15"],
+    northstar_katana: ["attack_105", "physical_power_3", "critical_4", "dragon_slayer_15"],
+    aurora_heavy: ["defense_105", "magic_defense_105", "hp_105", "chill_resistance_35"],
+    vessel_shield: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2"],
+    sleeper_crown: ["attack_105", "magic_attack_105", "accuracy_4", "critical_4", "spirit_slayer_15"],
+    worldscar_bow: ["physical_power_3", "accuracy_4", "attack_count_1", "critical_4", "dragon_slayer_15"],
+    eclipse_sword: ["attack_105", "physical_power_3", "critical_4", "demon_slayer_15"],
+    starveil_cloth: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "evasion_4"],
+    skykey_gauntlet: ["attack_105", "accuracy_4", "speed_2", "attack_count_1"],
+    regent_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "spirit_slayer_15", "demon_slayer_15"],
+    hollow_throne_shield: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "undead_slayer_20"],
+    heavensplit_rapier: ["accuracy_4", "attack_count_1", "critical_4", "speed_2", "celestial_slayer_15"],
+    firstlight_robe: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "burn_resistance_35"],
+    constellation_leather: ["evasion_4", "speed_2", "accuracy_4", "celestial_slayer_15"],
+    nameless_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "spirit_slayer_15", "celestial_slayer_15"],
+    afterstar_armor: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "demon_slayer_15"]
   };
   Object.values(data.items).filter(item => item.type === "weapon" || item.type === "armor").forEach(item => {
-    item.skillIds = (assignments[item.id] || []).slice();
+    item.skillIds = (assignments[item.id] || item.skillIds || []).slice();
   });
 })();

@@ -50,6 +50,7 @@ async function run() {
   assert(!html.includes("blacksmith-controls") && !html.includes("upgrade-record"), "Crafting and upgrading do not share the menu screen");
   await click("blacksmith-open", { view: "craft" });
   html = node("app").innerHTML;
+  assert(html.includes("性能倍率は1〜5倍"), "Crafting explains that the resulting quality changes equipment performance");
   const recipeTypeIds = Array.from(game.GameData.equipmentTypes ? Object.values(game.GameData.equipmentTypes) : [], type => type.id)
     .filter(typeId => catalogRecipes.some(recipe => (game.Blacksmith.result(recipe).weaponType || game.Blacksmith.result(recipe).armorType) === typeId));
   const recipePages = Math.ceil(recipeTypeIds.length / 6);

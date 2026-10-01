@@ -73,6 +73,14 @@
     const percent = Math.min(100, Math.max(0, value / maximum * 100));
     return `<div class="stat-row"><span>${label}</span><div class="bar"><i style="width:${percent}%"></i></div><strong>${textValue == null ? value : textValue}</strong></div>`;
   }
+  function actionRatePresets() {
+    return `<div class="action-rate-presets" role="group" aria-label="行動率の入力補助"><span>かんたん入力</span>${window.GameData.combatRules.actionPresets.map(preset => `<button type="button" class="button ghost" data-action="action-rate-preset" data-preset="${preset.id}">${escape(preset.name)}</button>`).join("")}</div>`;
+  }
+  function actionRateProfile(character) {
+    const rates = window.Characters.actionRates(character);
+    const preset = window.GameData.combatRules.actionPresets.find(entry => Object.keys(entry.rates).every(key => entry.rates[key] === rates[key]));
+    return preset ? preset.name : `回${rates.healing}・呪${rates.spell}・技${rates.technique}・攻${rates.attack}`;
+  }
   function extraStats(stats, previous) {
     const fields = [["magicAttack", "魔法攻撃"], ["magicDefense", "魔法防御"], ["magicHealing", "魔法回復"]];
     return `<div class="bonus-chips">${fields.map(([key, label]) => `<span>${label} <strong>${stats[key] || 0}</strong>${previous ? statDiff((stats[key] || 0) - (previous[key] || 0)) : ""}</span>`).join("")}${stats.physicalPower == null ? "" : `<span>物理威力 <strong>${Math.round(stats.physicalPower * 100)}%</strong>${previous ? statDiff(Math.round((stats.physicalPower - (previous.physicalPower || 1)) * 100)) + "pt" : ""}</span><span>魔法威力 <strong>${Math.round(stats.magicPower * 100)}%</strong>${previous ? statDiff(Math.round((stats.magicPower - (previous.magicPower || 1)) * 100)) + "pt" : ""}</span>`}${stats.hitRate == null ? "" : `<span>命中精度 ${Math.round(stats.hitRate * 100)}%${previous ? statDiff(Math.round((stats.hitRate - (previous.hitRate || 0)) * 100)) + "pt" : ""}</span><span>回避 ${Math.round((stats.evasionRate || 0) * 100)}%${previous ? statDiff(Math.round(((stats.evasionRate || 0) - (previous.evasionRate || 0)) * 100)) + "pt" : ""}</span>`}${stats.speed == null ? "" : `<span>速度 ${stats.speed}${previous ? statDiff(stats.speed - (previous.speed || 0)) : ""}</span>`}${stats.attackCount == null ? "" : `<span>攻撃回数 <strong>${stats.attackCount}</strong>${previous ? statDiff(stats.attackCount - (previous.attackCount || 1)) : ""}</span>`}</div>`;
@@ -382,7 +390,7 @@
     const modalRoot = document.getElementById("modal-root");
     const previousModal = typeof modalRoot.querySelector === "function" ? modalRoot.querySelector(".equipment-modal") : null;
     const previousScrollTop = settings.preserveScroll && previousModal ? previousModal.scrollTop : 0;
-    window.GameUIViews.equipment.render({ effectModifierText, empty, equipmentChangeNotice, equipmentPicker, equipmentReturnToParty, equipmentSkillBadges, escape, portraitEditButton, statDiff });
+    window.GameUIViews.equipment.render({ actionRatePresets, effectModifierText, empty, equipmentChangeNotice, equipmentPicker, equipmentReturnToParty, equipmentSkillBadges, escape, portraitEditButton, statDiff });
     const nextModal = typeof modalRoot.querySelector === "function" ? modalRoot.querySelector(".equipment-modal") : null;
     if (settings.preserveScroll && nextModal) nextModal.scrollTop = previousScrollTop;
     if (equipmentChangeNotice && nextModal && typeof nextModal.addEventListener === "function") {
@@ -442,7 +450,7 @@
           const item = window.Items.getInstance(id);
           return !id ? "未装備" : item ? window.Items.displayName(item) : `${id}（失われた装備）`;
         }).join("／") || "未装備";
-        const rates = entry.actionRates || { attack: 40, technique: 25, spell: 20, healing: 15 };
+        const rates = entry.actionRates || window.GameData.combatRules.defaultActionRates;
         return `<li>${position + 1}：${escape(character?.name || entry.characterId)}<small>${escape(equipment)}<br>攻${rates.attack}%・技${rates.technique}%・呪${rates.spell}%・回${rates.healing}%</small></li>`;
       }).join("");
       return `<article class="commission-card"><h4>${slot + 1}：${escape(preset.name)}</h4><ul class="preset-members">${members}</ul><p class="small-note">${escape(check.message)}</p><div class="save-actions"><button class="button secondary" data-action="request-preset" data-kind="apply" data-slot="${slot}" ${check.ok ? "" : "disabled"}>呼び出す</button><button class="button ghost" data-action="request-preset" data-kind="delete" data-slot="${slot}">削除</button></div></article>`;
@@ -472,21 +480,6 @@
     if (!selected) selected = window.Party.members()[0] || characters[0] || null;
     selectedPartyCharacterId = selected?.id || null;
     return selected;
-  }
-
-  function formationInspector(character, selected, busy, elsewhere, full) {
-    if (!character) return `<section class="panel character-inspector">${empty("冒険者がいません", "募集要項を出して仲間を雇用してください。")}</section>`;
-    const stat = window.Characters.stats(character);
-    const rates = window.Characters.actionRates(character);
-    const active = selected.has(character.id);
-    const reason = elsewhere ? "別パーティに所属中" : busy ? "探索中は編成変更不可" : full ? "パーティは満員です" : active ? "パーティから外す" : "このパーティに加える";
-    const gear = character.equipment.map(window.Items.getInstance).filter(Boolean).map(instance => {
-      const template = window.Items.template(instance.templateId), effect = window.Items.effects(instance);
-      const typeName = template.type === "weapon" ? window.GameData.weaponTypes[template.weaponType] : window.GameData.armorTypes[template.armorType];
-      return `<div class="inspector-gear-row"><span><strong>${escape(window.Items.displayName(instance))}</strong><small>${escape(typeName || "装備")} · 攻${effect.attack} 防${effect.defense} · 重${effect.weight}</small></span><button class="button ghost" data-action="unequip" data-character="${character.id}" data-instance="${instance.id}">外す</button></div>`;
-    }).join("");
-    const rateFields = [["attack", "攻撃"], ["technique", "技"], ["spell", "呪文"], ["healing", "回復"]].map(([key, label]) => `<label>${label}<input type="number" min="0" max="100" inputmode="numeric" name="${key}" value="${rates[key]}"><span>%</span></label>`).join("");
-    return `<section class="panel character-inspector"><div class="inspector-head">${portraitEditButton(character)}<div><span class="label">SELECTED ADVENTURER</span><h3>${escape(character.name)}</h3><p>${escape(window.Characters.jobName(character))} · Lv.${character.level}</p></div><span class="badge ${active ? "good" : ""}">${active ? "編成中" : "待機中"}</span></div><div class="inspector-stats"><span>HP <strong>${stat.hp}</strong></span><span>攻撃 <strong>${stat.attack}</strong></span><span>防御 <strong>${stat.defense}</strong></span><span>攻撃回数 <strong>${stat.attackCount}</strong></span><span>命中精度 <strong>${Math.round(stat.hitRate * 100)}%</strong></span><span>速度 <strong>${stat.speed}</strong></span></div><button class="button ${active ? "ghost" : "primary"} full" data-action="toggle-party" data-character="${character.id}" ${busy || elsewhere || (!active && full) ? "disabled" : ""}>${escape(reason)}</button><section class="inspector-section"><div class="section-heading"><div><h4>装備</h4><small>${character.equipment.length}点 · 重量 ${window.Characters.equipmentWeight(character)}/${window.Characters.maxWeight(character)}</small></div><button class="button secondary" data-action="open-equipment" data-character="${character.id}">装備を変更</button></div><div class="inspector-gear-list">${gear || '<p class="empty-line">未装備</p>'}</div></section><section class="inspector-section"><h4>行動率</h4><form class="action-rate-form" data-character="${character.id}">${rateFields}<button class="button secondary" type="submit">保存</button></form><p class="policy-help">回復 → 呪文 → 技 → 攻撃の順で個別に判定し、すべて外れた場合は防御します。合計値の制限はありません。</p></section></section>`;
   }
 
   function acquisitionNumber(value, digits) {
@@ -583,14 +576,15 @@
       const stat = window.Characters.stats(member), raceName = window.GameData.races[member.raceId]?.name || member.raceId;
       const currentWeight = window.Characters.equipmentWeight(member), maxWeight = window.Characters.maxWeight(member);
       const nearWeightLimit = maxWeight > 0 && currentWeight / maxWeight >= .9;
-      return `<div class="formation-slot-card ${member.id === selectedCharacter?.id ? "is-current" : ""}"><span class="slot-number">${position + 1}</span><button class="slot-character" data-action="open-equipment" data-character="${member.id}">${portraitImage(member, true)}<span><strong>${escape(member.name)}</strong><small>${escape(window.Characters.jobName(member))} · ${escape(raceName)} · Lv.${member.level}</small><small class="slot-vitals ${nearWeightLimit ? "is-near-limit" : ""}">HP ${stat.hp} · 重量 ${currentWeight}/${maxWeight}</small></span></button><div class="formation-actions"><button class="formation-equip" data-action="open-equipment" data-character="${member.id}" aria-label="${escape(member.name)}の装備を変更">詳細</button><button data-action="move-party" data-character="${member.id}" data-direction="-1" aria-label="${escape(member.name)}を前へ" ${busy || position === 0 ? "disabled" : ""}>↑</button><button data-action="move-party" data-character="${member.id}" data-direction="1" aria-label="${escape(member.name)}を後ろへ" ${busy || position === members.length - 1 ? "disabled" : ""}>↓</button></div></div>`;
+      return `<div class="formation-slot-card ${member.id === selectedCharacter?.id ? "is-current" : ""}"><span class="slot-number">${position + 1}</span><button class="slot-character" data-action="open-equipment" data-character="${member.id}">${portraitImage(member, true)}<span><strong>${escape(member.name)}</strong><small>${escape(window.Characters.jobName(member))} · ${escape(raceName)} · Lv.${member.level}</small><small class="slot-vitals ${nearWeightLimit ? "is-near-limit" : ""}">HP ${stat.hp} · 重量 ${currentWeight}/${maxWeight} · 行動 ${escape(actionRateProfile(member))}</small></span></button><div class="formation-actions"><button class="formation-equip" data-action="open-equipment" data-character="${member.id}" aria-label="${escape(member.name)}の装備を変更">詳細</button><button data-action="move-party" data-character="${member.id}" data-direction="-1" aria-label="${escape(member.name)}を前へ" ${busy || position === 0 ? "disabled" : ""}>↑</button><button data-action="move-party" data-character="${member.id}" data-direction="1" aria-label="${escape(member.name)}を後ろへ" ${busy || position === members.length - 1 ? "disabled" : ""}>↓</button></div></div>`;
     }).join("");
     const jobOptions = Object.values(window.GameData.jobs).map(job => `<option value="${job.id}" ${rosterView.job === job.id ? "selected" : ""}>${escape(job.name)}</option>`).join("");
-    return `<section class="panel formation-board"><div class="section-heading"><div><span class="label">PARTY LINEUP</span><h3>メンバー編成</h3></div><div class="formation-total"><strong>${members.length}/${limit}人</strong><span>戦力 ${Math.round(window.Party.power())}</span></div></div><p class="small-note">上から前衛です。キャラクターを開くと、専用の装備画面へ進みます。</p><div class="formation-slot-grid">${slots}</div><button class="button primary formation-depart" data-action="party-view" data-view="adventure" ${!members.length || busy ? "disabled" : ""}>出撃先を指定する</button></section>${acquisitionSkillsPanel(members)}<div class="formation-manager"><section class="panel roster-browser"><div class="section-heading"><div><span class="label">GUILD ROSTER</span><h3>所属冒険者</h3></div><button class="button ghost" data-nav="characters">仲間を募集</button></div><form id="party-roster-form" class="roster-controls"><label>検索<input id="party-roster-query" value="${escape(rosterView.query)}" placeholder="名前・職業・種族"></label><label>所属<select data-roster-filter="scope"><option value="all">全員</option><option value="party" ${rosterView.scope === "party" ? "selected" : ""}>編成中</option><option value="available" ${rosterView.scope === "available" ? "selected" : ""}>待機中</option></select></label><label>職業<select data-roster-filter="job"><option value="all">全職業</option>${jobOptions}</select></label><label>順序<select data-roster-filter="sort"><option value="level">レベル順</option><option value="name" ${rosterView.sort === "name" ? "selected" : ""}>名前順</option><option value="newest" ${rosterView.sort === "newest" ? "selected" : ""}>加入順</option></select></label><button class="button secondary" type="submit">検索</button></form><div class="roster-list">${rosterRows || '<p class="empty-line">条件に合う冒険者はいません。</p>'}</div><nav class="pagination" aria-label="冒険者一覧のページ"><button class="button ghost" data-action="roster-page" data-page="${rosterView.page - 1}" ${rosterView.page === 0 ? "disabled" : ""}>前へ</button><span>${rosterView.page + 1} / ${pages}ページ · ${roster.length}人</span><button class="button ghost" data-action="roster-page" data-page="${rosterView.page + 1}" ${rosterView.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav></section></div><details class="workflow-details" data-detail="presets"><summary>編成プリセットを保存・呼び出し</summary>${presetsPanel()}</details><details class="workflow-details"><summary>隊列とスキルのルール</summary><p>近接は後方、遠距離は前方で攻撃力が下がります。併用時は両方の補正を乗算します。技・呪文・回復は各種類で使用後10ターン待機し、戦闘ごとにリセットします。</p></details>`;
+    const partyActionPresets = `<div class="party-action-presets"><span><strong>行動率を一括設定</strong><small>${busy ? "探索中の戦闘は変わらず、次回出撃から反映" : "編成中の全員へ適用"}</small></span><div>${window.GameData.combatRules.actionPresets.map(preset => `<button type="button" class="button ghost" data-action="party-action-preset" data-preset="${preset.id}" ${members.length ? "" : "disabled"}>${escape(preset.name)}</button>`).join("")}</div></div>`;
+    return `<section class="panel formation-board"><div class="section-heading"><div><span class="label">PARTY LINEUP</span><h3>メンバー編成</h3></div><div class="formation-total"><strong>${members.length}/${limit}人</strong><span>戦力 ${Math.round(window.Party.power())}</span></div></div><p class="small-note">上から前衛です。キャラクターを開くと、専用の装備画面へ進みます。</p>${partyActionPresets}<div class="formation-slot-grid">${slots}</div><button class="button primary formation-depart" data-action="party-view" data-view="adventure" ${!members.length || busy ? "disabled" : ""}>出撃先を指定する</button></section>${acquisitionSkillsPanel(members)}<div class="formation-manager"><section class="panel roster-browser"><div class="section-heading"><div><span class="label">GUILD ROSTER</span><h3>所属冒険者</h3></div><button class="button ghost" data-nav="characters">仲間を募集</button></div><form id="party-roster-form" class="roster-controls"><label>検索<input id="party-roster-query" value="${escape(rosterView.query)}" placeholder="名前・職業・種族"></label><label>所属<select data-roster-filter="scope"><option value="all">全員</option><option value="party" ${rosterView.scope === "party" ? "selected" : ""}>編成中</option><option value="available" ${rosterView.scope === "available" ? "selected" : ""}>待機中</option></select></label><label>職業<select data-roster-filter="job"><option value="all">全職業</option>${jobOptions}</select></label><label>順序<select data-roster-filter="sort"><option value="level">レベル順</option><option value="name" ${rosterView.sort === "name" ? "selected" : ""}>名前順</option><option value="newest" ${rosterView.sort === "newest" ? "selected" : ""}>加入順</option></select></label><button class="button secondary" type="submit">検索</button></form><div class="roster-list">${rosterRows || '<p class="empty-line">条件に合う冒険者はいません。</p>'}</div><nav class="pagination" aria-label="冒険者一覧のページ"><button class="button ghost" data-action="roster-page" data-page="${rosterView.page - 1}" ${rosterView.page === 0 ? "disabled" : ""}>前へ</button><span>${rosterView.page + 1} / ${pages}ページ · ${roster.length}人</span><button class="button ghost" data-action="roster-page" data-page="${rosterView.page + 1}" ${rosterView.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav></section></div><details class="workflow-details" data-detail="presets"><summary>編成プリセットを保存・呼び出し</summary>${presetsPanel()}</details><details class="workflow-details"><summary>隊列とスキルのルール</summary><p>近接は後方、遠距離は前方で攻撃力が下がります。併用時は両方の補正を乗算します。技・呪文・回復は各種類で使用後10ターン待機し、戦闘ごとにリセットします。</p></details>`;
   }
   function departureSummary() {
     const members = window.Party.members();
-    return `<section class="panel departure-summary"><div class="section-heading"><div><span class="label">DEPARTURE PARTY</span><h3>${escape(window.Party.name())} · ${members.length}/${window.Party.memberLimit()}人</h3></div><button class="button ghost" data-action="party-view" data-view="formation">編成・装備を見直す</button></div><ol class="departure-members">${members.map((member, position) => `<li>${portraitEditButton(member)}<span><strong>${escape(member.name)}</strong><small>${window.Party.positionName(position, Math.max(3, members.length))} · Lv.${member.level} · ${escape(window.Characters.jobName(member))}</small></span></li>`).join("")}</ol><p class="small-note">上記の隊列・装備で出撃します。出撃後の変更は次回から反映されます。総合戦力 ${Math.round(window.Party.power())}</p></section>${acquisitionSkillsPanel(members, true)}`;
+    return `<section class="panel departure-summary"><div class="section-heading"><div><span class="label">DEPARTURE PARTY</span><h3>${escape(window.Party.name())} · ${members.length}/${window.Party.memberLimit()}人</h3></div><button class="button ghost" data-action="party-view" data-view="formation">編成・装備を見直す</button></div><ol class="departure-members">${members.map((member, position) => `<li>${portraitEditButton(member)}<span><strong>${escape(member.name)}</strong><small>${window.Party.positionName(position, Math.max(3, members.length))} · Lv.${member.level} · ${escape(window.Characters.jobName(member))}</small><small class="departure-action-profile">行動 ${escape(actionRateProfile(member))}</small></span></li>`).join("")}</ol><p class="small-note">上記の隊列・装備・行動率で出撃します。出撃後の変更は次回から反映されます。総合戦力 ${Math.round(window.Party.power())}</p></section>${acquisitionSkillsPanel(members, true)}`;
   }
 
   function adventureContent() {
@@ -646,7 +640,8 @@
       : `<p>${primary}${countText} · 重 ${item.weight}</p><details class="inline-item-detail"><summary>詳細性能</summary>${extraStats(item)}</details>`;
     const sold = Boolean(item.purchased), disabled = sold || window.GameState.data.gold < item.price;
     const action = mode === "dailyShop" ? `data-action="buy-daily" data-offer="${item.offerId}"` : `data-action="buy" data-item="${item.id}"`;
-    return `<article class="item-card compact-item ${purchasable ? "shop-item-card" : ""} ${sold ? "sold-out" : ""}"><div class="item-icon">${item.icon}</div><div class="item-info"><span class="type-label">${item.type === "weapon" ? `${escape(typeName || "武器")} · ${range}` : item.type === "armor" ? escape(typeName || "防具") : "素材"}</span><h3>${escape(item.name)}</h3>${item.type === "material" ? `<p>${primary}</p>` : equipmentDetails}</div>${purchasable ? `<div class="item-action"><strong>${formatGold(item.price)}</strong><button class="button secondary" ${action} ${disabled ? "disabled" : ""}>${sold ? "売切" : "購入"}</button></div>` : `<strong class="quantity">× ${window.Items.count(item.id)}</strong>`}</article>`;
+    const qualityText = item.type === "material" ? "" : ` · ${window.Items.qualityCompact(item.qualityId || "standard")}`;
+    return `<article class="item-card compact-item ${purchasable ? "shop-item-card" : ""} ${sold ? "sold-out" : ""}"><div class="item-icon">${item.icon}</div><div class="item-info"><span class="type-label">${item.type === "weapon" ? `${escape(typeName || "武器")} · ${range}` : item.type === "armor" ? escape(typeName || "防具") : "素材"}${escape(qualityText)}</span><h3>${escape(item.name)}</h3>${item.type === "material" ? `<p>${primary}</p>` : equipmentDetails}</div>${purchasable ? `<div class="item-action"><strong>${formatGold(item.price)}</strong><button class="button secondary" ${action} ${disabled ? "disabled" : ""}>${sold ? "売切" : "購入"}</button></div>` : `<strong class="quantity">× ${window.Items.count(item.id)}</strong>`}</article>`;
   }
 
   function inventoryEquipmentCard(group) {
@@ -661,7 +656,7 @@
     const free = instances.length - owners.length;
     const typeName = base.type === "weapon" ? window.GameData.weaponTypes[base.weaponType] : window.GameData.armorTypes[base.armorType];
     const range = base.type === "weapon" ? (base.range === "ranged" ? "遠距離" : "近接") : "";
-    const classification = [typeName, range, `品質：${grade.prefix || "標準"}`].filter(Boolean).join(" · ");
+    const classification = [typeName, range, `品質：${window.Items.qualityCompact(instance)}`].filter(Boolean).join(" · ");
     const individualRows = instances.map((candidate, index) => {
       const owner = window.Items.equippedBy(candidate.id);
       const salvage = window.Items.salvageYield(candidate).map(entry => `${itemName(entry.itemId)}×${entry.quantity}`).join("、");
@@ -706,14 +701,15 @@
     inventoryView.page = Math.min(inventoryView.page, pages - 1);
     const visibleEquipment = equipmentGroups.slice(inventoryView.page * pageSize, (inventoryView.page + 1) * pageSize);
     const materialItems = Object.values(window.GameData.items).filter((item) => item.type === "material" && window.Items.count(item.id));
-    const qualityLegend = Object.values(window.GameData.qualities).filter((grade) => grade.id !== "standard").map((grade) => `<span class="quality-label quality-${grade.color}">${grade.prefix}</span>`).join("");
-    return `<div class="page-intro inventory-intro"><div><p>品質・強化・追加性能・超レア称号が同じ装備は数量表示でまとめます。グループを開くと個体ごとに操作できます。</p><div class="quality-legend">${qualityLegend}</div></div><span class="muted-text">装備中・ロック中の品は売却・分解できません</span></div><div class="inventory-groups"><section class="panel"><div class="section-heading"><div><span class="label">EQUIPMENT</span><h3>装備品</h3></div><strong>${equipment.length}点 · ${equipmentGroups.length}種 / 全${total}点</strong></div>${autoSellPanel()}${inventoryControls()}<p class="compact-list-guide">同じ性能の装備はまとめて表示します。行を押すと性能・自動売却・個体一覧を確認できます。</p>${equipment.length ? `<div class="owned-equipment-grid">${visibleEquipment.map(inventoryEquipmentCard).join("")}</div><nav class="pagination" aria-label="装備品のページ"><button class="button ghost" data-action="inventory-page" data-page="${inventoryView.page - 1}" ${inventoryView.page === 0 ? "disabled" : ""}>前へ</button><span>${inventoryView.page + 1} / ${pages}ページ · ${equipmentGroups.length}種（${equipment.length}点）</span><button class="button ghost" data-action="inventory-page" data-page="${inventoryView.page + 1}" ${inventoryView.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav>` : `<p class="empty-line">${total ? "条件に一致する装備がありません。絞り込みを解除してください。" : "装備品を所持していません"}</p>`}</section><section class="panel"><div class="section-heading"><div><span class="label">MATERIALS</span><h3>素材</h3></div><strong>${materialItems.reduce((sum, item) => sum + window.Items.count(item.id), 0)} 点</strong></div>${materialItems.length ? `<div class="item-list compact">${materialItems.map((item) => itemCard(item, "inventory")).join("")}</div>` : `<p class="empty-line">素材を所持していません</p>`}</section></div>`;
+    const qualityLegend = Object.values(window.GameData.qualities).sort((a, b) => a.rank - b.rank).map((grade) => `<span class="quality-label quality-${grade.color}">${escape(window.Items.qualityCompact(grade.id))}</span>`).join("");
+    const qualityGuide = `<details class="quality-guide"><summary>品質倍率を確認 <span>${Object.keys(window.GameData.qualities).length}種類</span></summary><div class="quality-legend">${qualityLegend}</div></details>`;
+    return `<div class="page-intro inventory-intro"><div><p>品質・強化・追加性能・超レア称号が同じ装備は数量表示でまとめます。グループを開くと個体ごとに操作できます。</p>${qualityGuide}</div><span class="muted-text">装備中・ロック中の品は売却・分解できません</span></div><div class="inventory-groups"><section class="panel"><div class="section-heading"><div><span class="label">EQUIPMENT</span><h3>装備品</h3></div><strong>${equipment.length}点 · ${equipmentGroups.length}種 / 全${total}点</strong></div>${autoSellPanel()}${inventoryControls()}<p class="compact-list-guide">同じ性能の装備はまとめて表示します。行を押すと性能・自動売却・個体一覧を確認できます。</p>${equipment.length ? `<div class="owned-equipment-grid">${visibleEquipment.map(inventoryEquipmentCard).join("")}</div><nav class="pagination" aria-label="装備品のページ"><button class="button ghost" data-action="inventory-page" data-page="${inventoryView.page - 1}" ${inventoryView.page === 0 ? "disabled" : ""}>前へ</button><span>${inventoryView.page + 1} / ${pages}ページ · ${equipmentGroups.length}種（${equipment.length}点）</span><button class="button ghost" data-action="inventory-page" data-page="${inventoryView.page + 1}" ${inventoryView.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav>` : `<p class="empty-line">${total ? "条件に一致する装備がありません。絞り込みを解除してください。" : "装備品を所持していません"}</p>`}</section><section class="panel"><div class="section-heading"><div><span class="label">MATERIALS</span><h3>素材</h3></div><strong>${materialItems.reduce((sum, item) => sum + window.Items.count(item.id), 0)} 点</strong></div>${materialItems.length ? `<div class="item-list compact">${materialItems.map((item) => itemCard(item, "inventory")).join("")}</div>` : `<p class="empty-line">素材を所持していません</p>`}</section></div>`;
   }
 
   function inventoryControls() {
     const field = (key, label, entries) => `<label for="inventory-${key}">${label}<select id="inventory-${key}" data-inventory-filter="${key}">${entries.map(([id, name]) => `<option value="${id}" ${inventoryView[key] === id ? "selected" : ""}>${escape(name)}</option>`).join("")}</select></label>`;
     const types = [["all", "すべて"], ["unique", "ボス固有装備"], ["weapon", "武器すべて"], ...Object.entries(window.GameData.weaponTypes).map(([id, name]) => [`weapon:${id}`, name]), ["armor", "防具すべて"], ...Object.entries(window.GameData.armorTypes).map(([id, name]) => [`armor:${id}`, name])];
-    return `<div class="inventory-controls">${field("kind", "装備種別", types)}${field("quality", "品質", [["all", "すべて"], ...Object.values(window.GameData.qualities).map(entry => [entry.id, entry.prefix || "標準"])])}${field("equipped", "装備状態", [["all", "すべて"], ["equipped", "装備中"], ["free", "未装備"]])}${field("lock", "ロック", [["all", "すべて"], ["locked", "ロック中"], ["unlocked", "ロックなし"]])}${field("sort", "並べ替え", [["newest", "新しい順"], ["oldest", "古い順"], ["name", "名前順"], ["quality", "品質順"], ["attack", "攻撃力が高い順"], ["defense", "防御力が高い順"], ["hp", "HPが高い順"], ["weight", "軽い順"], ["value", "売却価格が高い順"]])}<button class="button ghost" data-action="reset-inventory-filters">絞り込みを解除</button></div><p class="inventory-sort-note">能力順は装備単体の性能で比較します（キャラの適性補正は含みません）。</p>`;
+    return `<div class="inventory-controls">${field("kind", "装備種別", types)}${field("quality", "品質", [["all", "すべて"], ...Object.values(window.GameData.qualities).sort((a, b) => a.rank - b.rank).map(entry => [entry.id, entry.prefix || "標準"])])}${field("equipped", "装備状態", [["all", "すべて"], ["equipped", "装備中"], ["free", "未装備"]])}${field("lock", "ロック", [["all", "すべて"], ["locked", "ロック中"], ["unlocked", "ロックなし"]])}${field("sort", "並べ替え", [["newest", "新しい順"], ["oldest", "古い順"], ["name", "名前順"], ["quality", "品質順"], ["attack", "攻撃力が高い順"], ["defense", "防御力が高い順"], ["hp", "HPが高い順"], ["weight", "軽い順"], ["value", "売却価格が高い順"]])}<button class="button ghost" data-action="reset-inventory-filters">絞り込みを解除</button></div><p class="inventory-sort-note">能力順は装備単体の性能で比較します（キャラの適性補正は含みません）。</p>`;
   }
 
   function upgradesPanel() {
@@ -887,6 +883,20 @@
     // Inner dialog content must not inherit the backdrop close action.
     if (button.classList.contains("modal-backdrop") && event.target.closest(".modal")) return;
     const action = button.dataset.action;
+    if (action === "action-rate-preset") {
+      const preset = window.GameData.combatRules.actionPresets.find(entry => entry.id === button.dataset.preset);
+      const form = button.closest?.(".action-rate-form");
+      if (!preset || !form) return;
+      Object.entries(preset.rates).forEach(([key, value]) => {
+        const input = form.elements[key];
+        if (!input) return;
+        input.value = value;
+        input.setAttribute?.("aria-label", `${key === "attack" ? "攻撃" : key === "technique" ? "技" : key === "spell" ? "呪文" : "回復"}行動率 ${value}%`);
+        const output = input.parentElement?.querySelector?.("[data-action-rate-value]");
+        if (output) output.textContent = `${value}%`;
+      });
+      return;
+    }
     if (action === "portrait-page") {
       window.GameUIViews.portraits.stepPicker(button.closest("#portrait-form"), Number(button.dataset.direction));
       return;
@@ -1212,6 +1222,7 @@
     if (action === "select-party") { selectedPartyCharacterId = null; result = await window.GameClient.execute("party.select", { partyIndex: Number(button.dataset.party) }); }
     if (action === "toggle-party") { selectedPartyCharacterId = button.dataset.character; result = await window.GameClient.execute("party.toggle", { characterId: button.dataset.character, partyIndex: window.Party.selected() }); }
     if (action === "move-party") result = await window.GameClient.execute("party.move", { characterId: button.dataset.character, direction: Number(button.dataset.direction), partyIndex: window.Party.selected() });
+    if (action === "party-action-preset") result = await window.GameClient.execute("party.actionPreset", { presetId: button.dataset.preset, partyIndex: window.Party.selected() });
     if (action === "collect-facility") result = await window.GameClient.execute("facility.collect", { facilityId: button.dataset.facility });
     if (action === "collect-all-facilities") result = await window.GameClient.execute("facility.collectAll");
     if (action === "upgrade-facility") result = await window.GameClient.execute("facility.upgrade", { facilityId: button.dataset.facility, trackId: button.dataset.track });
@@ -1362,6 +1373,14 @@
       } catch (error) { if (request === importRequest) toast(error.message, "error"); }
     });
     document.addEventListener("change", async (event) => {
+      if (event.target.hasAttribute("data-dungeon-chapter-select")) {
+        const chapterId = event.target.value;
+        if (window.GameData.storyChapters.some(chapter => chapter.id === chapterId) && window.Story.chapterDungeons(chapterId).length) {
+          explorationChoices[window.Party.selected()].chapterId = chapterId;
+          render();
+        }
+        return;
+      }
       if (event.target.hasAttribute("data-portrait-type")) {
         window.GameUIViews.portraits.refreshPicker(event.target.closest("#portrait-form"), true);
         return;

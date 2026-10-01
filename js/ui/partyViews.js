@@ -155,14 +155,27 @@
     const partyIndex = window.Party.selected();
     const activeId = selectedChapterId(context, partyIndex);
     const story = window.Story.ensure();
-    return `<nav class="route-chapter-tabs" aria-label="攻略する章">${routeChapters().map(chapter => {
+    const chapters = routeChapters();
+    const activeIndex = Math.max(0, chapters.findIndex(chapter => chapter.id === activeId));
+    const start = Math.max(0, Math.min(activeIndex - 2, chapters.length - 5));
+    const visible = chapters.slice(start, start + 5);
+    function status(chapter) {
       const routes = window.Story.chapterDungeons(chapter.id).filter(dungeon => dungeon.requiredForStory);
       const cleared = routes.filter(dungeon => story.facts.clears.includes(dungeon.id)).length;
       const enterable = window.Story.chapterDungeons(chapter.id).some(dungeon => window.Story.canEnter(dungeon.id));
       const complete = story.completed.includes(chapter.id);
+      return { routes, cleared, enterable, complete };
+    }
+    const options = chapters.map(chapter => {
+      const state = status(chapter);
+      return `<option value="${chapter.id}" ${activeId === chapter.id ? "selected" : ""}>${escape(chapter.title)} — ${state.cleared}/${state.routes.length}${state.complete ? " 達成" : state.enterable ? " 攻略中" : " 未解放"}</option>`;
+    }).join("");
+    const tabs = visible.map(chapter => {
+      const { routes, cleared, enterable, complete } = status(chapter);
       const shortTitle = chapter.title.split("：")[0];
       return `<button class="route-chapter-tab ${activeId === chapter.id ? "is-active" : ""} ${complete ? "is-complete" : ""} ${enterable ? "" : "is-locked"}" data-action="select-dungeon-chapter" data-chapter="${chapter.id}" aria-pressed="${activeId === chapter.id}"><strong>${escape(shortTitle)}</strong><span>${cleared}/${routes.length}${complete ? " 達成" : enterable ? " 攻略中" : " 未解放"}</span></button>`;
-    }).join("")}</nav>`;
+    }).join("");
+    return `<div class="route-chapter-navigator"><label class="route-chapter-select"><span>攻略する章</span><select data-dungeon-chapter-select aria-label="攻略する章を選択">${options}</select></label><nav class="route-chapter-tabs" aria-label="現在章付近の章">${tabs}</nav><small>${start + 1}〜${start + visible.length} / ${chapters.length}章を表示</small></div>`;
   }
 
   function dungeonCards(context) {

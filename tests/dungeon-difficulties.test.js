@@ -75,4 +75,30 @@ assert.deepStrictEqual(Array.from(skillResult.monsterObservations.slime.difficul
 game.Encyclopedia.recordBattle(skillResult.monsterEncounters, {}, skillResult.monsterObservations, "abyss");
 assert.deepStrictEqual(Array.from(game.Encyclopedia.monster("slime").difficulties.abyss.skillIds), ["viscous_wave"], "Observed titled skills remain known even when the party does not defeat the monster");
 
-console.log("Dungeon difficulty test passed: progression, names, scaling, one-time clear rewards, inherited titled drops and observed monster skills");
+const chapterBossSkills = {
+  moonfang_alpha: "moonfang_howl", earth_oracle: "earthpulse_overload", astral_archon: "orbit_execution",
+  cinder_sovereign: "cinder_coronation", mirror_queen: "mirror_refraction", time_queen: "stolen_hour",
+  nightbloom_oracle: "nightbloom_spores", aurora_warden: "aurora_prism", eclipse_regent: "eclipse_decree", blackmoon_heart: "memory_eclipse"
+};
+const chapterBossDivineSkills = {
+  moonfang_alpha: "divine_pack_eclipse", earth_oracle: "divine_fault", astral_archon: "celestial_verdict",
+  cinder_sovereign: "divine_ashfall", mirror_queen: "divine_tidal_mirror", time_queen: "divine_time_sentence",
+  nightbloom_oracle: "divine_nightbloom", aurora_warden: "divine_whiteout", eclipse_regent: "divine_eclipse", blackmoon_heart: "divine_blackmoon_memory"
+};
+for (const [monsterId, skillId] of Object.entries(chapterBossSkills)) {
+  assert(game.DungeonDifficulty.monster(monsterId, "abyss").difficultySkillIds.includes(skillId), `${monsterId} has its abyss skill`);
+  assert(game.DungeonDifficulty.monster(monsterId, "divine").difficultySkillIds.includes(skillId), `${monsterId} passes its abyss skill to the divine tier`);
+  assert(game.DungeonDifficulty.monster(monsterId, "divine").difficultySkillIds.includes(chapterBossDivineSkills[monsterId]), `${monsterId} has its divine-exclusive skill`);
+}
+const archon = game.GameData.monsters.astral_archon;
+const archonAttack = archon.attack;
+archon.attack = 1;
+const archonResult = game.Battle.resolve({ seed: 81, timeMultiplier: 1, partyIds: [], partySnapshot: [{
+  id: "archon-observer", name: "星環観測役", level: 1, jobId: "warrior", raceId: "human", position: 0, weaponRange: "melee", skillIds: [], equipmentSkillIds: [], actionRates: { attack: 100, technique: 0, spell: 0, healing: 0 },
+  stats: { hp: 99999, attack: 1, defense: 9999, magicAttack: 1, magicDefense: 9999, magicHealing: 1, speed: 10, hitRate: .99, evasionRate: 0, attackCount: 1, criticalRate: 0 }
+}] }, { id: "archon-skill-test", name: "星環技試験", shortName: "星環試験", duration: 30, difficulty: 1, difficultyId: "divine", encounters: [{ name: "執政者観測", groups: [["astral_archon"]] }], rewards: { gold: [0, 0], exp: [0, 0] }, drops: [] });
+archon.attack = archonAttack;
+assert(archonResult.battleLog.some(entry => entry.kind === "enemy-skill" && entry.text.includes("星環執行") && entry.text.includes("5ターン周期")), "A chapter boss can use its titled skill alongside its telegraphed mechanic");
+assert(archonResult.battleLog.some(entry => entry.kind === "enemy-skill" && entry.text.includes("天環審判") && entry.text.includes("5ターン周期")), "A divine chapter boss alternates between ready skills that share the same cycle");
+
+console.log("Dungeon difficulty test passed: progression, names, scaling, first-clear rewards, inherited drops and alternating divine boss skills");

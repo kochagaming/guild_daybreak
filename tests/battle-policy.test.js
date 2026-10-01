@@ -8,6 +8,10 @@ function load() {
 }
 let game = load();
 const created = require("./helpers").createCharacter(game, "行動率テスト", "cleric", "human", "sacred");
+assert.deepStrictEqual(Array.from(game.GameData.combatRules.actionPriority), ["healing", "spell", "technique", "attack"]);
+assert.deepStrictEqual(Array.from(game.GameData.combatRules.actionPresets, preset => preset.id), ["all", "physical", "magic", "healing"]);
+assert(game.GameData.combatRules.actionPresets.every(preset => Object.values(preset.rates).every(rate => Number.isInteger(rate) && rate >= 0 && rate <= 100)));
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Characters.actionRates(game.Characters.get(created.id)))), { attack: 100, technique: 100, spell: 100, healing: 100 });
 const rates = { attack: 10, technique: 10, spell: 10, healing: 70 };
 assert(game.Characters.setActionRates(created.id, rates).ok);
 assert(game.Characters.setActionRates(created.id, { attack: 30, technique: 80, spell: 60, healing: 50 }).ok);

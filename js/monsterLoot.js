@@ -9,11 +9,12 @@
   function labels(ids) { return (ids || []).map(id => window.GameData.creatureFamilies?.[id]?.name).filter(Boolean); }
 
   function standardPool(dungeon) {
-    const all = Object.values(window.GameData.items).filter(item => (item.type === "weapon" || item.type === "armor") && !item.unique && !item.craftOnly && !item.dropOnly);
-    const maximumTier = Math.max(1, ...all.map(item => item.tier || 1));
-    const targetTier = Math.min(maximumTier, Math.max(1, 1 + Math.floor((dungeon.recommendedLevel - 1) / 6)));
-    const exact = all.filter(item => (item.tier || 1) === targetTier);
-    return exact.length ? exact : all.filter(item => (item.tier || 1) === Math.max(1, targetTier - 1));
+    const chapter = window.GameData.storyChapters?.find(entry => entry.id === dungeon.chapterId);
+    const baseTier = Math.max(1, chapter?.number || 1);
+    const difficultyBonus = window.GameData.dungeonDifficulties?.[dungeon.difficultyId]?.order || 0;
+    const maximumTier = Math.max(1, ...(window.GameData.shop?.standardTiers || []).map(entry => entry.tier));
+    const targetTier = Math.min(maximumTier, baseTier + difficultyBonus);
+    return window.Shop.standardTier(targetTier);
   }
   function allowedTypes(monster) {
     const weaponTypes = new Set(), armorTypes = new Set();
@@ -30,7 +31,7 @@
     let armor = pool.filter(item => item.type === "armor" && allowed.armorTypes.has(item.armorType));
     if (!weapons.length && !armor.length) {
       const tier = Math.max(1, ...pool.map(item => item.tier || 1));
-      pool = Object.values(window.GameData.items).filter(item => !item.unique && !item.craftOnly && !item.dropOnly && ["weapon", "armor"].includes(item.type) && (item.tier || 1) < tier);
+      pool = (window.GameData.shop?.standardTiers || []).filter(entry => entry.tier < tier).sort((a, b) => b.tier - a.tier).flatMap(entry => window.Shop.standardTier(entry.tier));
       weapons = pool.filter(item => item.type === "weapon" && allowed.weaponTypes.has(item.weaponType));
       armor = pool.filter(item => item.type === "armor" && allowed.armorTypes.has(item.armorType));
     }

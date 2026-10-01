@@ -43,8 +43,14 @@ async function run() {
   assert(html().includes("獲得・探索補正"), "Formation shows its acquisition section");
   assert(html().includes("危険察知"), "Formation lists the acquisition skill source");
   assert(html().includes("取得金額 ×1.08 +5G"), "Formation shows the combined acquisition bonus");
+  assert(html().includes('data-action="party-action-preset"') && html().includes("行動率を一括設定"));
+  await click("party-action-preset", { preset: "physical" });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Characters.get(a).actionRates)), { attack: 100, technique: 100, spell: 0, healing: 30 });
+  assert(html().includes("行動 物理重視"), "Formation summarizes each member's action-rate profile");
   await click("open-equipment", { character: a });
   assert(node("modal-root").innerHTML.includes('class="action-rate-form" data-character="' + a + '"'));
+  assert(node("modal-root").innerHTML.includes('data-action="action-rate-preset"') && node("modal-root").innerHTML.includes("物理重視") && node("modal-root").innerHTML.includes("回復重視"));
+  assert(node("modal-root").innerHTML.includes('type="range"') && node("modal-root").innerHTML.includes("data-action-rate-value"), "Action rates use the same slider UI in the equipment route");
   assert(!node("modal-root").innerHTML.includes('class="action-rate-form" data-character="' + b + '"'), "Only the opened character appears in the equipment screen");
   await click("close-modal");
   assert(game.Items.equip(a, "item-1").ok); game.UI.render();
@@ -70,10 +76,12 @@ async function run() {
   assert(html().includes('data-action="select-dungeon"') && html().includes("この攻略先へ出撃") && html().includes("選択中の攻略先"));
   assert(html().includes('<details class="dungeon-details"') && html().includes("依頼・噂・現地記録を見る"));
   assert(!html().includes("攻略目安") && !html().includes("次の挑戦へのヒント"));
-  assert(html().includes('data-action="select-dungeon-chapter"') && html().includes("本編攻略 0/5"), "Destination routes are grouped by chapter with progress");
+  assert(html().includes('data-action="select-dungeon-chapter"') && html().includes("data-dungeon-chapter-select") && html().includes("1〜5 / 15章を表示") && html().includes("本編攻略 0/5"), "Destination routes use a compact nearby tab set plus an all-chapter selector");
   assert(!html().includes("燐光の洞窟"), "Only the active chapter routes are rendered");
   await click("select-dungeon-chapter", { chapter: "seal" });
   assert(html().includes("燐光の洞窟") && html().includes("第2章：地下の封印"), "Past and future chapters can be inspected");
+  await listeners.change({ target: { hasAttribute: key => key === "data-dungeon-chapter-select", value: "roadside" } });
+  assert(html().includes("風鳴りの草原") && html().includes("第1章：街道の異変"), "The native chapter selector changes the displayed route chapter");
   await click("select-dungeon-chapter", { chapter: "roadside" });
   assert(html().includes("次の攻略先") && html().includes("寄り道・高難度") === false, "The next main route is highlighted and optional routes stay separated");
   await listeners.change({ target: { hasAttribute: key => key === "data-exploration-dungeon", dataset: { explorationDungeon: "meadow" }, value: "5" } });

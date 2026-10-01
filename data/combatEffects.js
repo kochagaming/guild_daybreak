@@ -7,6 +7,7 @@
     fire: { id: "fire", name: "炎", icon: "🔥" },
     ice: { id: "ice", name: "氷", icon: "❄" },
     lightning: { id: "lightning", name: "雷", icon: "ϟ" },
+    water: { id: "water", name: "水", icon: "≋" },
     nature: { id: "nature", name: "自然", icon: "❧" },
     dark: { id: "dark", name: "闇", icon: "☾" },
     arcane: { id: "arcane", name: "魔力", icon: "✦" }

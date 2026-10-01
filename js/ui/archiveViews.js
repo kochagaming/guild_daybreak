@@ -30,9 +30,9 @@
   function items(context) {
     const all = Object.values(window.GameData.items);
     const discovered = all.filter(item => window.Encyclopedia.item(item.id)).length;
+    const unknownStack = count => `<article class="codex-card is-unknown codex-unknown-stack" aria-label="未発見のアイテム${count}点"><div class="codex-icon">？</div><span class="type-label">未発見</span><h4>？？？ ×${count}</h4><p>この分類には、まだ記録されていない品があります。入手すると個別の情報が開きます。</p></article>`;
     function card(item) {
       const count = window.Encyclopedia.item(item.id);
-      if (!count) return `<article class="codex-card is-unknown" aria-label="未発見のアイテム"><div class="codex-icon">？</div><span class="type-label">未発見</span><h4>？？？</h4><p>入手すると情報が登録されます。</p></article>`;
       const equipmentType = window.GameData.equipmentTypes[item.weaponType || item.armorType];
       const type = item.type === "material" ? "素材" : `${item.type === "weapon" ? "武器" : "防具"}・${equipmentType?.name || "その他"}`;
       const stats = item.type === "material" ? "製作や強化に使用する素材" : [item.attack ? `攻撃 ${item.attack}` : "", item.magicAttack ? `魔法攻撃 ${item.magicAttack}` : "", item.defense ? `防御 ${item.defense}` : "", item.magicDefense ? `魔法防御 ${item.magicDefense}` : "", item.magicHealing ? `魔法回復 ${item.magicHealing}` : "", item.hp ? `HP ${item.hp}` : "", `重量 ${item.weight || 0}`, item.type === "weapon" ? (item.range === "ranged" ? "遠距離" : "近接") : ""].filter(Boolean).join(" ／ ");
@@ -64,10 +64,11 @@
     ].filter(group => group.items.length);
     const content = groups.map((group, index) => {
       const sorted = group.items.slice().sort((a, b) => (a.tier || 0) - (b.tier || 0) || a.name.localeCompare(b.name, "ja"));
-      const found = sorted.filter(item => window.Encyclopedia.item(item.id)).length;
-      return `<details class="monster-dungeon-group item-codex-group" ${index === 0 ? "open" : ""}><summary><span><strong>${context.escape(group.heading)}</strong><small>${context.escape(group.description)}</small></span><b>発見 ${found}/${sorted.length}</b><i aria-hidden="true">›</i></summary><div class="codex-grid">${sorted.map(card).join("")}</div></details>`;
+      const known = sorted.filter(item => window.Encyclopedia.item(item.id));
+      const unknownCount = sorted.length - known.length;
+      return `<details class="monster-dungeon-group item-codex-group" ${index === 0 ? "open" : ""}><summary><span><strong>${context.escape(group.heading)}</strong><small>${context.escape(group.description)}</small></span><b>発見 ${known.length}/${sorted.length}</b><i aria-hidden="true">›</i></summary><div class="codex-grid">${known.map(card).join("")}${unknownCount ? unknownStack(unknownCount) : ""}</div></details>`;
     }).join("");
-    return `<section class="panel archive-content item-codex"><div class="section-heading"><div><span class="label">ITEM ENCYCLOPEDIA</span><h3>アイテム図鑑</h3></div><strong>${discovered} / ${all.length}</strong></div><p>武器種、防具種、素材に分けて記録しています。一度でも入手した品は、売却や製作に使った後も図鑑に残ります。</p>${content}</section>`;
+    return `<section class="panel archive-content item-codex"><div class="section-heading"><div><span class="label">ITEM ENCYCLOPEDIA</span><h3>アイテム図鑑</h3></div><strong>${discovered} / ${all.length}</strong></div><p>武器種、防具種、素材に分けて記録しています。一度でも入手した品は、売却や製作に使った後も図鑑に残ります。未発見品は分類ごとにまとめて伏せています。</p>${content}</section>`;
   }
 
   function monsters(context) {

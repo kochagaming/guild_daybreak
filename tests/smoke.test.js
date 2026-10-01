@@ -37,7 +37,7 @@ assert(game.Items.equip(created.id, initialWeapon.id).ok, "武器個体を装備
 assert(game.Characters.equipmentWeight(game.Characters.get(created.id)) === 2, "装備重量が反映されること");
 const tooHeavy = game.Items.createInstance("steel_sword", { qualityId: "hefty", modifiers: { hp: 0, attack: 0, defense: 0 } });
 assert(!game.Items.canEquip(created.id, tooHeavy.id).ok, "装備可能重量を超える装備を拒否すること");
-assert(game.Items.effects(tooHeavy).attack === 32 && game.Items.effects(tooHeavy).weight === 16, "ずっしりとした品質が性能・重量を2倍にすること");
+assert(game.Items.effects(tooHeavy).attack === 64 && game.Items.effects(tooHeavy).weight === 16, "ずっしりとした品質が性能4倍・重量2倍にすること");
 const featherlight = game.Items.createInstance("iron_sword", { qualityId: "featherlight", modifiers: { hp: 0, attack: 0, defense: 0 } });
 assert(game.Items.effects(featherlight).attack === 5 && game.Items.effects(featherlight).weight === 2.5, "羽根のような品質が性能・重量を半減すること");
 const capacityBeforeLevel = game.Characters.maxWeight(game.Characters.get(created.id));

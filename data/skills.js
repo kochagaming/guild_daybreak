@@ -1,6 +1,16 @@
 (function () {
   "use strict";
   const data = window.GameData = window.GameData || {};
+  data.combatRules = {
+    actionPriority: ["healing", "spell", "technique", "attack"],
+    defaultActionRates: { attack: 100, technique: 100, spell: 100, healing: 100 },
+    actionPresets: [
+      { id: "all", name: "全100", rates: { attack: 100, technique: 100, spell: 100, healing: 100 } },
+      { id: "physical", name: "物理重視", rates: { attack: 100, technique: 100, spell: 0, healing: 30 } },
+      { id: "magic", name: "魔法重視", rates: { attack: 30, technique: 0, spell: 100, healing: 30 } },
+      { id: "healing", name: "回復重視", rates: { attack: 30, technique: 0, spell: 30, healing: 100 } }
+    ]
+  };
 
   const active = (id, name, category, scope, effect, description) => ({
     id, name, category, description,

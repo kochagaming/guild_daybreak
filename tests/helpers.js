@@ -6,7 +6,7 @@ exports.createCharacter = function (game, name, jobId = "warrior", raceId = "hum
   state.characters.push({
     id, name, jobId, raceId, birthId, level: 1, exp: 0,
     portraitId: game.Characters.portraitId({ jobId, portraitId: selectedPortraitId }),
-    actionRates: { attack: 100, technique: 25, spell: 20, healing: 15 },
+    actionRates: Object.assign({}, game.GameData.combatRules.defaultActionRates),
     base: { hp: 48 + variance * 3, attack: 9 + variance, defense: 7 + (2 - variance) },
     equipment: [], career: null, createdAt: game.GameRuntime.now()
   });

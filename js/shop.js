@@ -8,6 +8,29 @@
   function dailyState() { return window.GameState.data.dailyShop; }
   const pad = value => String(value).padStart(2, "0");
 
+  function standardTierUnlocked(entry, state = window.GameState.data) {
+    return !entry.unlockAfter || state.story.completed.includes(entry.unlockAfter);
+  }
+
+  function standardTier(tier) {
+    const tiers = window.GameData.shop?.standardTiers;
+    if (!tiers?.length) return Object.values(window.GameData.items).filter(item => ["weapon", "armor"].includes(item.type) && !item.unique && !item.craftOnly && !item.dropOnly && (item.tier || 1) === tier);
+    const entry = tiers.find(candidate => candidate.tier === tier);
+    return entry ? entry.itemIds.map(id => window.GameData.items[id]).filter(Boolean) : [];
+  }
+
+  function standardStock(state = window.GameState.data) {
+    const tiers = window.GameData.shop?.standardTiers;
+    if (!tiers?.length) return Object.values(window.GameData.items).filter(item => ["weapon", "armor"].includes(item.type) && !item.unique && !item.craftOnly && !item.dropOnly);
+    return tiers
+      .filter(entry => standardTierUnlocked(entry, state))
+      .flatMap(entry => standardTier(entry.tier));
+  }
+
+  function isStandardItemUnlocked(itemId, state = window.GameState.data) {
+    return standardStock(state).some(item => item.id === itemId);
+  }
+
   function dateKey(milliseconds = window.GameRuntime.now()) {
     const date = new Date(milliseconds - config().resetHour * 60 * 60 * 1000);
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
@@ -96,7 +119,7 @@
     if (!Object.prototype.hasOwnProperty.call(window.GameData.items, itemId)) return { ok: false, message: "この品は購入できません。" };
     const item = window.GameData.items[itemId];
     const state = window.GameState.data;
-    if (!item || item.type === "material" || item.unique || item.craftOnly || item.dropOnly) return { ok: false, message: "この品は購入できません。" };
+    if (!item || item.type === "material" || item.unique || item.craftOnly || item.dropOnly || !isStandardItemUnlocked(itemId, state)) return { ok: false, message: "この品はまだ商店に並んでいません。" };
     if (state.gold < item.price) return { ok: false, message: "所持金が足りません。" };
     state.gold -= item.price;
     const instance = window.Items.add(itemId, 1, { source: "shop" }).instances[0];
@@ -106,5 +129,5 @@
     return { ok: true, message: `${window.Items.displayName(instance)}を購入しました。`, instance };
   }
 
-  window.Shop = { buy, buyDaily, dailyStock, dailyPrice, knownEquipmentIds, dateKey, sync };
+  window.Shop = { buy, buyDaily, dailyStock, dailyPrice, knownEquipmentIds, dateKey, sync, standardStock, standardTier, standardTierUnlocked, isStandardItemUnlocked };
 })();

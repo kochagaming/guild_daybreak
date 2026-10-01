@@ -12,7 +12,7 @@ const bow = game.Items.createInstance("wolf_fang_bow", { modifiers: zero });
 assert.strictEqual(bow.qualityId, "fine"); assert.strictEqual(bow.locked, true);
 assert(!game.Shop.buy(bow.templateId).ok);
 const armor = game.Items.createInstance("golem_plate", { qualityId: "hefty", modifiers: zero });
-assert.strictEqual(game.Items.effects(armor).defense, 18 + 16);
+assert.strictEqual(game.Items.effects(armor).defense, 52);
 const feather = game.Items.createInstance("golem_plate", { qualityId: "featherlight", modifiers: zero });
 assert.strictEqual(game.Items.effects(feather).defense, 5 + 4);
 const staff = game.Items.createInstance("sentinel_staff", { modifiers: zero });

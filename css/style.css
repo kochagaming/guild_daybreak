@@ -227,8 +227,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .slot-actions { margin-top: auto; display: flex; gap: 13px; }
 .muted-action { color: var(--muted); }
 .quality-label { display: inline-block; font-size: .67rem; font-weight: 700; letter-spacing: .04em; }
-.quality-broken { color: #8b7773 !important; }.quality-worn { color: #797f86 !important; }.quality-standard { color: #59616b !important; }.quality-familiar { color: #278062 !important; }.quality-hefty { color: #b3573f !important; }.quality-featherlight { color: #3c7da3 !important; }.quality-fine { color: #8a58b0 !important; }.quality-divine { color: #bd8722 !important; text-shadow: 0 0 12px rgba(218,171,74,.28); }
-.quality-border-broken { border-left: 4px solid #8b7773 !important; }.quality-border-worn { border-left: 4px solid #8a8f95 !important; }.quality-border-standard { border-left: 4px solid #9ca3a9 !important; }.quality-border-familiar { border-left: 4px solid #3e9c79 !important; }.quality-border-hefty { border-left: 4px solid #bf624b !important; }.quality-border-featherlight { border-left: 4px solid #4b91b8 !important; }.quality-border-fine { border-left: 4px solid #9564bd !important; }.quality-border-divine { border-left: 4px solid #d4a33d !important; box-shadow: 0 0 0 1px rgba(212,163,61,.24), var(--shadow); }
+.quality-broken { color: #8b7773 !important; }.quality-worn { color: #797f86 !important; }.quality-crude { color: #8a704f !important; }.quality-standard { color: #59616b !important; }.quality-wellmade { color: #417e59 !important; }.quality-familiar { color: #278062 !important; }.quality-refined { color: #267d82 !important; }.quality-hefty { color: #b3573f !important; }.quality-featherlight { color: #3c7da3 !important; }.quality-fine { color: #8a58b0 !important; }.quality-exquisite { color: #7049a8 !important; }.quality-legendary { color: #c15f2f !important; text-shadow: 0 0 10px rgba(193,95,47,.2); }.quality-divine { color: #bd8722 !important; text-shadow: 0 0 12px rgba(218,171,74,.28); }
+.quality-border-broken { border-left: 4px solid #8b7773 !important; }.quality-border-worn { border-left: 4px solid #8a8f95 !important; }.quality-border-crude { border-left: 4px solid #9a7c56 !important; }.quality-border-standard { border-left: 4px solid #9ca3a9 !important; }.quality-border-wellmade { border-left: 4px solid #57936c !important; }.quality-border-familiar { border-left: 4px solid #3e9c79 !important; }.quality-border-refined { border-left: 4px solid #3a959b !important; }.quality-border-hefty { border-left: 4px solid #bf624b !important; }.quality-border-featherlight { border-left: 4px solid #4b91b8 !important; }.quality-border-fine { border-left: 4px solid #9564bd !important; }.quality-border-exquisite { border-left: 4px solid #7d55b5 !important; }.quality-border-legendary { border-left: 4px solid #cf6d38 !important; box-shadow: 0 0 0 1px rgba(207,109,56,.18), var(--shadow); }.quality-border-divine { border-left: 4px solid #d4a33d !important; box-shadow: 0 0 0 1px rgba(212,163,61,.24), var(--shadow); }
 .loot-chip.familiar { color: #26765b; border-color: #88bca7; }.loot-chip.hefty { color: #984936; border-color: #d0a093; }.loot-chip.featherlight { color: #32779c; border-color: #98bfd4; }.loot-chip.fine { color: #7c4ba4; border-color: #bca0d3; }.loot-chip.divine { color: #a77313; border-color: #d5b873; background: #fff9e9; }
 .equipment-modal-backdrop { align-items: start; overflow-y: auto; }
 .equipment-modal { width: min(860px, 100%); margin: 35px auto; padding: 24px; text-align: left; }
@@ -243,7 +243,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .comparison-stats { margin: 13px 0 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }.comparison-stats > span { padding: 7px 8px; display: flex; justify-content: space-between; background: #ece8df; border-radius: 4px; font-size: .7rem; }
 .diff { margin-left: 5px; font-weight: 700; }.diff.positive { color: var(--green); }.diff.negative { color: var(--red); }.diff.neutral { color: #999; }
 .affix-line { min-height: 20px; margin: 7px 0 13px; color: #4e6f8e; font-size: .68rem; }
-.inventory-intro > div { display: grid; gap: 9px; }.quality-legend { display: flex; flex-wrap: wrap; gap: 8px 13px; }
+.inventory-intro > div { display: grid; gap: 9px; }.quality-guide { border: 1px solid rgba(128, 105, 65, .24); border-radius: 8px; background: rgba(255, 255, 255, .42); }.quality-guide > summary { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; cursor: pointer; font-size: .76rem; font-weight: 700; color: var(--muted); }.quality-guide > summary span { font-weight: 500; }.quality-guide[open] > summary { border-bottom: 1px solid rgba(128, 105, 65, .18); }.quality-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 7px 12px; padding: 9px 10px; }
 .owned-equipment-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }.owned-equipment { padding: 15px; background: rgba(255,255,255,.72); border: 1px solid var(--line); border-radius: 7px; }
 .owned-equipment-top { display: flex; align-items: center; gap: 11px; }.owned-equipment-top h3 { margin: 2px 0 0; font-size: .92rem; }.equipped-badge { margin-left: auto; padding: 4px 7px; color: #276e56; background: #dcece5; border-radius: 99px; font-size: .61rem; white-space: nowrap; }
 .owned-stats { margin-top: 13px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }.owned-stats span { padding: 6px 4px; color: var(--muted); background: #ece9e1; border-radius: 4px; text-align: center; font-size: .63rem; }.owned-stats strong { display: block; margin-top: 2px; color: var(--ink); font: 700 .78rem Georgia, serif; }
@@ -667,6 +667,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .departure-members li { display: flex; align-items: center; gap: .75rem; min-width: 0; }
 .departure-members li > span:last-child { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
 .departure-members small { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+.departure-members .departure-action-profile { color: var(--gold); font-size: .75rem; font-weight: 700; }
 .dungeon-details { border-block: 1px solid var(--line); margin-top: .75rem; }
 .dungeon-details .monster-preview { margin-block: .5rem 1rem; }
 .dungeon-content > label { display: block; font-size: .875rem; }
@@ -692,6 +693,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .story-next-step small { color: #c4cbd0; line-height: 1.55; }
 .story-primary-action { display: flex; justify-content: flex-end; margin-top: 1rem; }
 .story-primary-action .button { min-width: 180px; }
+.story-main-complete { border-color: rgba(181,138,61,.7); background: radial-gradient(circle at 85% 8%,rgba(239,201,108,.22),transparent 34%),var(--panel); }
+.story-main-complete .story-current-scene { box-shadow: inset 4px 0 #d0a642,0 10px 30px rgba(96,66,21,.08); }
+.story-completion-summary { display: grid; grid-template-columns: auto minmax(0,1fr); gap: .85rem; align-items: center; padding: .9rem 1rem; border: 1px solid rgba(181,138,61,.34); border-radius: 10px; background: rgba(255,248,223,.7); }
+.story-completion-summary > span { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; color: #fff4bf; background: linear-gradient(145deg,#6f5529,#c29a45); box-shadow: 0 0 0 4px rgba(181,138,61,.12); font-size: 1.2rem; }
+.story-completion-summary strong,.story-completion-summary p,.story-completion-summary small { display: block; }
+.story-completion-summary p { margin: .25rem 0; line-height: 1.6; }
+.story-completion-summary small { color: var(--muted); }
 .story-route-progress { list-style: none; display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: .45rem; margin: 1rem 0; padding: 0; }
 .story-route-progress li { display: flex; align-items: center; gap: .55rem; min-width: 0; padding: .6rem .7rem; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: rgba(255,255,255,.45); }
 .story-route-progress li.current { color: var(--ink); border-color: #b58a3d; background: #fff8e7; box-shadow: inset 3px 0 #b58a3d; }
@@ -886,6 +894,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .codex-effect { padding: .65rem; border-left: 3px solid var(--gold); background: rgba(185,139,62,.08); }
 .codex-card.is-unknown { color: #777; border-style: dashed; background: rgba(225,222,214,.5); }
 .codex-card.is-unknown .codex-icon { color: #a5a19a; background: #d5d1c8; }
+.codex-card.codex-unknown-stack { min-height: 170px; }
 .codex-card.is-sighted { border-color: rgba(60,102,140,.35); }
 .codex-card.is-boss { border-color: rgba(185,139,62,.55); box-shadow: inset 0 3px var(--gold); }
 .item-acquisition { margin: .7rem 0; overflow: hidden; border: 1px solid #d6cebf; border-radius: 4px; background: #f4f0e8; }
@@ -1047,7 +1056,12 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .equipment-stat-chips strong { color: #202a32; font: 700 .78rem Georgia,serif; font-variant-numeric: tabular-nums; }
 
 /* Compact destination list */
-.route-chapter-tabs { margin: .55rem 0 .65rem; padding-bottom: .2rem; display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: thin; scroll-snap-type: x proximity; }
+.route-chapter-navigator { margin: .55rem 0 .65rem; display: grid; gap: .4rem; }
+.route-chapter-navigator > small { color: var(--muted); text-align: right; }
+.route-chapter-select { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: .65rem; }
+.route-chapter-select > span { color: var(--muted); font-size: .72rem; font-weight: 800; white-space: nowrap; }
+.route-chapter-select select { min-width: 0; width: 100%; }
+.route-chapter-tabs { margin: 0; padding-bottom: .2rem; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: .4rem; }
 .route-chapter-tab { min-width: 116px; min-height: 48px; padding: .4rem .55rem; display: grid; gap: .08rem; flex: 0 0 auto; color: #675b48; background: #ece8de; border: 1px solid #c9c0ad; border-radius: 5px; text-align: left; scroll-snap-align: start; }
 .route-chapter-tab strong { font-size: .75rem; }
 .route-chapter-tab span { color: var(--muted); font-size: .6rem; }
@@ -1202,6 +1216,12 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .formation-total { display: flex; align-items: baseline; gap: 1rem; }
 .formation-total strong { font-size: 1.25rem; color: var(--gold); }
 .formation-total span { font-size: .875rem; color: var(--muted); }
+.party-action-presets { display: flex; align-items: center; justify-content: space-between; gap: .7rem; margin-top: .65rem; padding: .55rem .65rem; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.45); }
+.party-action-presets > span { display: grid; gap: .1rem; }
+.party-action-presets > span strong { font-size: .78rem; }
+.party-action-presets > span small { color: var(--muted); font-size: .68rem; }
+.party-action-presets > div { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; }
+.party-action-presets .button { min-height: 30px; padding: .28rem .5rem; font-size: .68rem; }
 .formation-slot-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .65rem; margin: 1rem 0; }
 .formation-slot-card { min-height: 82px; display: grid; grid-template-columns: 30px minmax(0,1fr) auto; align-items: center; gap: .5rem; padding: .65rem; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.58); }
 .formation-slot-card.is-current { border-color: var(--gold); box-shadow: inset 3px 0 var(--gold); }
@@ -1444,6 +1464,12 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .equipment-type-group > summary small { color: var(--muted); font-size: .75rem; overflow-wrap: anywhere; }
 .equipment-type-count { color: var(--gold); font-size: .72rem; font-weight: 800; white-space: nowrap; }
 .equipment-type-group[open] > summary .record-chevron { transform: rotate(90deg); }
+.shop-stock-history { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+.shop-stock-history > summary { padding: .65rem .8rem; display: flex; justify-content: space-between; gap: .75rem; color: var(--muted); font-weight: 700; cursor: pointer; list-style: none; }
+.shop-stock-history > summary::-webkit-details-marker { display: none; }
+.shop-stock-history > summary::before { content: "＋"; color: var(--gold); }
+.shop-stock-history[open] > summary::before { content: "－"; }
+.shop-stock-history > .item-list { padding-top: .35rem; }
 .equipment-type-products { padding: .45rem; border-top: 1px solid var(--line); background: rgba(244,239,227,.52); }
 .future-recipe-note { display: flex; align-items: center; justify-content: space-between; gap: .65rem; margin-top: .4rem; padding: .6rem .7rem; color: var(--muted); background: rgba(36,42,48,.045); border: 1px dashed rgba(111,91,55,.28); border-radius: 5px; font-size: .75rem; }
 .future-recipe-note strong { color: var(--ink-soft); white-space: nowrap; }
@@ -1516,6 +1542,9 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .blacksmith-inspector .forge-stat-list, .blacksmith-inspector .recipe-skill-pool, .blacksmith-inspector .recipe-comparison, .blacksmith-inspector .inventory-comparison-scroll { box-sizing: border-box; max-width: 100%; }
 .action-rate-form { display: grid; grid-template-columns: repeat(4,minmax(112px,1fr)) auto; gap: .55rem; align-items: end; margin-top: .7rem; padding: .65rem; border: 1px solid var(--line); border-radius: 6px; background: rgba(255,255,255,.55); }
 .action-rate-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.action-rate-presets { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: .35rem; }
+.action-rate-presets > span { margin-right: .15rem; color: var(--muted); font-size: .7rem; font-weight: 700; }
+.action-rate-presets .button { min-height: 30px; padding: .3rem .55rem; font-size: .7rem; }
 .action-rate-total { padding: .2rem .45rem; border-radius: 4px; font-size: .75rem; font-weight: 800; }
 .action-rate-total.is-valid { color: var(--success); background: rgba(55,112,76,.1); }
 .action-rate-total.is-invalid { color: var(--danger); background: rgba(154,55,51,.1); }
@@ -1597,7 +1626,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .daily-shop-section .item-list { grid-template-columns: 1fr; }
   .equipment-type-group > summary { min-height: 56px; padding: .6rem .65rem; }
   .action-rate-form { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .action-rate-form .button { grid-column: 1 / -1; }
+  .action-rate-form > .button[type="submit"] { grid-column: 1 / -1; }
   .directory-controls { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .directory-controls label:first-child { grid-column: 1 / -1; }
   .record-summary, .applicant-card .record-summary, .owned-equipment .record-summary { grid-template-columns: 38px minmax(0,1fr) auto 18px; min-height: 64px; gap: .5rem; padding: .45rem .55rem; }
@@ -1682,6 +1711,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .formation-board > .section-heading .label, .roster-browser > .section-heading .label { display: none; }
   .formation-board > .section-heading h3, .roster-browser > .section-heading h3 { margin: 0; color: inherit; font-size: .95rem; }
   .formation-board > .small-note { margin: .55rem .7rem; font-size: .75rem; }
+  .party-action-presets { align-items: stretch; margin: .45rem .55rem .6rem; padding: .5rem; }
+  .party-action-presets > div { justify-content: flex-start; }
   .formation-total { gap: .55rem; }
   .formation-total strong { font-size: 1rem; }
   .formation-total span { color: #d3c7aa; font-size: .75rem; }
@@ -1823,8 +1854,9 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .route-back { min-width: 44px; padding-inline: .45rem; }
   .route-heading h2 { font-size: .92rem; }
   .route-status { padding-inline: .4rem; font-size: .62rem; }
-  .route-chapter-tabs { margin-inline: -.25rem; padding-inline: .25rem; }
-  .route-chapter-tab { min-width: 104px; min-height: 44px; padding: .32rem .45rem; }
+  .route-chapter-tabs { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .route-chapter-tab { min-width: 0; min-height: 44px; padding: .32rem .45rem; }
+  .route-chapter-tab:nth-child(n+4) { display: none; }
   .route-chapter-overview { margin-inline: -.25rem; padding: .5rem; grid-template-columns: minmax(0,1fr) auto; gap: .35rem .55rem; }
   .route-chapter-progress { grid-column: 1 / -1; grid-row: 2; }
   .route-chapter-overview small { grid-column: 2; grid-row: 1; }

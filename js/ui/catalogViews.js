@@ -5,13 +5,20 @@
 
   function equipmentTypeId(item) { return item.weaponType || item.armorType; }
 
-  function groupedEquipment(entries, renderEntry, emptyText, renderFooter) {
+  function groupedEquipment(entries, renderEntry, emptyText, renderFooter, options = {}) {
     const groups = Object.values(window.GameData.equipmentTypes).map(type => ({
       type,
       entries: entries.filter(entry => equipmentTypeId(entry.item || entry) === type.id)
     })).filter(group => group.entries.length);
     if (!groups.length) return `<p class="empty-line">${emptyText}</p>`;
-    return `<div class="equipment-type-groups">${groups.map(group => `<details class="equipment-type-group" data-equipment-type="${group.type.id}" data-detail="equipment-type-${group.type.id}"><summary><span><strong>${group.type.name}</strong><small>（${group.type.summary || (group.type.category === "weapon" ? "武器" : "防具")}）</small></span><span class="equipment-type-count">${group.entries.length}点</span><i class="record-chevron" aria-hidden="true">›</i></summary><div class="equipment-type-products item-list">${group.entries.map(renderEntry).join("")}${renderFooter ? renderFooter(group.type, group.entries) : ""}</div></details>`).join("")}</div>`;
+    return `<div class="equipment-type-groups">${groups.map(group => {
+      const sorted = group.entries.slice().sort((a, b) => ((a.item || a).tier || 0) - ((b.item || b).tier || 0));
+      const latestTier = Math.max(...sorted.map(entry => (entry.item || entry).tier || 0));
+      const recent = options.collapseHistory ? sorted.filter(entry => ((entry.item || entry).tier || 0) >= latestTier - 1) : sorted;
+      const history = options.collapseHistory ? sorted.filter(entry => ((entry.item || entry).tier || 0) < latestTier - 1) : [];
+      const historyBlock = history.length ? `<details class="shop-stock-history"><summary>過去の品を表示 <span>${history.length}点</span></summary><div class="item-list">${history.map(renderEntry).join("")}</div></details>` : "";
+      return `<details class="equipment-type-group" data-equipment-type="${group.type.id}" data-detail="equipment-type-${group.type.id}"><summary><span><strong>${group.type.name}</strong><small>（${group.type.summary || (group.type.category === "weapon" ? "武器" : "防具")}）</small></span><span class="equipment-type-count">${group.entries.length}点</span><i class="record-chevron" aria-hidden="true">›</i></summary><div class="equipment-type-products item-list">${recent.map(renderEntry).join("")}${historyBlock}${renderFooter ? renderFooter(group.type, group.entries) : ""}</div></details>`;
+    }).join("")}</div>`;
   }
 
   function blacksmithMenu(context) {
@@ -22,11 +29,13 @@
   }
 
   function shop(context) {
-    const goods = Object.values(window.GameData.items).filter(item => item.type !== "material" && !item.unique && !item.craftOnly && !item.dropOnly);
+    const goods = window.Shop.standardStock();
+    const nextTier = (window.GameData.shop.standardTiers || []).find(entry => !window.Shop.standardTierUnlocked(entry));
     const dailyGoods = window.Shop.dailyStock().map(offer => {
       const base = window.Items.template(offer.templateId), effect = window.Items.effects(offer);
       return Object.assign({}, base, effect, {
         offerId: offer.id,
+        qualityId: offer.qualityId,
         name: window.Items.displayName(offer),
         price: offer.price,
         purchased: offer.purchased,
@@ -34,8 +43,10 @@
       });
     });
     const daily = `<section class="daily-shop-section"><div class="section-heading"><div><span class="label">DAILY MARKET</span><h3>日替わり商品</h3></div><span class="badge">毎日4:00更新</span></div><p class="small-note">一度でも入手した装備から、性能の異なる10点が並びます。各商品は1日1点限りです。</p>${groupedEquipment(dailyGoods, item => context.itemCard(item, "dailyShop"), "日替わり商品はありません")}</section>`;
-    const standard = groupedEquipment(goods, item => context.itemCard(item, "shop"), "販売中の装備はありません");
-    return `<div class="page-intro"><p>装備種別を開くと、その種別の特徴と販売中の品を確認できます。</p><div class="wallet">所持金 <strong>${context.formatGold(window.GameState.data.gold)}</strong></div></div><div class="shop-sections">${daily}<section class="standard-shop-section"><div class="section-heading"><div><span class="label">STANDARD STOCK</span><h3>通常商品</h3></div><strong>${goods.length}点</strong></div>${standard}</section></div>`;
+    const standard = groupedEquipment(goods, item => context.itemCard(item, "shop"), "販売中の装備はありません", null, { collapseHistory: true });
+    const nextUnlock = nextTier ? window.GameData.storyChapters.find(chapter => chapter.id === nextTier.unlockAfter) : null;
+    const progression = nextTier ? `<p class="small-note">次の入荷：${context.escape(nextUnlock?.title || "物語の進行")}の完了後、Tier ${nextTier.tier}の汎用品</p>` : `<p class="small-note">すべての通常商品が入荷済みです。</p>`;
+    return `<div class="page-intro"><p>物語が進むと、新しいTierの汎用品が入荷します。装備種別を開くと販売中の品を確認できます。</p><div class="wallet">所持金 <strong>${context.formatGold(window.GameState.data.gold)}</strong></div></div><div class="shop-sections">${daily}<section class="standard-shop-section"><div class="section-heading"><div><span class="label">STANDARD STOCK</span><h3>通常商品</h3></div><strong>${goods.length}点</strong></div>${progression}${standard}</section></div>`;
   }
 
   function upgrades(context) {
@@ -129,7 +140,7 @@
       return hidden ? `<div class="future-recipe-note"><strong>この先のレシピ ${hidden}件</strong><span>物語を進めると、次の1件が表示されます。</span></div>` : "";
     };
     const catalog = `<div class="blacksmith-shop-sections">${groupedEquipment(catalogEntries, entry => recipeCard(entry.recipe), "条件に一致するレシピがありません。", futureRecipes)}</div>`;
-    return `<div class="page-intro"><p>解放済みの品と、装備種別ごとに次に解放される1件を表示します。同じ種別のレシピは同じ枠にまとまります。</p><div class="wallet">所持金 <strong>${formatGold(window.GameState.data.gold)}</strong></div></div>${controls}<section class="panel forge-catalog"><div class="section-heading"><div><span class="label">RECIPES</span><h3>製作レシピ</h3></div><strong>解放 ${unlockedTotal}/${window.GameData.recipes.length}件</strong></div>${catalog}<nav class="pagination" aria-label="レシピ種別のページ"><button class="button ghost" data-action="recipe-page" data-page="${view.page - 1}" ${view.page === 0 ? "disabled" : ""}>前へ</button><span>${view.page + 1}/${pages}ページ · ${recipeGroups.length}種・${recipes.length}件</span><button class="button ghost" data-action="recipe-page" data-page="${view.page + 1}" ${view.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav></section>`;
+    return `<div class="page-intro"><p>解放済みの品と、装備種別ごとに次に解放される1件を表示します。同じ種別のレシピは同じ枠にまとまります。完成品の品質は製作時に決まり、性能倍率は1〜5倍です。</p><div class="wallet">所持金 <strong>${formatGold(window.GameState.data.gold)}</strong></div></div>${controls}<section class="panel forge-catalog"><div class="section-heading"><div><span class="label">RECIPES</span><h3>製作レシピ</h3></div><strong>解放 ${unlockedTotal}/${window.GameData.recipes.length}件</strong></div>${catalog}<nav class="pagination" aria-label="レシピ種別のページ"><button class="button ghost" data-action="recipe-page" data-page="${view.page - 1}" ${view.page === 0 ? "disabled" : ""}>前へ</button><span>${view.page + 1}/${pages}ページ · ${recipeGroups.length}種・${recipes.length}件</span><button class="button ghost" data-action="recipe-page" data-page="${view.page + 1}" ${view.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav></section>`;
   }
 
   window.GameUIViews.catalog = { blacksmith, blacksmithMenu, shop, upgrades };

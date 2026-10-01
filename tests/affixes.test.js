@@ -17,7 +17,7 @@ for (const [id, hitRate] of [["wooden_sword", .02], ["iron_sword", .03], ["steel
   assert(Math.abs(game.Items.effects(item).hitRate - hitRate) < 1e-9, `${id}の固定命中補正`);
 }
 assert.strictEqual(game.Items.effects({ templateId: "iron_armor", qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 } }).hitRate, 0);
-assert(Math.abs(game.Items.effects({ templateId: "wooden_sword", qualityId: "fine", modifiers: { hp: 0, attack: 0, defense: 0 } }).hitRate - .03) < 1e-9, "品質倍率を固定命中へ適用");
+assert(Math.abs(game.Items.effects({ templateId: "wooden_sword", qualityId: "fine", modifiers: { hp: 0, attack: 0, defense: 0 } }).hitRate - .06) < 1e-9, "品質倍率を固定命中へ適用");
 for (const [id, physical, magic, healing] of [["arcane_staff", 2, 16, 13], ["spirit_staff", 3, 18, 14], ["sentinel_staff", 2, 15, 12]]) {
   const base = game.GameData.items[id];
   assert.strictEqual(base.attack, physical);

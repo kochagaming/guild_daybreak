@@ -26,16 +26,22 @@
 
   function story(context) {
     const state = window.GameState.data, storyState = window.Story.ensure(), focus = window.Story.focus(), chapter = focus.chapter;
+    const finalChapter = window.GameData.storyChapters.at(-1);
+    const mainChapterCount = window.GameData.storyChapters.filter(entry => Number(entry.number) >= 1).length;
+    const mainStoryComplete = Boolean(finalChapter && storyState.completed.includes(finalChapter.id) && !window.Story.current());
+    const postgameRoutes = finalChapter ? window.Story.chapterDungeons(finalChapter.id).filter(dungeon => !dungeon.requiredForStory) : [];
+    const postgameCleared = postgameRoutes.filter(dungeon => storyState.facts.clears.includes(dungeon.id)).length;
     const nextPage = !state.characters.length ? "characters" : "party";
     const nextView = !state.parties[0].length ? "formation" : "adventure";
     const narrative = focus.scene;
     const progress = focus.total ? `${focus.cleared}/${focus.total}攻略` : chapter && storyState.completed.includes(chapter.id) ? "読了" : "準備中";
     const objective = focus.dungeon ? `${focus.dungeon.name}を探索し、最奥まで攻略する` : chapter?.objective;
-    return `<section class="panel story-panel story-current" aria-labelledby="current-story-title">
-      <div class="story-current-heading"><div><span class="label">GUILD CHRONICLE · CURRENT</span><h3 id="current-story-title">${chapter ? context.escape(chapter.title) : "ギルドの物語"}</h3></div><span class="badge ${focus.dungeon ? "good" : ""}">${progress}</span></div>
+    return `<section class="panel story-panel story-current ${mainStoryComplete ? "story-main-complete" : ""}" aria-labelledby="current-story-title">
+      <div class="story-current-heading"><div><span class="label">${mainStoryComplete ? "MAIN STORY COMPLETE" : "GUILD CHRONICLE · CURRENT"}</span><h3 id="current-story-title">${mainStoryComplete ? "本編完結 — 星なき夜の果て" : chapter ? context.escape(chapter.title) : "ギルドの物語"}</h3></div><span class="badge ${focus.dungeon || mainStoryComplete ? "good" : ""}">${mainStoryComplete ? "15章 完結" : progress}</span></div>
       <article class="story-current-scene"><span>${context.escape(focus.label)}</span><h4>${context.escape(narrative?.name || "次の知らせを待つ")}</h4><p>${context.escape(narrative?.text || "現在公開されている物語をすべて読み終えました。")}</p></article>
+      ${mainStoryComplete ? `<div class="story-completion-summary"><span aria-hidden="true">✦</span><div><strong>名もなき宿から始まった物語を見届けました</strong><p>全${mainChapterCount}章を達成。クリア後も、任意高難度「${context.escape(postgameRoutes[0]?.name || "星後の神域")}」と未踏の記録を探索できます。</p><small>クリア後高難度 ${postgameCleared}/${postgameRoutes.length}攻略</small></div></div>` : ""}
       ${chapter && !storyState.completed.includes(chapter.id) ? `<div class="story-next-step"><span>次の目的</span><strong>${context.escape(objective || "ギルドで次の依頼を待つ")}</strong>${focus.dungeon ? `<small>${context.escape(focus.dungeon.description)}</small>` : chapter.id === "prologue" ? `<small>冒険者雇用：${state.characters.length ? "達成" : "未達成"} ／ 初出発：${storyState.facts.departed ? "達成" : "未達成"}</small>` : ""}</div>${routeProgress(context, chapter, focus)}` : ""}
-      <div class="story-primary-action"><button class="button primary" ${nextPage === "characters" ? 'data-nav="characters"' : `data-action="party-view" data-view="${nextView}"`}>${nextPage === "characters" ? "仲間を募集する" : nextView === "formation" ? "パーティを編成する" : "探索・攻略へ"}</button></div>
+      <div class="story-primary-action"><button class="button primary" ${nextPage === "characters" ? 'data-nav="characters"' : `data-action="party-view" data-view="${nextView}"`}>${nextPage === "characters" ? "仲間を募集する" : nextView === "formation" ? "パーティを編成する" : mainStoryComplete ? "クリア後の探索へ" : "探索・攻略へ"}</button></div>
     </section>`;
   }
 

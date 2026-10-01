@@ -12,7 +12,12 @@
     ["night_bloom_sanctuary", "nightbloom_oracle", 3000, "saint_thorn", 2, 3],
     ["aurora_summit", "aurora_warden", 4000, "aurora_feather", 2, 3],
     ["eclipsed_throne", "eclipse_regent", 5200, "eclipse_shard", 2, 3],
-    ["blackmoon_core", "blackmoon_heart", 6600, "royal_eclipse_fragment", 2, 3]
+    ["blackmoon_core", "blackmoon_heart", 6600, "royal_eclipse_fragment", 2, 3],
+    ["origin_tree_heart", "origin_heart", 8200, "first_star_core", 2, 3],
+    ["starsea_nucleus", "starsea_core", 9800, "starsea_heart", 2, 3],
+    ["northstar_cradle", "sleeping_vessel", 11600, "northstar_core", 2, 4],
+    ["usurper_throne", "starbound_usurper", 13600, "throne_star_core", 2, 4],
+    ["nameless_star_end", "lord_beyond_sky", 16000, "nameless_star", 2, 5]
   ];
   rows.forEach(([dungeonId, monsterId, gold, materialId, quantity, seals]) => {
     const dungeon = window.GameData.dungeons[dungeonId], monster = window.GameData.monsters[monsterId];

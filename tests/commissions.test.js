@@ -12,8 +12,8 @@ function load() {
   return context.window;
 }
 let game = load();
-assert.strictEqual(game.GameData.commissions.length, 22);
-assert.strictEqual(new Set(game.GameData.commissions.map(quest => quest.id)).size, 22);
+assert.strictEqual(game.GameData.commissions.length, 32);
+assert.strictEqual(new Set(game.GameData.commissions.map(quest => quest.id)).size, 32);
 for (const quest of game.GameData.commissions) {
   assert(game.GameData.dungeons[quest.dungeonId]);
   if (quest.type === "kills") assert(game.GameData.monsters[quest.monsterId]);
@@ -26,7 +26,12 @@ for (const [dungeonId, monsterId, materialId, seals] of [
   ["night_bloom_sanctuary", "nightbloom_oracle", "saint_thorn", 3],
   ["aurora_summit", "aurora_warden", "aurora_feather", 3],
   ["eclipsed_throne", "eclipse_regent", "eclipse_shard", 3],
-  ["blackmoon_core", "blackmoon_heart", "royal_eclipse_fragment", 3]
+  ["blackmoon_core", "blackmoon_heart", "royal_eclipse_fragment", 3],
+  ["origin_tree_heart", "origin_heart", "first_star_core", 3],
+  ["starsea_nucleus", "starsea_core", "starsea_heart", 3],
+  ["northstar_cradle", "sleeping_vessel", "northstar_core", 4],
+  ["usurper_throne", "starbound_usurper", "throne_star_core", 4],
+  ["nameless_star_end", "lord_beyond_sky", "nameless_star", 5]
 ]) {
   const clear = game.GameData.commissions.find(quest => quest.id === `first_${dungeonId}`);
   const hunt = game.GameData.commissions.find(quest => quest.id === `hunt_${dungeonId}`);

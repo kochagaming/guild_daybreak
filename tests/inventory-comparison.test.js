@@ -22,6 +22,7 @@ async function run() {
   assert(!html.includes('data-action="inventory-equip"') && !html.includes("装備スキルの変化"));
   assert(html.includes("共通性能・追加効果") && html.includes("物理攻撃威力+3%"));
   assert(html.includes("剣 · 近接 · 品質：標準"), "Inventory rows show equipment type, range and quality separately");
+  assert(html.includes("品質：標準 ×1") && html.includes("神がかった ×5") && html.includes("品質倍率を確認"), "Compact quality multipliers are visible in inventory rows and the collapsible guide");
   assert(html.includes('class="equipment-stat-chips"') && html.includes("<small>物理攻撃</small>") && html.includes("<small>魔法攻撃</small>") && html.includes("<small>命中精度</small>"));
   const stats = html.slice(html.indexOf('class="equipment-stat-chips"'), html.indexOf('class="equipment-stat-chips"') + 1200);
   const order = ["HP", "物理攻撃", "魔法攻撃", "物理防御", "魔法防御", "魔法回復", "命中精度", "回避", "速度", "攻撃回数", "重量"];

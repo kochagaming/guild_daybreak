@@ -116,6 +116,17 @@
     window.GameState.save();
     return { ok: true };
   }
+  function applyActionPreset(presetId, partyIndex = selected()) {
+    if (!Number.isInteger(partyIndex) || partyIndex < 0 || partyIndex >= limit()) return { ok: false, message: "このパーティは未解放です。" };
+    const preset = window.GameData.combatRules.actionPresets.find(entry => entry.id === presetId);
+    if (!preset) return { ok: false, message: "行動率プリセットが不正です。" };
+    const partyMembers = members(partyIndex);
+    if (!partyMembers.length) return { ok: false, message: "行動率を設定するメンバーがいません。" };
+    partyMembers.forEach(character => { character.actionRates = Object.assign({}, preset.rates); });
+    window.GameState.addLog(`${name(partyIndex)}の${partyMembers.length}人へ「${preset.name}」の行動率を設定しました。`, "info");
+    window.GameState.save();
+    return { ok: true, count: partyMembers.length, message: `${partyMembers.length}人へ「${preset.name}」を設定しました。次回出撃から反映されます。` };
+  }
   function power(index = selected()) {
     return members(index).reduce((total, character, position) => {
       const stat = window.Characters.stats(character);
@@ -126,5 +137,5 @@
       return total + stat.attack * stat.physicalPower * formation * 2.1 * attackCountFactor + stat.defense * 1.6 + stat.hp * .34 + stat.speed * .7 + character.level * 6 + supportBonus;
     }, 0);
   }
-  window.Party = { toggle, move, members, power, ids, selected, select, name, rename, limit, maximum, availableLimit, unlockQuote, unlock, memberLimit, positionName, expedition, result, plan, setPlan, unreadResultCount, markResultRead };
+  window.Party = { toggle, move, applyActionPreset, members, power, ids, selected, select, name, rename, limit, maximum, availableLimit, unlockQuote, unlock, memberLimit, positionName, expedition, result, plan, setPlan, unreadResultCount, markResultRead };
 })();

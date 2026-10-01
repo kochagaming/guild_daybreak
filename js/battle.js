@@ -22,7 +22,7 @@
   function integer(random, range) { return Math.floor(range[0] + random() * (range[1] - range[0] + 1)); }
   function living(units) { return units.filter((unit) => unit.currentHp > 0); }
   function chooseHeroAction(random, rates, availability) {
-    for (const id of ["healing", "spell", "technique", "attack"]) {
+    for (const id of window.GameData.combatRules.actionPriority) {
       if (!availability[id] || rates[id] <= 0) continue;
       if (rates[id] >= 100 || random() < rates[id] / 100) return id;
     }
@@ -171,7 +171,7 @@
         id: member.id, name: member.name, level: member.level,
         jobId: member.jobId || "warrior", raceId: member.raceId || "human", position: member.position == null ? index : member.position,
         familyIds: member.familyIds || (window.CreatureFamilies ? window.CreatureFamilies.familyIdsForRace(member.raceId || "human") : []),
-        actionRates: Object.assign({ attack: 100, technique: 25, spell: 20, healing: 15 }, member.actionRates || {}),
+        actionRates: Object.assign({}, window.GameData.combatRules.defaultActionRates, member.actionRates || {}),
         formationSize: Math.max(3, expedition.partySnapshot.length),
         magicAttack: member.stats.magicAttack ?? member.stats.attack, magicDefense: member.stats.magicDefense ?? member.stats.defense,
         magicHealing: member.stats.magicHealing ?? member.stats.attack, hitRate: member.stats.hitRate ?? .96, evasionRate: member.stats.evasionRate ?? .03,
@@ -369,9 +369,12 @@
   function performMonsterSkill(random, monster, heroes, log, encounterIndex, round) {
     if (monster.skillRoundUsed === round) return false;
     const skills = (monster.difficultySkillIds || []).map(id => window.GameData.monsterSkills?.[id]).filter(Boolean);
-    const skill = skills.find(entry => round >= (entry.offset || entry.period) && (round - (entry.offset || 0)) % entry.period === 0);
+    const ready = skills.filter(entry => round >= (entry.offset || entry.period) && (round - (entry.offset || 0)) % entry.period === 0);
+    monster.skillUseCounts = monster.skillUseCounts || {};
+    const skill = ready.slice().sort((a, b) => (monster.skillUseCounts[a.id] || 0) - (monster.skillUseCounts[b.id] || 0) || skills.indexOf(a) - skills.indexOf(b))[0];
     if (!skill) return false;
     monster.skillRoundUsed = round;
+    monster.skillUseCounts[skill.id] = (monster.skillUseCounts[skill.id] || 0) + 1;
     remember(monster.observation.difficultySkillIds, skill.id);
     const candidates = living(heroes);
     const chooseTarget = () => {

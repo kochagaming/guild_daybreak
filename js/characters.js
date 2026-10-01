@@ -6,7 +6,7 @@
   }
 
   const actionRateKeys = ["attack", "technique", "spell", "healing"];
-  const defaultActionRates = () => ({ attack: 100, technique: 25, spell: 20, healing: 15 });
+  const defaultActionRates = () => Object.assign({}, window.GameData.combatRules.defaultActionRates);
   function actionRates(character) {
     const rates = character && character.actionRates;
     return rates && actionRateKeys.every(key => Number.isInteger(rates[key]) && rates[key] >= 0 && rates[key] <= 100)

@@ -11,6 +11,24 @@
   function getInstance(instanceId) { return equipmentList().find((instance) => instance.id === instanceId); }
   function quality(instance) { return window.GameData.qualities[instance.qualityId] || window.GameData.qualities.standard; }
 
+  function qualityDescription(instanceOrId) {
+    const grade = typeof instanceOrId === "string"
+      ? window.GameData.qualities[instanceOrId] || window.GameData.qualities.standard
+      : quality(instanceOrId || { qualityId: "standard" });
+    const number = value => Number(value).toLocaleString("ja-JP", { maximumFractionDigits: 1 });
+    const weight = grade.weightMultiplier === 1 ? "" : `・重量×${number(grade.weightMultiplier)}`;
+    return `品質：${grade.prefix || "標準"}（性能×${number(grade.statMultiplier)}${weight}）`;
+  }
+
+  function qualityCompact(instanceOrId) {
+    const grade = typeof instanceOrId === "string"
+      ? window.GameData.qualities[instanceOrId] || window.GameData.qualities.standard
+      : quality(instanceOrId || { qualityId: "standard" });
+    const number = value => Number(value).toLocaleString("ja-JP", { maximumFractionDigits: 1 });
+    const weight = grade.weightMultiplier === 1 ? "" : `・重×${number(grade.weightMultiplier)}`;
+    return `${grade.prefix || "標準"} ×${number(grade.statMultiplier)}${weight}`;
+  }
+
   function displayName(instance) {
     const base = template(instance.templateId);
     const grade = quality(instance);
@@ -279,7 +297,6 @@
 
   function queryEquipment(options) {
     const settings = options || {};
-    const grades = Object.keys(window.GameData.qualities);
     const owners = new Set(window.GameState.data.characters.flatMap(character => character.equipment));
     const list = equipmentList().filter(instance => {
       const base = template(instance.templateId);
@@ -293,7 +310,7 @@
     const sort = settings.sort || "newest";
     const value = instance => {
       if (["attack", "defense", "hp", "weight"].includes(sort)) return effects(instance)[sort];
-      if (sort === "quality") return grades.indexOf(instance.qualityId);
+      if (sort === "quality") return quality(instance).rank || 0;
       if (sort === "value") return sellValue(instance);
       return instance.acquiredAt || 0;
     };
@@ -305,7 +322,7 @@
 
   window.Items = {
     count, add, remove, rollInstance, createInstance, getInstance, equipmentList, available,
-    template, quality, qualityTable, effects, displayName, equippedBy, canEquip, equip, unequip,
+    template, quality, qualityDescription, qualityCompact, qualityTable, effects, displayName, equippedBy, canEquip, equip, unequip,
     sellValue, sell, salvageYield, dismantle, setLocked, queryEquipment,
     stackKey, groupEquipment
   };

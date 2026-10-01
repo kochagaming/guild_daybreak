@@ -15,8 +15,8 @@ for (const note of notes) {
 }
 const byId = Object.fromEntries(notes.map(note => [note.id, note]));
 assert.strictEqual(byId.choosing_an_action.unlock.type, "always");
-assert.deepStrictEqual(Array.from(data.qualityTables.drop, row => Array.from(row)), [["broken",10],["worn",18],["standard",35],["familiar",14],["hefty",8],["featherlight",8],["fine",5.5],["divine",1.5]]);
-assert(byId.quality_weights.paragraphs.join("").includes("神がかった1.5"), "The diary mirrors the drop-quality table");
+assert.deepStrictEqual(Array.from(data.qualityTables.drop, row => Array.from(row)), [["broken",8],["worn",14],["crude",14],["standard",28],["wellmade",12],["familiar",8],["refined",4],["fine",4],["exquisite",2],["hefty",2],["featherlight",2],["legendary",1],["divine",1]]);
+assert(byId.quality_weights.paragraphs.join("").includes("極上2") && byId.quality_weights.paragraphs.join("").includes("神がかった1"), "The diary mirrors the expanded drop-quality table");
 assert.strictEqual(data.ultraRareConfig.dropChance, .001);
 assert.strictEqual(data.ultraRareConfig.statMultiplier, 2);
 assert(byId.ultra_rare_titles.paragraphs.join("").includes("千個に一個") && byId.ultra_rare_titles.paragraphs.join("").includes("2倍"));
