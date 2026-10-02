@@ -39,6 +39,21 @@
     ]
   };
 
+  const initialOverrides = {
+    job: {
+      cleric: {
+        specialty: {
+          name: "僧侶・応急祈祷",
+          category: "healing",
+          description: "傷ついた仲間1人を小さく回復する。Lv10で習得する「治癒」より効果は低い。",
+          activation: { type: "active", cooldownTurns: 12 },
+          targeting: { scope: "lowestHpAlly" },
+          effects: [{ type: "heal", target: "lowestHpAlly", scalingStat: "magicHealing", multiplier: .72 }]
+        }
+      }
+    }
+  };
+
   function sourceTrait(type, ownerId) {
     const prefix = `${type}_${ownerId}`;
     return Object.values(data.skills).find(skill => skill.id.startsWith(prefix) && skill.effects.some(effect => effect.type === "combatModifier"));
@@ -80,6 +95,11 @@
 
   function createInitial(type, owner, plan) {
     const id = `initial_${type}_${owner.id}_${plan.tier}`;
+    const override = initialOverrides[type]?.[owner.id]?.[plan.tier];
+    if (override) {
+      data.skills[id] = Object.assign({ id }, override);
+      return;
+    }
     data.skills[id] = {
       id,
       name: `${owner.name}・${plan.label}`,

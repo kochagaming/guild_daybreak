@@ -16,11 +16,11 @@ assert.strictEqual(game.Party.availableLimit(), 7, "Story progression alone gran
 assert(game.AccessCodes.redeem("party_expansion_trial", "0000").ok);
 assert.strictEqual(game.Party.availableLimit(), 8, "The code adds the eighth party slot");
 assert(!game.AccessCodes.redeem("party_expansion_trial", "0000").ok);
-game.GameState.data.gold = 5000;
+game.GameState.data.gold = 20000;
 game.GameState.data.inventory.materials.guild_seal = 10;
 assert(game.Party.unlock(2).ok);
 assert.strictEqual(game.Party.limit(), 2);
-game.GameState.data.gold = 1000000;
+game.GameState.data.gold = 200000000;
 game.GameState.data.inventory.materials.guild_seal = 100;
 for (let slot = 3; slot <= 8; slot++) assert(game.Party.unlock(slot).ok, `Party slot ${slot} can be purchased after its right is unlocked`);
 assert.strictEqual(game.Party.limit(), 8);

@@ -42,6 +42,24 @@
     }
     return { ok: true, message: "呼び出し可能です。" };
   }
+  function lineupMatches(slot, partyIndex = window.Party.selected()) {
+    if (!validSlot(slot) || !validParty(partyIndex)) return false;
+    const preset = slots()[slot], members = window.Party.members(partyIndex);
+    if (!preset || preset.members.length !== members.length) return false;
+    return preset.members.every((entry, index) => members[index]?.id === entry.characterId);
+  }
+  function matches(slot, partyIndex = window.Party.selected()) {
+    if (!lineupMatches(slot, partyIndex)) return false;
+    const preset = slots()[slot], members = window.Party.members(partyIndex);
+    return preset.members.every((entry, index) => {
+      const character = members[index];
+      const savedEquipment = [...entry.equipment].sort(), currentEquipment = [...character.equipment].sort();
+      if (savedEquipment.length !== currentEquipment.length || savedEquipment.some((id, equipmentIndex) => id !== currentEquipment[equipmentIndex])) return false;
+      const savedRates = Object.assign({}, window.GameData.combatRules.defaultActionRates, entry.actionRates || {});
+      const currentRates = window.Characters.actionRates(character);
+      return ["healing", "spell", "technique", "attack"].every(key => savedRates[key] === currentRates[key]);
+    });
+  }
   function apply(slot, partyIndex = window.Party.selected()) {
     const result = check(slot, partyIndex);
     if (!result.ok) return result;
@@ -63,5 +81,5 @@
     window.GameState.save();
     return { ok: true, message: "プリセットを削除しました。冒険者・装備は残っています。" };
   }
-  window.Presets = { save, check, apply, remove, slots };
+  window.Presets = { save, check, lineupMatches, matches, apply, remove, slots };
 })();

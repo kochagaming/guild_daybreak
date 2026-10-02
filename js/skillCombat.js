@@ -24,11 +24,12 @@
   }
   function slayerFamilyIds(hero, defender) { return Array.from(new Set(matchingSlayers(hero, defender).map(entry => entry.familyId))); }
   function ready(hero, skill, round) {
-    return skill.activation.type === "active" && round >= (hero.skillReady[skill.category] || 1);
+    return skill.activation.type === "active" && round >= (hero.skillReady[skill.id] || 1);
   }
   function use(hero, skill, round, log, encounter) {
-    hero.skillReady[skill.category] = round + skill.activation.cooldownTurns;
-    log.push({ kind: "system", text: "【" + window.GameData.skillCategories[skill.category] + "】" + hero.name + "は「" + skill.name + "」を使用。次の同種スキルはターン" + hero.skillReady[skill.category] + "から", encounter, round });
+    const cooldown = skill.activation.cooldownTurns;
+    hero.skillReady[skill.id] = round + cooldown;
+    log.push({ kind: "system", text: "【" + window.GameData.skillCategories[skill.category] + "】" + hero.name + "は「" + skill.name + "」を使用。再使用はターン" + hero.skillReady[skill.id] + "から（CT " + cooldown + "）", encounter, round });
   }
   function attackMultiplier(hero) {
     return hero.allies.filter(ally => has(ally, "statMultiplier"))
@@ -42,7 +43,7 @@
   }
   function start(heroes, log, encounter) {
     heroes.forEach(hero => {
-        hero.allies = heroes; hero.skillReady = { technique: 1, spell: 1, healing: 1 }; hero.reactionsUsed = new Set();
+        hero.allies = heroes; hero.skillReady = {}; hero.reactionsUsed = new Set();
       skills(hero).filter(skill => skill.category === "passive" && hero.currentHp > 0).forEach(skill => {
         log.push({ kind: "system", text: "【パッシブ】" + hero.name + "の「" + skill.name + "」：" + skill.description, encounter, round: 0 });
       });

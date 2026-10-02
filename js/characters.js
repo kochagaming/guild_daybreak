@@ -104,7 +104,22 @@
     return Math.min(growth.maximumAverageItems || extended, extended);
   }
 
-  function baseMaxWeight(level) { return equipmentCapacityAtLevel(level) * averageEquipmentWeight(); }
+  function equipmentWeightUnitAtLevel(level) {
+    const milestones = window.GameData.characterGrowth?.equipmentWeightUnitMilestones;
+    if (!Array.isArray(milestones) || !milestones.length) return averageEquipmentWeight();
+    const currentLevel = Math.max(1, Number(level) || 1);
+    if (currentLevel <= milestones[0][0]) return milestones[0][1];
+    for (let index = 1; index < milestones.length; index += 1) {
+      const previous = milestones[index - 1], next = milestones[index];
+      if (currentLevel <= next[0]) {
+        const progress = (currentLevel - previous[0]) / (next[0] - previous[0]);
+        return previous[1] + (next[1] - previous[1]) * progress;
+      }
+    }
+    return milestones[milestones.length - 1][1];
+  }
+
+  function baseMaxWeight(level) { return equipmentCapacityAtLevel(level) * equipmentWeightUnitAtLevel(level); }
 
   function maxWeight(character) {
     return Math.round(baseMaxWeight(character.level) * profile(character).weightMultiplier * 10) / 10;
@@ -267,5 +282,5 @@
     return { ok: true, message: "キャラクター画像を変更しました。" };
   }
 
-  window.Characters = { get, stats, statBreakdown, addExperience, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName };
+  window.Characters = { get, stats, statBreakdown, addExperience, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName };
 })();

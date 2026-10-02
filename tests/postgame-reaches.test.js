@@ -28,7 +28,12 @@ assert.strictEqual(data.monsters.ashsea_leviathan.bossDrop.itemId, "ashsea_crown
 assert.strictEqual(data.monsters.distant_observer.bossDrop.itemId, "distant_eye_bow");
 assert.strictEqual(data.monsters.reach_devourer.bossDrop.itemId, "boundary_plate");
 for (const id of ["ashwake_sabre", "cinderveil_cloak", "graytide_aegis", "aftersea_staff", "horizon_rapier", "watcher_robe", "ashsea_crown", "distant_eye_bow", "boundary_plate"]) assert(data.items[id].skillIds.length >= 4, `${id} has fixed skills`);
-assert.strictEqual(data.recipes.filter(recipe => recipe.unlockAfter === region.id).length, 3);
+const stagedRecipes = [
+  ["forge_aftersea_staff", "gray_ash_sea"],
+  ["forge_horizon_rapier", "inverted_glass_canyon"],
+  ["forge_watcher_robe", "worldskin_garden"]
+];
+stagedRecipes.forEach(([recipeId, dungeonId]) => assert.strictEqual(data.recipes.find(recipe => recipe.id === recipeId).unlockAfter, dungeonId));
 
 require("./helpers").createCharacter(game, "星後の遠征者", "warrior");
 require("./helpers").completeThrough(game, "end_of_starless_night");
@@ -36,11 +41,21 @@ assert(game.Story.mainComplete() && game.Story.current() === undefined, "The mai
 assert(!game.Story.canEnter(dungeon.id), "The first reach still requires the chapter-15 optional sanctum");
 game.Story.recordResult({ success: true, dungeonId: "afterstar_sanctum" });
 assert(game.Story.canEnter(dungeon.id) && !state.story.completed.includes(region.id));
+assert(stagedRecipes.every(([recipeId]) => !game.Story.canCraft(data.recipes.find(recipe => recipe.id === recipeId))));
 const beforeGold = state.gold;
 required.forEach((route, index) => {
-  game.Story.recordResult({ success: true, dungeonId: route.id });
+  const result = { success: true, dungeonId: route.id };
+  game.Story.recordResult(result);
+  if (index < stagedRecipes.length) {
+    const [recipeId] = stagedRecipes[index];
+    const recipe = data.recipes.find(entry => entry.id === recipeId);
+    assert(game.Story.canCraft(recipe), `${recipeId} unlocks after ${route.id}`);
+    assert(game.Story.recipeCondition(recipe).includes("攻略で解放"));
+    assert.deepStrictEqual(Array.from(result.newRecipeIds), [recipeId]);
+  }
   assert.strictEqual(state.story.completed.includes(region.id), index === required.length - 1);
 });
+assert(state.logs.some(entry => entry.text.includes("新しい製作記録") && entry.text.includes("星後海の導杖")));
 assert(state.story.completed.includes(region.id) && state.gold === beforeGold + region.rewards.gold);
 assert.strictEqual(game.Items.count("watcher_lens"), 2);
 assert(game.Story.canEnter("five_reaches_nest"));

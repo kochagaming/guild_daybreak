@@ -65,6 +65,9 @@ console.log(`Observatory all-aggressive policy: ${rushWins / 2}%`);
 // The new craftable equipment must make the same matchup more reliable.
 game.Party.members().forEach((hero, index) => {
   const item = game.Items.add(index === 0 ? "starsteel_sword" : "starwoven_robe", 1, { source: "shop", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];
+  const replacementType = game.GameData.items[item.templateId].type;
+  const replacedId = hero.equipment.find(id => game.GameData.items[game.Items.getInstance(id).templateId].type === replacementType);
+  if (replacedId) assert(game.Items.unequip(hero.id, replacedId).ok);
   assert(game.Items.equip(hero.id, item.id).ok);
 });
 const upgraded = expedition.partySnapshot.map(member => ({ ...member, stats: game.Characters.stats(game.Characters.get(member.id)) }));

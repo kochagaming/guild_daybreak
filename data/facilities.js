@@ -9,6 +9,9 @@
     version: 1,
     order: ["mine", "guild", "herb_garden"],
     trackOrder: ["production", "storage", "speed"],
+    upgradeCapacity: { base: 0, perCompletedMainChapter: 1 },
+    // どの系統を選んでも同じ目標Lvなら同じ基礎費用。後発施設は施設倍率で調整する。
+    upgradeGoldByTargetLevel: { 2: 2500, 3: 15000, 4: 75000, 5: 350000 },
     tracks: {
       production: { name: "生産量", description: "1回の作業で得られる量を増やします。" },
       storage: { name: "保管庫", description: "受け取らずに保持できる時間を延ばします。" },
@@ -16,7 +19,7 @@
     },
     definitions: {
       mine: {
-        id: "mine", name: "採掘場", description: "鉱員と設備を整え、鉄鉱石を採取します。生産設備を強化すると、まれに希少な鉱石も見つかります。",
+        id: "mine", name: "採掘場", goldCostMultiplier: 1, description: "鉱員と設備を整え、鉄鉱石を採取します。生産設備を強化すると、まれに希少な鉱石も見つかります。",
         upgrades: {
           production: track([
             { rewards: { materials: { iron_ore: 1 } } },
@@ -30,7 +33,7 @@
         }
       },
       guild: {
-        id: "guild", name: "ギルド運営", description: "受付・仲介・帳簿を整え、依頼手数料とギルド印章を蓄積します。",
+        id: "guild", name: "ギルド運営", goldCostMultiplier: 1.5, description: "受付・仲介・帳簿を整え、依頼手数料とギルド印章を蓄積します。",
         upgrades: {
           production: track([
             { rewards: { gold: 20 }, periodicRewards: [{ id: "guild_seal", itemId: "guild_seal", quantity: 1, everyCycles: 4 }] },
@@ -44,7 +47,7 @@
         }
       },
       herb_garden: {
-        id: "herb_garden", name: "黒樹薬草園", description: "黒樹海から持ち帰った苗と菌床を育て、希少な植物素材を栽培します。", unlockAfter: "blackwood_pilgrimage",
+        id: "herb_garden", name: "黒樹薬草園", goldCostMultiplier: 4, description: "黒樹海から持ち帰った苗と菌床を育て、希少な植物素材を栽培します。", unlockAfter: "blackwood_pilgrimage",
         upgrades: {
           production: track([
             { rewards: { materials: { black_sap: 1 } } },

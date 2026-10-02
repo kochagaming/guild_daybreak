@@ -72,7 +72,7 @@
   const scaling = (regularHp, regularAttack, bossHp, bossAttack) => ({ regular: { hp: regularHp, attack: regularAttack }, boss: { hp: bossHp, attack: bossAttack } });
   Object.entries({
     skyfall_road: scaling(5, 4, 3, 2), glasswood: scaling(5.5, 4.5, 3.2, 2.3), ember_mine: scaling(5, 4, 3, 2),
-    ash_fortress: scaling(5, 4, 3, 2), cinder_throne: scaling(3.2, 2.7, 1.5, 1.35), elder_dragon_crater: scaling(2.6, 2.1, 1.25, 1.15)
+    ash_fortress: scaling(5, 4, 3, 2), cinder_throne: scaling(3.2, 2.7, 1.6, 1.35), elder_dragon_crater: scaling(2.6, 2.1, 1.25, 1.15)
   }).forEach(([id, monsterScaling]) => { data.dungeons[id].monsterScaling = monsterScaling; });
 
   data.recipes.push(

@@ -39,8 +39,12 @@
   }
   function unlockOrder(recipe) {
     if (!recipe.unlockAfter) return 0;
-    const index = window.GameData.storyChapters.findIndex(chapter => chapter.id === recipe.unlockAfter);
-    return index < 0 ? Number.MAX_SAFE_INTEGER : index + 1;
+    const chapterIndex = window.GameData.storyChapters.findIndex(chapter => chapter.id === recipe.unlockAfter);
+    if (chapterIndex >= 0) return (chapterIndex + 1) * 100 + 99;
+    const dungeon = window.GameData.dungeons[recipe.unlockAfter];
+    if (!dungeon) return Number.MAX_SAFE_INTEGER;
+    const dungeonChapterIndex = window.GameData.storyChapters.findIndex(chapter => chapter.id === dungeon.chapterId);
+    return dungeonChapterIndex < 0 ? Number.MAX_SAFE_INTEGER : (dungeonChapterIndex + 1) * 100 + dungeon.orderInChapter;
   }
   function query(options) {
     const settings = Object.assign({ query: "", category: "all", material: "all", status: "all", sort: "ready" }, options || {});

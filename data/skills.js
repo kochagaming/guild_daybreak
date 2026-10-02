@@ -12,9 +12,22 @@
     ]
   };
 
+  const activeCooldownTurns = Object.freeze({
+    power_strike: 10, iron_guard: 10, vital_strike: 9, twin_strike: 16,
+    fireball: 10, arcane_burst: 20, heal: 8, prayer: 18,
+    shield_bash: 10, knight_guard: 10, aimed_shot: 10, arrow_rain: 20,
+    frenzy: 18, chi_strike: 12, iaijutsu: 15, samurai_guard: 10,
+    shadow_blades: 14, healing_song: 16, thorn_lance: 12, nature_mend: 18,
+    curse_bolt: 14, dark_wave: 20, enchanted_slash: 12, runic_guard: 10,
+    summon_fang: 16, spirit_mend: 18, adaptive_strike: 18, forest_shot: 16,
+    stone_guard: 10, feral_pounce: 16, rune_spark: 16, brutal_charge: 16,
+    dirty_trick: 14, dragon_breath: 20, fairy_blessing: 16, earth_shaker: 20,
+    abyss_bolt: 16, celestial_prayer: 20, venom_edge: 16, blizzard: 24,
+    purifying_light: 24, master_arcane_burst: 30, master_prayer: 30
+  });
   const active = (id, name, category, scope, effect, description) => ({
     id, name, category, description,
-    activation: { type: "active", cooldownTurns: 10 },
+    activation: { type: "active", cooldownTurns: activeCooldownTurns[id] },
     targeting: { scope },
     effects: [effect]
   });

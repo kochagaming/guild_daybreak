@@ -17,6 +17,16 @@
   }
   function level(id, trackId) { return saved(id).levels[trackId]; }
   function entry(id, trackId, targetLevel) { return definition(id).upgrades[trackId][(targetLevel || level(id, trackId)) - 1]; }
+  function upgradeCapacity(id, state = window.GameState.data) {
+    const facility = definition(id), capacity = config().upgradeCapacity || { base: 0, perCompletedMainChapter: 1 };
+    if (!facility || !state.facilities?.[id]) return null;
+    const chapters = window.GameData.storyChapters.filter(chapter => Number(chapter.number) >= 1 && chapter.kind !== "postgame").sort((a, b) => a.order - b.order);
+    const completed = chapters.filter(chapter => state.story.completed.includes(chapter.id));
+    const total = config().trackOrder.reduce((sum, trackId) => sum + Math.max(0, facility.upgrades[trackId].length - 1), 0);
+    const maximum = Math.min(total, (capacity.base || 0) + completed.length * (capacity.perCompletedMainChapter || 1));
+    const used = config().trackOrder.reduce((sum, trackId) => sum + Math.max(0, state.facilities[id].levels[trackId] - 1), 0);
+    return { id, used, maximum, remaining: Math.max(0, maximum - used), total, nextChapter: maximum < total ? chapters.find(chapter => !state.story.completed.includes(chapter.id)) || null : null };
+  }
   function profile(id) {
     const production = entry(id, "production"), storage = entry(id, "storage"), speed = entry(id, "speed");
     return { id, production, capacityMs: storage.duration, intervalMs: speed.interval };
@@ -67,14 +77,36 @@
     state.bonusProgress = result.bonusProgress; state.startedAt = now;
     return result;
   }
+  function upgradeCost(id, trackId, currentLevel = level(id, trackId)) {
+    const facility = definition(id), next = facility?.upgrades?.[trackId]?.[currentLevel];
+    if (!facility || !next) return null;
+    const baseGold = Number(config().upgradeGoldByTargetLevel?.[currentLevel + 1]) || 0;
+    const gold = Math.ceil(baseGold * (facility.goldCostMultiplier || 1) / 100) * 100;
+    return { gold, materials: { ...(next.cost || {}) } };
+  }
   function upgradeQuote(id, trackId) {
     const facility = definition(id);
     if (!facility || !unlocked(id) || saved(id)?.activatedAt == null || !config().trackOrder.includes(trackId)) return null;
-    const currentLevel = level(id, trackId), levels = facility.upgrades[trackId], next = levels[currentLevel];
-    if (!next) return { id, trackId, currentLevel, maximum: true, affordable: false, cost: null };
-    const cost = next.cost || {};
-    return { id, trackId, currentLevel, nextLevel: currentLevel + 1, maximum: false, cost,
-      affordable: Object.entries(cost).every(([itemId, amount]) => window.Items.count(itemId) >= amount) };
+    const currentLevel = level(id, trackId), levels = facility.upgrades[trackId], next = levels[currentLevel], capacity = upgradeCapacity(id);
+    if (!next) return { id, trackId, currentLevel, maximum: true, capReached: false, affordable: false, cost: null, capacity };
+    const cost = upgradeCost(id, trackId, currentLevel);
+    const capReached = capacity.remaining <= 0;
+    return { id, trackId, currentLevel, nextLevel: currentLevel + 1, maximum: false, capReached, cost, capacity,
+      affordable: !capReached && window.GameState.data.gold >= cost.gold && Object.entries(cost.materials).every(([itemId, amount]) => window.Items.count(itemId) >= amount) };
+  }
+  function resetQuote(id) {
+    const facility = definition(id), state = saved(id);
+    if (!facility || !state || !unlocked(id) || state.activatedAt == null) return null;
+    const spent = { gold: 0, materials: {} };
+    config().trackOrder.forEach(trackId => {
+      for (let index = 1; index < state.levels[trackId]; index++) {
+        const cost = upgradeCost(id, trackId, index);
+        spent.gold += cost.gold;
+        Object.entries(cost.materials).forEach(([itemId, amount]) => { spent.materials[itemId] = (spent.materials[itemId] || 0) + amount; });
+      }
+    });
+    const capacity = upgradeCapacity(id);
+    return { id, used: capacity.used, capacity, spent, canReset: capacity.used > 0 };
   }
   function normalizePeriodicRewards(id) {
     const state = saved(id), production = profile(id).production;
@@ -88,14 +120,29 @@
     const request = upgradeQuote(id, trackId);
     if (!request) return { ok: false, message: "施設または強化項目が見つかりません。" };
     if (request.maximum) return { ok: false, message: "この設備は最大レベルです。" };
-    if (!request.affordable) return { ok: false, message: "施設強化に必要な素材が不足しています。" };
+    if (request.capReached) return { ok: false, message: request.capacity.nextChapter ? `${request.capacity.nextChapter.title}の達成で施設の強化枠が増えます。` : "この施設の強化可能回数は上限です。" };
+    if (!request.affordable) return { ok: false, message: "施設強化に必要な所持金または素材が不足しています。" };
     settle(id);
-    Object.entries(request.cost).forEach(([itemId, amount]) => window.Items.remove(itemId, amount));
+    window.GameState.data.gold -= request.cost.gold;
+    Object.entries(request.cost.materials).forEach(([itemId, amount]) => window.Items.remove(itemId, amount));
     saved(id).levels[trackId] = request.nextLevel;
     if (trackId === "production") normalizePeriodicRewards(id);
     const message = `${definition(id).name}の${config().tracks[trackId].name}をLv.${request.nextLevel}へ強化しました。`;
     window.GameState.addLog(message, "success"); window.GameState.save();
     return { ok: true, message };
+  }
+  function reset(id) {
+    const request = resetQuote(id);
+    if (!request) return { ok: false, message: "施設が見つかりません。" };
+    if (!request.canReset) return { ok: false, message: "この施設にはリセットできる強化がありません。" };
+    settle(id);
+    const state = saved(id);
+    config().trackOrder.forEach(trackId => { state.levels[trackId] = 1; });
+    state.storedDuration = Math.min(state.storedDuration, profile(id).capacityMs);
+    normalizePeriodicRewards(id);
+    const message = `${definition(id).name}の強化をリセットしました。使用済みの所持金と素材は返却されません。`;
+    window.GameState.addLog(message, "success"); window.GameState.save();
+    return { ok: true, message, spent: request.spent };
   }
   function collect(id) {
     const result = quote(id);
@@ -119,5 +166,5 @@
     const names = results.map(entry => definition(entry.id).name).join("、");
     return { ok: true, message: `${names}の生産物をまとめて受け取りました。`, facilities: results.map(entry => entry.id) };
   }
-  window.Facilities = { profile, quote, settle, upgradeQuote, upgrade, collect, collectAll, collectable, unlocked, sync };
+  window.Facilities = { profile, quote, settle, upgradeCapacity, upgradeQuote, upgrade, resetQuote, reset, collect, collectAll, collectable, unlocked, sync };
 })();

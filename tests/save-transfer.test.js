@@ -9,7 +9,7 @@ const context = vm.createContext({ console, window: {}, Date, Math, Blob, setTim
   document: { body: { appendChild: () => {} }, createElement: () => ({ click: () => clicked++, remove: () => {} }) },
   localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => { if (key === failKey) throw new Error("quota"); storage.set(key, value); }, removeItem: key => storage.delete(key) }
 });
-["data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/party.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/battle.js", "js/dungeon.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
+["data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "data/recipes.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/party.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/battle.js", "js/dungeon.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
 const game = context.window, transfer = game.SaveTransfer;
 const created = require("./helpers").createCharacter(game, "バックアップ", "cleric", "elf", "sacred", "archer");
 game.Items.equip(created.id, "item-1");
@@ -47,6 +47,7 @@ invalid(state => state.parties[0].push(created.id));
 invalid(state => state.meta.nextItemId = 1);
 invalid(state => state.expeditions[0].partySnapshot[0].stats.attack = "<script>");
 invalid(state => state.expeditions[0].partySnapshot[0].skillIds = ["invalid"]);
+invalid(state => state.expeditions[0].trackedItemId = "missing-item");
 invalid(state => { state.partyPlans[0] = { dungeonId: "missing", difficultyId: "normal", timeMultiplier: 1 }; });
 invalid(state => { state.partyNames[0] = " "; });
 assert(!transfer.parse("{broken").ok);
@@ -63,6 +64,22 @@ for (const key of [transfer.backupKey, game.SaveSystem.exportKey]) {
 game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 game.Dungeon.completeIfReady();
 assert(transfer.parse(JSON.stringify(game.GameState.data)).ok, "戦績とドロップを含む完了データも読み込めること");
+const invalidHistoryBattle = clone();
+invalidHistoryBattle.partyHistory[0][0].battle.damageDealt = -1;
+assert(!transfer.parse(JSON.stringify(invalidHistoryBattle)).ok, "Negative expedition-history battle totals must be rejected");
+const invalidHistorySetup = clone();
+invalidHistorySetup.partyHistory[0][0].partySetup[0].equipmentWeight = invalidHistorySetup.partyHistory[0][0].partySetup[0].maximumWeight + 1;
+assert(!transfer.parse(JSON.stringify(invalidHistorySetup)).ok, "Invalid expedition-history loadouts must be rejected");
+const invalidRecipeResult = clone();
+invalidRecipeResult.lastResult.newRecipeIds = ["missing-recipe"];
+assert(!transfer.parse(JSON.stringify(invalidRecipeResult)).ok, "Unknown recipe unlocks must be rejected");
+const invalidUltraResult = clone();
+invalidUltraResult.lastResult.drops.push({ itemId: "wooden_sword", quantity: 1, displayName: "未知の称号付き木の剣", qualityId: "standard", ultraRareTitleId: "missing-title" });
+assert(!transfer.parse(JSON.stringify(invalidUltraResult)).ok, "Unknown ultra-rare result titles must be rejected");
+const invalidTrackedResult = clone();
+invalidTrackedResult.lastResult.trackedItemId = "missing-item";
+invalidTrackedResult.lastResult.trackedItemQuantity = 1;
+assert(!transfer.parse(JSON.stringify(invalidTrackedResult)).ok, "Unknown tracked result items must be rejected");
 const completed = clone();
 game.GameState.reset();
 assert(transfer.restore(completed).ok);

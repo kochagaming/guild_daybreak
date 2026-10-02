@@ -4,7 +4,7 @@
   function blankObservations() { return { incomingAttempts: 0, incomingHits: 0, enemyTurns: 0, maxAttackCount: 0, magicAttack: false, rearTargeting: false, attackElements: [], statusAttacks: [], elementWeaknesses: [], elementResistances: [], statusResisted: [], statusLanded: [], burstRounds: [], difficultySkillIds: [], drops: [] }; }
   function blankDifficulty() { return { encountered: 0, defeated: 0, drops: [], skillIds: [] }; }
   function blankMonster() { return { encountered: 0, defeated: 0, observations: blankObservations(), difficulties: {} }; }
-  function blank() { return { version: 5, items: {}, monsters: {}, unreadItems: [], unreadMonsters: [] }; }
+  function blank() { return { version: 9, items: {}, bestQualities: {}, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null }; }
   function normalizeMonster(entry) {
     const normalized = Object.assign(blankMonster(), entry || {});
     normalized.observations = Object.assign(blankObservations(), entry?.observations || {});
@@ -19,11 +19,20 @@
       // This is an additive extension of the current save format. Persist it on startup.
       window.GameState.needsInitialSave = true;
       bootstrap(state.encyclopedia);
-    } else if (state.encyclopedia.version !== 5 || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters)) {
-      state.encyclopedia.version = 5;
+    } else if (state.encyclopedia.version !== 9 || !state.encyclopedia.bestQualities || !Array.isArray(state.encyclopedia.ultraRareTitles) || !Array.isArray(state.encyclopedia.unreadUltraRareTitles) || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters) || !(state.encyclopedia.itemTarget === null || typeof state.encyclopedia.itemTarget === "object")) {
+      const legacyTargetId = state.encyclopedia.trackedItemId;
+      state.encyclopedia.version = 9;
+      state.encyclopedia.items = state.encyclopedia.items || {};
+      state.encyclopedia.bestQualities = state.encyclopedia.bestQualities || {};
+      state.encyclopedia.ultraRareTitles = Array.isArray(state.encyclopedia.ultraRareTitles) ? state.encyclopedia.ultraRareTitles : [];
+      state.encyclopedia.monsters = state.encyclopedia.monsters || {};
       state.encyclopedia.unreadItems = Array.isArray(state.encyclopedia.unreadItems) ? state.encyclopedia.unreadItems : [];
+      state.encyclopedia.unreadUltraRareTitles = Array.isArray(state.encyclopedia.unreadUltraRareTitles) ? state.encyclopedia.unreadUltraRareTitles : [];
       state.encyclopedia.unreadMonsters = Array.isArray(state.encyclopedia.unreadMonsters) ? state.encyclopedia.unreadMonsters : [];
+      state.encyclopedia.itemTarget = window.GameData.items[legacyTargetId] && state.encyclopedia.items[legacyTargetId] ? { itemId: legacyTargetId, quantity: 1, progress: 0 } : null;
+      delete state.encyclopedia.trackedItemId;
       Object.keys(state.encyclopedia.monsters || {}).forEach(id => { state.encyclopedia.monsters[id] = normalizeMonster(state.encyclopedia.monsters[id]); });
+      bootstrap(state.encyclopedia);
       window.GameState.needsInitialSave = true;
     }
     return state.encyclopedia;
@@ -32,6 +41,21 @@
     if (!window.GameData.items[id] || !Number.isInteger(quantity) || quantity <= 0) return;
     if (!book.items[id] && !book.unreadItems.includes(id)) book.unreadItems.push(id);
     book.items[id] = (book.items[id] || 0) + quantity;
+  }
+  function qualityRank(id) { return window.GameData.qualities[id]?.rank ?? -1; }
+  function considerQuality(book, itemId, qualityId) {
+    const item = window.GameData.items[itemId];
+    if (!["weapon", "armor"].includes(item?.type) || !window.GameData.qualities[qualityId]) return false;
+    const previous = book.bestQualities[itemId];
+    if (previous && qualityRank(previous) >= qualityRank(qualityId)) return false;
+    book.bestQualities[itemId] = qualityId;
+    return true;
+  }
+  function discoverUltraRareTitle(book, titleId, unread) {
+    if (!window.GameData.ultraRareTitles[titleId] || book.ultraRareTitles.includes(titleId)) return false;
+    book.ultraRareTitles.push(titleId);
+    if (unread && !book.unreadUltraRareTitles.includes(titleId)) book.unreadUltraRareTitles.push(titleId);
+    return true;
   }
   function addMonster(book, id, encountered, defeated) {
     if (!window.GameData.monsters[id]) return;
@@ -58,12 +82,21 @@
   }
   function bootstrap(book) {
     const state = window.GameState.data, itemMinimums = {};
-    state.inventory.equipment.forEach(instance => { itemMinimums[instance.templateId] = (itemMinimums[instance.templateId] || 0) + 1; });
+    state.inventory.equipment.forEach(instance => {
+      itemMinimums[instance.templateId] = (itemMinimums[instance.templateId] || 0) + 1;
+      considerQuality(book, instance.templateId, instance.qualityId || "standard");
+      if (instance.ultraRareTitleId) discoverUltraRareTitle(book, instance.ultraRareTitleId, false);
+    });
     Object.entries(state.inventory.materials).forEach(([id, quantity]) => { itemMinimums[id] = quantity; });
     const results = Array.from(new Map([state.lastResult, ...(state.partyResults || [])].filter(Boolean).map(result => [result.id, result])).values());
     results.forEach(result => {
       const difficultyId = result.difficultyId || "normal";
-      (result.drops || []).forEach(drop => { itemMinimums[drop.itemId] = Math.max(itemMinimums[drop.itemId] || 0, drop.quantity); });
+      (result.drops || []).forEach(drop => {
+        itemMinimums[drop.itemId] = Math.max(itemMinimums[drop.itemId] || 0, drop.quantity);
+        if (drop.qualityId) considerQuality(book, drop.itemId, drop.qualityId);
+        if (drop.ultraRareTitleId) discoverUltraRareTitle(book, drop.ultraRareTitleId, false);
+      });
+      (result.autoSold || []).forEach(drop => considerQuality(book, drop.itemId, drop.qualityId));
       Object.entries(result.monsterEncounters || {}).forEach(([id, count]) => {
         const entry = normalizeMonster(book.monsters[id]);
         entry.encountered = Math.max(entry.encountered, count); book.monsters[id] = entry;
@@ -104,6 +137,8 @@
     }
   }
   function recordItem(id, quantity) { addItem(ensure(), id, quantity); }
+  function recordQuality(itemId, qualityId) { return considerQuality(ensure(), itemId, qualityId); }
+  function recordUltraRareTitle(titleId) { return discoverUltraRareTitle(ensure(), titleId, true); }
   function recordBattle(encounters, defeats, observations, difficultyId = "normal") {
     const book = ensure();
     Object.entries(encounters || {}).forEach(([id, count]) => addMonster(book, id, count, 0));
@@ -123,10 +158,41 @@
     });
   }
   function item(id) { return ensure().items[id] || 0; }
+  function bestQuality(id) { return ensure().bestQualities[id] || null; }
+  function ultraRareTitle(id) { return ensure().ultraRareTitles.includes(id); }
   function monster(id) { return ensure().monsters[id] || null; }
   function unreadItems() { return ensure().unreadItems.slice(); }
+  function unreadUltraRareTitles() { return ensure().unreadUltraRareTitles.slice(); }
   function unreadMonsters() { return ensure().unreadMonsters.slice(); }
-  function markItemsRead() { const book = ensure(); if (book.unreadItems.length) { book.unreadItems = []; window.GameState.save(); } return { ok: true }; }
+  function trackedTarget() { const target = ensure().itemTarget; return target ? Object.assign({}, target) : null; }
+  function trackedItem() { return trackedTarget()?.itemId || null; }
+  function targetKnown(book, itemId) {
+    if (book.items[itemId]) return true;
+    const story = window.GameState.data.story;
+    return (window.GameData.recipes || []).some(recipe => recipe.materials?.[itemId] && (!recipe.unlockAfter || story.completed.includes(recipe.unlockAfter) || story.facts.clears.includes(recipe.unlockAfter)));
+  }
+  function setTrackedItem(itemId, targetQuantity = 1, resetProgress = false) {
+    const book = ensure();
+    if (itemId === null) {
+      book.itemTarget = null;
+      window.GameState.save();
+      return { ok: true, message: "探索目標を解除しました。" };
+    }
+    const template = window.GameData.items[itemId];
+    if (!template || !targetKnown(book, itemId)) return { ok: false, message: "未発見で、製作記録にもない品は探索目標にできません。" };
+    if (!Number.isInteger(targetQuantity) || targetQuantity < 1 || targetQuantity > 999) return { ok: false, message: "必要数は1〜999で指定してください。" };
+    const progress = !resetProgress && book.itemTarget?.itemId === itemId ? book.itemTarget.progress : 0;
+    book.itemTarget = { itemId, quantity: targetQuantity, progress };
+    window.GameState.save();
+    return { ok: true, message: `${template.name}×${targetQuantity}を探索目標に設定しました。` };
+  }
+  function recordTargetProgress(itemId, quantity) {
+    const target = ensure().itemTarget;
+    if (!target || target.itemId !== itemId || !Number.isInteger(quantity) || quantity <= 0) return null;
+    target.progress = Math.min(Number.MAX_SAFE_INTEGER, target.progress + quantity);
+    return Object.assign({}, target);
+  }
+  function markItemsRead() { const book = ensure(); if (book.unreadItems.length || book.unreadUltraRareTitles.length) { book.unreadItems = []; book.unreadUltraRareTitles = []; window.GameState.save(); } return { ok: true }; }
   function markMonstersRead() { const book = ensure(); if (book.unreadMonsters.length) { book.unreadMonsters = []; window.GameState.save(); } return { ok: true }; }
   function itemAcquisitionSources(id) {
     const template = window.GameData.items[id];
@@ -173,5 +239,5 @@
   }
 
   ensure();
-  window.Encyclopedia = { ensure, recordItem, recordBattle, item, monster, unreadItems, unreadMonsters, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
+  window.Encyclopedia = { ensure, recordItem, recordQuality, recordUltraRareTitle, recordBattle, item, bestQuality, ultraRareTitle, monster, unreadItems, unreadUltraRareTitles, unreadMonsters, trackedItem, trackedTarget, setTrackedItem, recordTargetProgress, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
 })();

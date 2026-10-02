@@ -124,9 +124,9 @@
   });
 
   data.recipes.push(
-    { id: "forge_aftersea_staff", resultId: "aftersea_staff", gold: 16800, materials: { aftersea_heart: 6, ember_pearl: 8, gray_tide_salt: 10 }, unlockAfter: "afterstar_reaches_1" },
-    { id: "forge_horizon_rapier", resultId: "horizon_rapier", gold: 18200, materials: { void_glass: 8, silent_iron: 6, watcher_lens: 3 }, unlockAfter: "afterstar_reaches_1" },
-    { id: "forge_watcher_robe", resultId: "watcher_robe", gold: 18600, materials: { watcher_lens: 8, worldskin_moss: 6, boundary_fragment: 2 }, unlockAfter: "afterstar_reaches_1" }
+    { id: "forge_aftersea_staff", resultId: "aftersea_staff", gold: 16800, materials: { aftersea_heart: 6, ember_pearl: 8, gray_tide_salt: 10 }, unlockAfter: "gray_ash_sea" },
+    { id: "forge_horizon_rapier", resultId: "horizon_rapier", gold: 18200, materials: { void_glass: 8, gray_tide_salt: 6, ember_pearl: 3 }, unlockAfter: "inverted_glass_canyon" },
+    { id: "forge_watcher_robe", resultId: "watcher_robe", gold: 18600, materials: { worldskin_moss: 8, void_glass: 6, ember_pearl: 3 }, unlockAfter: "worldskin_garden" }
   );
 
   Object.assign(data.storyScenes, {

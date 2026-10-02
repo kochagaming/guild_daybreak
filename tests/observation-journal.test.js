@@ -23,6 +23,10 @@ async function run() {
   game.UI.init();
   assert.deepStrictEqual(Array.from(game.ObservationJournal.unread(), note => note.id), ["choosing_an_action"]);
   assert((await game.GameClient.execute("observation.read", { noteId: "choosing_an_action" })).ok);
+  assert(!game.ObservationJournal.unlocked(game.ObservationJournal.note("weight_efficiency")));
+  const discoveredSteel = game.Items.add("steel_sword", 1, { source: "test", qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];
+  assert(game.ObservationJournal.unlocked(game.ObservationJournal.note("weight_efficiency")), "Discovering steel equipment unlocks its weight-efficiency field note");
+  assert(game.Items.sell(discoveredSteel.id).ok && game.ObservationJournal.unlocked(game.ObservationJournal.note("weight_efficiency")), "Discovery notes remain unlocked after selling the item");
   const id = require("./helpers").createCharacter(game, "調査隊長").id;
   game.Characters.get(id).level = 30;
   game.Party.toggle(id);

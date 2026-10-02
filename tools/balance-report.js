@@ -109,7 +109,15 @@ function enhancementLevel(game, order, mode = "none") {
   const maximum = (game.GameData.upgrades?.limits || []).reduce((value, entry) => chapterOrder(game, entry.chapterId) < order ? Math.max(value, entry.maximum) : value, 0);
   if (mode === "max") return maximum;
   if (mode === "half") return Math.ceil(maximum / 2);
+  if (mode === "quarter") return Math.ceil(maximum / 4);
   return 0;
+}
+
+function progressionPreparation(order) {
+  return {
+    quality: order > 15 ? "familiar" : order >= 9 ? "wellmade" : "standard",
+    enhancement: order >= 5 ? "quarter" : "none"
+  };
 }
 
 function makeInstance(templateId, index, upgradeLevel = 0, qualityId = "standard") {
@@ -129,13 +137,14 @@ function selectEquipment(game, character, roleId, order, dungeon, fixtureOptions
   if (!pool.length) return [];
   const targetCount = Math.max(1, Math.round(game.Characters.equipmentCapacityAtLevel(character.level)));
   const maximumWeight = game.Characters.maxWeight(character);
-  const upgradeLevel = enhancementLevel(game, order, fixtureOptions.enhancement);
+  const preparation = fixtureOptions.preparation === "progression" ? progressionPreparation(order) : fixtureOptions;
+  const upgradeLevel = enhancementLevel(game, order, preparation.enhancement);
   const selected = [];
   for (let index = 0; index < targetCount; index += 1) {
     let added = false;
     for (let offset = 0; offset < pool.length; offset += 1) {
       const item = pool[(index + offset) % pool.length];
-      const instance = makeInstance(item.id, index, upgradeLevel, fixtureOptions.quality || "standard");
+      const instance = makeInstance(item.id, index, upgradeLevel, preparation.quality || "standard");
       const weight = game.Items.effects(instance).weight;
       const used = selected.reduce((sum, entry) => sum + game.Items.effects(entry).weight, 0);
       if (used + weight <= maximumWeight + 1e-9) { selected.push(instance); added = true; break; }
@@ -275,44 +284,52 @@ function simulate(game, dungeon, profileId, runs, difficultyId, fixtureOptions =
 function warningsFor(dungeon, results) {
   const warnings = [];
   const balanced = results.find(result => result.profileId === "balanced");
+  const noHealer = results.find(result => result.profileId === "no_healer");
   const combatProfiles = results.filter(result => result.profileId !== "no_healer");
   const rates = combatProfiles.map(result => result.winRate);
   if (balanced && dungeon.requiredForStory && balanced.winRate < 35) warnings.push("本編の均衡型勝率が35%未満");
   if (balanced && dungeon.requiredForStory && balanced.winRate > 90) warnings.push("本編の均衡型勝率が90%超");
   if (balanced && !dungeon.requiredForStory && balanced.winRate > 70) warnings.push("任意高難度の均衡型勝率が70%超");
-  if (Math.max(...rates) - Math.min(...rates) >= 40) warnings.push("編成間の勝率差が40pt以上");
+  if (rates.length >= 2 && Math.max(...rates) - Math.min(...rates) >= 40) warnings.push("編成間の勝率差が40pt以上");
+  if (balanced && noHealer && noHealer.winRate - balanced.winRate >= 20) warnings.push("回復なし編成が均衡型を20pt以上上回る");
   if (results.some(result => result.timeoutRate >= 20)) warnings.push("30ターン撤退が20%以上の編成あり");
   if (balanced && balanced.averageRounds <= dungeon.encounters.length * 1.5) warnings.push("戦闘が極端に短い可能性");
   return warnings;
 }
 
 function generate(options = {}) {
-  const settings = Object.assign({ runs: 100, chapterId: null, difficulty: "normal", enhancement: "none", quality: "standard", profiles: Object.keys(profileDefinitions) }, options);
+  const settings = Object.assign({ runs: 100, chapterId: null, dungeonId: null, difficulty: "normal", enhancement: "none", quality: "standard", preparation: "fixed", profiles: Object.keys(profileDefinitions) }, options);
   if (!Number.isInteger(settings.runs) || settings.runs < 1) throw new Error("runs must be a positive integer");
   const game = loadGame();
   if (!Array.isArray(settings.profiles) || !settings.profiles.length) throw new Error("at least one profile is required");
-  if (!["none", "half", "max"].includes(settings.enhancement)) throw new Error(`Unknown enhancement mode: ${settings.enhancement}`);
+  if (!["none", "quarter", "half", "max"].includes(settings.enhancement)) throw new Error(`Unknown enhancement mode: ${settings.enhancement}`);
+  if (!["fixed", "progression"].includes(settings.preparation)) throw new Error(`Unknown preparation mode: ${settings.preparation}`);
   if (!game.GameData.qualities[settings.quality]) throw new Error(`Unknown quality: ${settings.quality}`);
   if (settings.difficulty !== "all" && !game.GameData.dungeonDifficulties[settings.difficulty]) throw new Error(`Unknown difficulty: ${settings.difficulty}`);
   const difficulties = settings.difficulty === "all" ? Object.keys(game.GameData.dungeonDifficulties) : [settings.difficulty];
-  const dungeons = Object.values(game.GameData.dungeons).filter(dungeon => !settings.chapterId || dungeon.chapterId === settings.chapterId)
+  const dungeons = Object.values(game.GameData.dungeons)
+    .filter(dungeon => !settings.chapterId || dungeon.chapterId === settings.chapterId)
+    .filter(dungeon => !settings.dungeonId || dungeon.id === settings.dungeonId)
     .sort((a, b) => chapterOrder(game, a.chapterId) - chapterOrder(game, b.chapterId) || a.orderInChapter - b.orderInChapter);
-  if (!dungeons.length) throw new Error(`No dungeons found${settings.chapterId ? ` for chapter ${settings.chapterId}` : ""}`);
+  if (!dungeons.length) throw new Error(`No dungeons found${settings.dungeonId ? ` for dungeon ${settings.dungeonId}` : settings.chapterId ? ` for chapter ${settings.chapterId}` : ""}`);
   const entries = [];
   dungeons.forEach(dungeon => difficulties.forEach(difficultyId => {
     const results = settings.profiles.map(profileId => {
       if (!profileDefinitions[profileId]) throw new Error(`Unknown profile: ${profileId}`);
-      return simulate(game, dungeon, profileId, settings.runs, difficultyId, { enhancement: settings.enhancement, quality: settings.quality });
+      return simulate(game, dungeon, profileId, settings.runs, difficultyId, { enhancement: settings.enhancement, quality: settings.quality, preparation: settings.preparation });
     });
     entries.push({ chapterId: dungeon.chapterId, dungeonId: dungeon.id, dungeonName: difficultyId === "normal" ? dungeon.name : game.DungeonDifficulty.variant(dungeon, difficultyId).name, difficultyId, recommendedLevel: dungeon.recommendedLevel, requiredForStory: dungeon.requiredForStory, results, warnings: warningsFor(dungeon, results) });
   }));
-  return { generatedAt: new Date().toISOString(), runs: settings.runs, profiles: settings.profiles, difficulty: settings.difficulty, enhancement: settings.enhancement, quality: settings.quality, entries };
+  return { generatedAt: new Date().toISOString(), runs: settings.runs, profiles: settings.profiles, difficulty: settings.difficulty, preparation: settings.preparation, enhancement: settings.enhancement, quality: settings.quality, entries };
 }
 
 function textReport(report) {
-  const enhancementLabels = { none: "強化なし", half: "解放上限の半分", max: "解放上限" };
+  const enhancementLabels = { none: "強化なし", quarter: "解放上限の1/4", half: "解放上限の半分", max: "解放上限" };
   const quality = report.quality || "standard";
-  const lines = [`自動バランスレポート：各編成 ${report.runs}回・装備品質 ${quality}・装備強化 ${enhancementLabels[report.enhancement || "none"]}`, "勝率 / 残HP / 平均ターン / 戦闘不能 / 状態異常", ""];
+  const equipmentLabel = report.preparation === "progression"
+    ? "進行相応装備（第9章から出来の良い、星後領域から手になじむ／第5章から強化上限の1/4）"
+    : `装備品質 ${quality}・装備強化 ${enhancementLabels[report.enhancement || "none"]}`;
+  const lines = [`自動バランスレポート：各編成 ${report.runs}回・${equipmentLabel}`, "勝率 / 残HP / 平均ターン / 戦闘不能 / 状態異常", ""];
   let chapterId = null;
   report.entries.forEach(entry => {
     if (entry.chapterId !== chapterId) { chapterId = entry.chapterId; lines.push(`■ ${chapterId}`); }
@@ -336,9 +353,11 @@ function parseArguments(argv) {
     const argument = argv[index];
     if (argument === "--runs") options.runs = Number(argv[++index]);
     else if (argument === "--chapter") options.chapterId = argv[++index];
+    else if (argument === "--dungeon") options.dungeonId = argv[++index];
     else if (argument === "--difficulty") options.difficulty = argv[++index];
     else if (argument === "--enhancement") options.enhancement = argv[++index];
     else if (argument === "--quality") options.quality = argv[++index];
+    else if (argument === "--preparation") options.preparation = argv[++index];
     else if (argument === "--profiles") options.profiles = argv[++index].split(",").filter(Boolean);
     else if (argument === "--json") options.jsonPath = argv[++index];
     else if (argument === "--help") options.help = true;
@@ -351,7 +370,7 @@ if (require.main === module) {
   try {
     const options = parseArguments(process.argv.slice(2));
     if (options.help) {
-      console.log("node tools/balance-report.js [--runs 100] [--chapter mirror_tide] [--difficulty normal|all] [--quality standard|familiar|refined|fine] [--enhancement none|half|max] [--profiles balanced,physical,magic,no_healer] [--json report.json]");
+      console.log("node tools/balance-report.js [--runs 100] [--chapter mirror_tide] [--dungeon frost_coast] [--difficulty normal|all] [--preparation fixed|progression] [--quality standard|familiar|refined|fine] [--enhancement none|quarter|half|max] [--profiles balanced,physical,magic,no_healer] [--json report.json]");
       process.exit(0);
     }
     const report = generate(options);
@@ -363,4 +382,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { loadGame, buildParty, simulate, warningsFor, generate, textReport, profileDefinitions };
+module.exports = { loadGame, buildParty, simulate, warningsFor, generate, textReport, progressionPreparation, profileDefinitions };

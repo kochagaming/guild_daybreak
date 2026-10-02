@@ -21,11 +21,12 @@ for (const [source, table] of Object.entries(game.GameData.qualityTables)) {
   assert(table.every(([id, weight]) => qualities[id] && weight > 0), `${source} references only valid positive qualities`);
 }
 const zero = { hp: 0, attack: 0, defense: 0 };
+const ironStandardAttack = game.Items.standardEffects("iron_sword").attack;
 const refined = game.Items.createInstance("iron_sword", { source: "drop", qualityId: "refined", modifiers: zero });
 const legendary = game.Items.createInstance("iron_sword", { source: "drop", qualityId: "legendary", modifiers: zero });
-assert.strictEqual(game.Items.effects(refined).attack, Math.round(game.GameData.items.iron_sword.attack * 2.5));
+assert.strictEqual(game.Items.effects(refined).attack, Math.round(ironStandardAttack * 2.5));
 assert.strictEqual(game.Items.effects(refined).weight, game.GameData.items.iron_sword.weight);
-assert.strictEqual(game.Items.effects(legendary).attack, Math.round(game.GameData.items.iron_sword.attack * 4.5));
+assert.strictEqual(game.Items.effects(legendary).attack, Math.round(ironStandardAttack * 4.5));
 assert.strictEqual(game.Items.qualityDescription("divine"), "品質：神がかった（性能×5）");
 assert.strictEqual(game.Items.qualityDescription("featherlight"), "品質：羽根のような（性能×0.5・重量×0.5）");
 assert.strictEqual(game.Items.qualityCompact("hefty"), "ずっしりとした ×4・重×2");

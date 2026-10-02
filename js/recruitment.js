@@ -37,8 +37,10 @@
       return total + amount * pricing.abilityWeights[key];
     }, 0);
     const raw = pricing.base + job + race + ability;
-    const total = Math.ceil(raw / pricing.roundTo) * pricing.roundTo;
-    return { base: pricing.base, job, race, ability, total };
+    const subtotal = Math.ceil(raw / pricing.roundTo) * pricing.roundTo;
+    const subsidy = pricing.foundingSubsidies?.[window.GameState.data.characters.length] || 0;
+    const total = Math.max(pricing.minimum || 0, subtotal - subsidy);
+    return { base: pricing.base, job, race, ability, subtotal, subsidy, total };
   }
   function cost(applicant) { return costBreakdown(applicant).total; }
   function postingQuote(requirements = {}) {

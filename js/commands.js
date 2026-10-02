@@ -13,12 +13,14 @@
     "facility.collect": p => window.Facilities.collect(p.facilityId),
     "facility.collectAll": () => window.Facilities.collectAll(),
     "facility.upgrade": p => window.Facilities.upgrade(p.facilityId, p.trackId),
+    "facility.reset": p => window.Facilities.reset(p.facilityId),
     "preset.save": p => window.Presets.save(p.slot, p.name, p.partyIndex),
     "preset.apply": p => window.Presets.apply(p.slot, p.partyIndex),
     "preset.delete": p => window.Presets.remove(p.slot),
     "equipment.upgrade": p => window.Upgrades.enhance(p.instanceId, p.expectedLevel),
     "equipment.equip": p => window.Items.equip(p.characterId, p.instanceId),
     "equipment.unequip": p => window.Items.unequip(p.characterId, p.instanceId),
+    "equipment.unequipAll": p => window.Items.unequipAll(p.characterId),
     "equipment.lock": p => typeof p.locked === "boolean" ? window.Items.setLocked(p.instanceId, p.locked) : { ok: false, message: "ロック状態を指定してください。" },
     "equipment.sell": p => window.Items.sell(p.instanceId),
     "equipment.sellStack": p => window.AutoSell.sellStack(p.stackKey),
@@ -40,6 +42,9 @@
     "accessCode.redeem": p => window.AccessCodes.redeem(p.featureId, p.code),
     "observation.read": p => window.ObservationJournal.markRead(p.noteId),
     "encyclopedia.read": p => p.kind === "items" ? window.Encyclopedia.markItemsRead() : p.kind === "monsters" ? window.Encyclopedia.markMonstersRead() : { ok: false, message: "図鑑の種類が不正です。" },
+    "encyclopedia.trackItem": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity ?? 1),
+    "encyclopedia.trackRequirement": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity, true),
+    "encyclopedia.clearTrackedItem": () => window.Encyclopedia.setTrackedItem(null),
     "expedition.start": p => window.Dungeon.start(p.dungeonId, p.partyIndex, p.timeMultiplier, p.difficultyId),
     "expedition.collect": () => {
       const recurringChanged = window.RecurringMissions.sync();
@@ -72,12 +77,14 @@
     "facility.collect": ["facilityId"],
     "facility.collectAll": [],
     "facility.upgrade": ["facilityId", "trackId"],
+    "facility.reset": ["facilityId"],
     "preset.save": ["slot", "name", "partyIndex?"],
     "preset.apply": ["slot", "partyIndex?"],
     "preset.delete": ["slot"],
     "equipment.upgrade": ["instanceId", "expectedLevel"],
     "equipment.equip": ["characterId", "instanceId"],
     "equipment.unequip": ["characterId", "instanceId"],
+    "equipment.unequipAll": ["characterId"],
     "equipment.lock": ["instanceId", "locked"],
     "equipment.sell": ["instanceId"], "equipment.sellStack": ["stackKey"], "equipment.dismantle": ["instanceId"],
     "autosell.add": ["instanceId"],
@@ -88,6 +95,9 @@
     "accessCode.redeem": ["featureId", "code"],
     "observation.read": ["noteId"],
     "encyclopedia.read": ["kind"],
+    "encyclopedia.trackItem": ["itemId", "targetQuantity?"],
+    "encyclopedia.trackRequirement": ["itemId", "targetQuantity"],
+    "encyclopedia.clearTrackedItem": [],
     "expedition.start": ["dungeonId", "difficultyId?", "partyIndex?", "timeMultiplier?"],
     "expedition.collect": [], "progress.sync": [], "save.reset": [], "save.import": ["state"]
   };
@@ -104,6 +114,7 @@
       if (key === "partySlot") return Number.isInteger(value) && value >= 2 && value <= window.Party.maximum();
       if (key === "featureId") return typeof value === "string" && Object.prototype.hasOwnProperty.call(window.GameData.accessCodes || {}, value);
       if (key === "noteId") return typeof value === "string" && (window.GameData.observationNotes || []).some(entry => entry.id === value);
+      if (key === "targetQuantity") return Number.isInteger(value) && value >= 1 && value <= 999;
       if (key === "code") return typeof value === "string" && value.length > 0 && value.length <= 64;
       if (key === "timeMultiplier") return window.Exploration.valid(value);
       if (key === "difficultyId") return Object.prototype.hasOwnProperty.call(window.GameData.dungeonDifficulties || { normal: true }, value);

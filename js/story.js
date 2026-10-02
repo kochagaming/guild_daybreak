@@ -24,6 +24,7 @@
       const equipmentCount = (state.inventory?.equipment || []).filter(item => item.templateId === requirement.itemId).length;
       return materialCount + equipmentCount >= (requirement.quantity || 1);
     }
+    if (requirement.type === "itemDiscovered") return (state.encyclopedia?.items?.[requirement.itemId] || 0) >= (requirement.quantity || 1);
     return false;
   }
   function requirementsMet(requirements, state) { return (requirements || []).every(requirement => requirementSatisfied(requirement, state)); }
@@ -47,6 +48,7 @@
   function recordDeparture(dungeonId) { if (dungeonId === "meadow") ensure().facts.departed = true; return sync(); }
   function recordResult(result) {
     const story = ensure();
+    const recipeUnlocksBefore = new Set(window.GameData.recipes.filter(canCraft).map(recipe => recipe.id));
     const difficultyId = result.difficultyId || "normal";
     const firstClear = result.success && difficultyId === "normal" && !story.facts.clears.includes(result.dungeonId);
     const unlockedBefore = new Set(dungeons().filter(dungeon => canEnter(dungeon.id)).map(dungeon => dungeon.id));
@@ -79,13 +81,23 @@
       }
     });
     if (storyMoments.length) result.storyMoments = storyMoments;
+    const newRecipeIds = window.GameData.recipes.filter(recipe => canCraft(recipe) && !recipeUnlocksBefore.has(recipe.id)).map(recipe => recipe.id);
+    if (newRecipeIds.length) {
+      result.newRecipeIds = newRecipeIds;
+      const names = newRecipeIds.map(id => window.GameData.recipes.find(recipe => recipe.id === id)).filter(Boolean).map(recipe => window.GameData.items[recipe.resultId]?.name || recipe.id);
+      window.GameState.addLog(`鍛冶屋に新しい製作記録が加わりました。${names.join("、")}`, "success");
+    }
     return completed;
   }
   function canEnter(id, state = window.GameState.data) {
     const dungeon = window.GameData.dungeons[id];
     return Boolean(dungeon && requirementsMet(dungeon.unlockRequirements, state));
   }
-  function canCraft(recipe) { return !recipe.unlockAfter || ensure().completed.includes(recipe.unlockAfter); }
+  function canCraft(recipe) {
+    if (!recipe.unlockAfter) return true;
+    const story = ensure();
+    return story.completed.includes(recipe.unlockAfter) || story.facts.clears.includes(recipe.unlockAfter);
+  }
   function requirementText(requirement) {
     if (requirement.type === "chapterCompleted") return `${chapters().find(chapter => chapter.id === requirement.chapterId)?.title || "指定章"}の達成`;
     if (requirement.type === "dungeonClear") return `${window.GameData.dungeons[requirement.dungeonId]?.name || "指定ダンジョン"}の攻略`;
@@ -100,7 +112,10 @@
   }
   function recipeCondition(recipe) {
     const chapter = chapters().find(candidate => candidate.id === recipe.unlockAfter);
-    return recipe.unlockAfter ? `${chapter?.title || "物語の依頼"}達成で解放` : "解放済み";
+    const dungeon = window.GameData.dungeons[recipe.unlockAfter];
+    if (chapter) return `${chapter.title}達成で解放`;
+    if (dungeon) return `${dungeon.name}攻略で解放`;
+    return recipe.unlockAfter ? "物語の依頼達成で解放" : "解放済み";
   }
   function current() { return mainChapters().find(chapter => !ensure().completed.includes(chapter.id)); }
   function mainComplete() { return mainChapters().every(chapter => ensure().completed.includes(chapter.id)); }

@@ -48,7 +48,7 @@ assert.strictEqual(healAmount(fight(healer({ attack: 1 }))), healAmount(fight(he
 assert(healAmount(fight(healer({ magicHealing: 5 }))) < healAmount(fight(healer({ magicHealing: 30 }))));
 async function persistence() {
   const id = require("./helpers").createCharacter(game, "魔術師", "mage", "elf", "arcane").id;
-  const character = game.Characters.get(id); character.level = 4;
+  const character = game.Characters.get(id); character.level = 10;
   const stats = game.Characters.stats(character);
   assert(stats.magicAttack > stats.attack && stats.hitRate > 0 && stats.evasionRate > 0);
   const staff = game.Items.add("arcane_staff", 1, { source: "shop" }).instances[0];

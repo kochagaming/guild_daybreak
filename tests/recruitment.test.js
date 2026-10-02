@@ -80,8 +80,10 @@ async function run() {
   const applicant = pending.candidates.find(candidate => candidate.jobId === "cleric");
   const hiringCost = game.Recruitment.cost(applicant), breakdown = game.Recruitment.costBreakdown(applicant);
   assert.strictEqual(hiringCost, breakdown.total);
-  assert.strictEqual(hiringCost % 5, 0);
+  assert.strictEqual(hiringCost % 10, 0);
   assert(hiringCost > 0 && hiringCost < 500);
+  assert.strictEqual(breakdown.subsidy, 250, "The first hire receives the largest founding-guild subsidy");
+  assert.strictEqual(breakdown.total, breakdown.subtotal - breakdown.subsidy);
   assert(game.Recruitment.cost(Object.assign({}, applicant, { base: Object.assign({}, applicant.base, { attack: applicant.base.attack + 1 }) })) > hiringCost, "Higher initial ability raises the hiring cost");
   assert.notStrictEqual(game.Recruitment.cost(Object.assign({}, applicant, { jobId: "mage" })), game.Recruitment.cost(Object.assign({}, applicant, { jobId: "thief" })), "Jobs have distinct contract costs");
   assert.notStrictEqual(game.Recruitment.cost(Object.assign({}, applicant, { raceId: "human" })), game.Recruitment.cost(Object.assign({}, applicant, { raceId: "beastkin" })), "Races have distinct contract costs");
@@ -113,6 +115,7 @@ async function run() {
   assert.strictEqual(hired.cost, hiringCost);
   assert.strictEqual(game.GameState.data.gold, 500 - hiringCost);
   assert.strictEqual(game.GameState.data.characters.length, 1);
+  assert.strictEqual(game.Recruitment.cost(applicant), hiringCost + 100, "The founding subsidy decreases after the first hire");
   assert.strictEqual(game.Recruitment.state().pending, null);
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
   assert((await command("party.toggle", { characterId: hero.id })).ok);

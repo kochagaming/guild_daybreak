@@ -51,6 +51,86 @@
     return Array.from(groups.values());
   }
 
+  const scalablePerformanceStats = new Set(["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "speed"]);
+
+  function equipmentTypeId(base) { return base.type === "weapon" ? base.weaponType : base.armorType; }
+
+  function performanceScore(base) {
+    const weights = window.GameData.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)] || {};
+    return Object.entries(weights).reduce((total, [stat, weight]) => {
+      const value = stat === "attackCount" ? Math.max(0, Number(base[stat]) || 0) : Number(base[stat]) || 0;
+      return total + value * weight;
+    }, 0);
+  }
+
+  function referenceEfficiency(base) {
+    const typeId = equipmentTypeId(base);
+    return Number(window.GameData.equipmentBalance?.referenceEfficiency?.[typeId]) || performanceScore(base) / Math.max(.1, Number(base.weight) || 0);
+  }
+
+  function standardTierFloors(typeId) {
+    const growth = Number(window.GameData.equipmentBalance?.efficiencyGrowthPerTier) || 0;
+    const entries = (window.GameData.shop?.standardTiers || []).slice().sort((a, b) => a.tier - b.tier);
+    const floors = new Map();
+    let previousAchieved = 0;
+    entries.forEach(entry => {
+      const itemId = entry.itemIds.find(id => equipmentTypeId(window.GameData.items[id] || {}) === typeId);
+      const item = window.GameData.items[itemId];
+      if (!item?.weight) return;
+      const raw = performanceScore(item) / item.weight;
+      const floor = previousAchieved
+        ? Math.max(raw, previousAchieved * (1 + growth))
+        : Math.max(raw, referenceEfficiency(item));
+      floors.set(entry.tier, floor);
+
+      // 実ステータスは整数へ切り上げるため、次Tierは理論下限ではなく
+      // 実際に到達する重量効率を基準にする。丸めによる逆転も残さない。
+      const multiplier = multiplierForFloor(item, floor);
+      const balanced = { ...item };
+      scalablePerformanceStats.forEach(stat => { balanced[stat] = balancedBaseValue(item, stat, multiplier); });
+      previousAchieved = performanceScore(balanced) / item.weight;
+    });
+    return floors;
+  }
+
+  function performanceFloor(base) {
+    const growth = Number(window.GameData.equipmentBalance?.efficiencyGrowthPerTier) || 0;
+    const tier = Math.max(1, Number(base.tier) || 1);
+    const typeId = equipmentTypeId(base);
+    const standardEntry = (window.GameData.shop?.standardTiers || []).find(entry => entry.tier === tier);
+    const standardItemId = standardEntry?.itemIds.find(id => equipmentTypeId(window.GameData.items[id] || {}) === typeId);
+    if (standardItemId === base.id) return standardTierFloors(typeId).get(tier) || referenceEfficiency(base);
+
+    // 製作品・固有品は技能や特殊効果も価値の一部なので、汎用品と同じ曲線へ
+    // 一律に揃えず、Tier 1基準から緩やかに伸びる最低保証だけを適用する。
+    return referenceEfficiency(base) * (1 + (tier - 1) * growth);
+  }
+
+  function multiplierForFloor(base, floor) {
+    const weights = window.GameData.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)] || {};
+    let scalable = 0, fixed = 0;
+    Object.entries(weights).forEach(([stat, weight]) => {
+      const value = stat === "attackCount" ? Math.max(0, Number(base[stat]) || 0) : Number(base[stat]) || 0;
+      if (scalablePerformanceStats.has(stat)) scalable += value * weight;
+      else fixed += value * weight;
+    });
+    if (scalable <= 0) return 1;
+    const targetScore = floor * base.weight;
+    return Math.max(1, (targetScore - fixed) / scalable);
+  }
+
+  function tierEfficiencyMultiplier(baseOrId) {
+    const base = typeof baseOrId === "string" ? template(baseOrId) : baseOrId;
+    if (!base || !["weapon", "armor"].includes(base.type) || !base.weight) return 1;
+    return multiplierForFloor(base, performanceFloor(base));
+  }
+
+  function balancedBaseValue(base, stat, multiplier) {
+    const value = Number(base[stat]) || 0;
+    const weight = window.GameData.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)]?.[stat] || 0;
+    return multiplier > 1 && weight > 0 && scalablePerformanceStats.has(stat) ? Math.ceil(value * multiplier) : value;
+  }
+
   function effects(instance) {
     const base = template(instance.templateId);
     const grade = quality(instance);
@@ -59,19 +139,32 @@
     const ultraMultiplier = window.EquipmentSkills.title(instance) ? window.GameData.ultraRareConfig.statMultiplier : 1;
     const upgrade = (window.GameData.upgrades?.bonus || {})[base.type] || {};
     const level = instance.upgradeLevel || 0;
+    const efficiencyMultiplier = tierEfficiencyMultiplier(base);
+    const balanced = stat => balancedBaseValue(base, stat, efficiencyMultiplier);
     return {
-      hp: Math.round((Math.round((base.hp || 0) * grade.statMultiplier) + (modifiers.hp || 0) + level * (upgrade.hp || 0)) * ultraMultiplier),
-      attack: Math.round((Math.round((base.attack || 0) * grade.statMultiplier) + (modifiers.attack || 0) + (base.weaponType === "staff" ? 0 : level * (upgrade.attack || 0))) * ultraMultiplier),
-      defense: Math.round((Math.round((base.defense || 0) * grade.statMultiplier) + (modifiers.defense || 0) + level * (upgrade.defense || 0) + (base.specialEffects || []).filter(effect => effect.kind === "weight_defense").reduce((sum, effect) => sum + Math.floor(roundedWeight * effect.multiplier), 0)) * ultraMultiplier),
+      hp: Math.round((Math.round(balanced("hp") * grade.statMultiplier) + (modifiers.hp || 0) + level * (upgrade.hp || 0)) * ultraMultiplier),
+      attack: Math.round((Math.round(balanced("attack") * grade.statMultiplier) + (modifiers.attack || 0) + (base.weaponType === "staff" ? 0 : level * (upgrade.attack || 0))) * ultraMultiplier),
+      defense: Math.round((Math.round(balanced("defense") * grade.statMultiplier) + (modifiers.defense || 0) + level * (upgrade.defense || 0) + (base.specialEffects || []).filter(effect => effect.kind === "weight_defense").reduce((sum, effect) => sum + Math.floor(roundedWeight * effect.multiplier), 0)) * ultraMultiplier),
       weight: roundedWeight,
-      magicAttack: Math.round((Math.round((base.magicAttack || 0) * grade.statMultiplier) + (modifiers.magicAttack || 0) + (base.weaponType === "staff" ? level * 2 : 0)) * ultraMultiplier),
-      magicDefense: Math.round((Math.round((base.magicDefense || 0) * grade.statMultiplier) + (modifiers.magicDefense || 0) + (base.type === "armor" ? level * 2 : 0)) * ultraMultiplier),
-      magicHealing: Math.round((Math.round((base.magicHealing || 0) * grade.statMultiplier) + (modifiers.magicHealing || 0) + (base.weaponType === "staff" ? level * 2 : 0)) * ultraMultiplier),
+      magicAttack: Math.round((Math.round(balanced("magicAttack") * grade.statMultiplier) + (modifiers.magicAttack || 0) + (base.weaponType === "staff" ? level * 2 : 0)) * ultraMultiplier),
+      magicDefense: Math.round((Math.round(balanced("magicDefense") * grade.statMultiplier) + (modifiers.magicDefense || 0) + (base.type === "armor" ? level * 2 : 0)) * ultraMultiplier),
+      magicHealing: Math.round((Math.round(balanced("magicHealing") * grade.statMultiplier) + (modifiers.magicHealing || 0) + (base.weaponType === "staff" ? level * 2 : 0)) * ultraMultiplier),
       hitRate: ((base.hitRate || 0) * grade.statMultiplier + (modifiers.hitRate || 0) / 100) * ultraMultiplier,
-      evasionRate: (modifiers.evasionRate || 0) / 100 * ultraMultiplier,
-      speed: Math.round((Math.round((base.speed || 0) * grade.statMultiplier) + (modifiers.speed || 0)) * ultraMultiplier),
+      evasionRate: ((base.evasionRate || 0) * grade.statMultiplier + (modifiers.evasionRate || 0) / 100) * ultraMultiplier,
+      speed: Math.round((Math.round(balanced("speed") * grade.statMultiplier) + (modifiers.speed || 0)) * ultraMultiplier),
       attackCount: ((base.attackCount || 0) + (modifiers.attackCount || 0)) * ultraMultiplier
     };
+  }
+
+  function standardEffects(templateId) {
+    return effects({ templateId, qualityId: "standard", modifiers: {}, upgradeLevel: 0 });
+  }
+
+  function performancePerWeight(itemOrTemplate, effectOverride) {
+    const base = itemOrTemplate?.templateId ? template(itemOrTemplate.templateId) : itemOrTemplate;
+    if (!base || !["weapon", "armor"].includes(base.type)) return 0;
+    const effect = effectOverride || (itemOrTemplate.templateId ? effects(itemOrTemplate) : standardEffects(base.id));
+    return performanceScore({ ...base, ...effect }) / Math.max(.1, Number(effect.weight) || 0);
   }
 
   function pickWeighted(random, table) {
@@ -151,19 +244,20 @@
 
   function add(itemId, quantity, options) {
     const base = template(itemId);
-    if (!base) return { instances: [] };
+    if (!base) return { instances: [], autoSold: [], autoSellGold: 0, newBestQualityId: null, newUltraRareTitleIds: [] };
     if (window.Encyclopedia) window.Encyclopedia.recordItem(itemId, quantity);
     if (base.type === "material") {
       materials()[itemId] = (materials()[itemId] || 0) + quantity;
-      return { instances: [], material: { itemId, quantity } };
+      return { instances: [], material: { itemId, quantity }, autoSold: [], autoSellGold: 0, newBestQualityId: null, newUltraRareTitleIds: [] };
     }
     const settings = options || {};
     const source = settings.source || "drop";
-    const instances = [], autoSold = [];
+    const instances = [], autoSold = [], created = [];
     for (let index = 0; index < quantity; index += 1) {
       const instanceOptions = Object.assign({}, settings);
       if (settings.seed != null) instanceOptions.seed = Number(settings.seed) + index * 7919;
       const instance = createInstance(itemId, instanceOptions);
+      created.push(instance);
       const rule = window.AutoSell?.matchingRule(instance, source);
       if (rule) {
         const value = sellValue(instance);
@@ -172,7 +266,13 @@
         autoSold.push({ itemId, displayName: displayName(instance), qualityId: instance.qualityId, value, ruleId: rule.id });
       } else instances.push(instance);
     }
-    return { instances, autoSold, autoSellGold: autoSold.reduce((sum, entry) => sum + entry.value, 0) };
+    const bestInBatch = created.slice().sort((a, b) => quality(b).rank - quality(a).rank)[0];
+    const improved = bestInBatch && window.Encyclopedia
+      ? window.Encyclopedia.recordQuality(itemId, bestInBatch.qualityId)
+      : false;
+    const newUltraRareTitleIds = Array.from(new Set(created.map(instance => instance.ultraRareTitleId).filter(Boolean)))
+      .filter(titleId => window.Encyclopedia?.recordUltraRareTitle(titleId));
+    return { instances, autoSold, autoSellGold: autoSold.reduce((sum, entry) => sum + entry.value, 0), newBestQualityId: improved ? bestInBatch.qualityId : null, newUltraRareTitleIds };
   }
 
   function count(itemId) {
@@ -231,6 +331,17 @@
     character.equipment.splice(index, 1);
     window.GameState.save();
     return { ok: true, message: "装備を外しました。" };
+  }
+
+  function unequipAll(characterId) {
+    const character = window.Characters.get(characterId);
+    if (!character) return { ok: false, message: "冒険者が見つかりません。" };
+    const count = character.equipment.length;
+    if (!count) return { ok: false, message: "外せる装備がありません。" };
+    character.equipment = [];
+    window.GameState.addLog(`${character.name}が装備を${count}点すべて外しました。`, "info");
+    window.GameState.save();
+    return { ok: true, count, message: `${count}点の装備をすべて外しました。` };
   }
 
   function sellValue(instance) {
@@ -322,7 +433,7 @@
 
   window.Items = {
     count, add, remove, rollInstance, createInstance, getInstance, equipmentList, available,
-    template, quality, qualityDescription, qualityCompact, qualityTable, effects, displayName, equippedBy, canEquip, equip, unequip,
+    template, quality, qualityDescription, qualityCompact, qualityTable, effects, standardEffects, performanceScore, performanceFloor, performancePerWeight, tierEfficiencyMultiplier, displayName, equippedBy, canEquip, equip, unequip, unequipAll,
     sellValue, sell, salvageYield, dismantle, setLocked, queryEquipment,
     stackKey, groupEquipment
   };

@@ -40,10 +40,20 @@ async function run() {
 
   require("./helpers").createCharacter(game, "施設監督", "warrior");
   game.Story.recordDeparture("meadow"); require("./helpers").completeThrough(game, "starfall"); game.GameState.save();
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Facilities.upgradeCapacity("mine"))), {
+    id: "mine", used: 0, maximum: 3, remaining: 3, total: 12,
+    nextChapter: JSON.parse(JSON.stringify(game.GameData.storyChapters.find(chapter => chapter.id === "ember_crown")))
+  }, "Each completed main chapter grants one shared upgrade point per facility");
   assert.strictEqual(game.Facilities.profile("guild").production.rewards.gold, 20, "Story progress no longer upgrades facilities");
   assert.strictEqual(game.Facilities.profile("mine").production.rewards.materials.iron_ore, 1);
 
   game.Items.add("iron_ore", 100); game.Items.add("magic_stone", 30); game.Items.add("star_shard", 10);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Facilities.upgradeQuote("mine", "production").cost)), { gold: 2500, materials: { iron_ore: 6 } });
+  game.GameState.data.gold = 2499;
+  const beforeInsufficientGold = JSON.stringify(game.GameState.data);
+  assert(!(await game.GameClient.execute("facility.upgrade", { facilityId: "mine", trackId: "production" })).ok, "Facility upgrades require both gold and materials");
+  assert.strictEqual(JSON.stringify(game.GameState.data), beforeInsufficientGold);
+  game.GameState.data.gold = 1000000;
   assert((await game.GameClient.execute("facility.upgrade", { facilityId: "mine", trackId: "production" })).ok);
   assert.strictEqual(game.GameState.data.facilities.mine.levels.production, 2);
   assert.strictEqual(game.Facilities.profile("mine").production.rewards.materials.iron_ore, 2);
@@ -58,6 +68,18 @@ async function run() {
   assert.strictEqual(game.Facilities.profile("mine").intervalMs, 30 * minute);
   now += 30 * minute;
   assert.strictEqual(game.Facilities.quote("mine").materials.iron_ore, 4, "Speed upgrade uses the shorter interval");
+  assert.strictEqual(game.Facilities.upgradeCapacity("mine").remaining, 0);
+  assert(!(await game.GameClient.execute("facility.upgrade", { facilityId: "mine", trackId: "production" })).ok, "A facility cannot spend more upgrade points than story progress allows");
+  const resetPreview = game.Facilities.resetQuote("mine"), ironBeforeReset = game.Items.count("iron_ore"), goldBeforeReset = game.GameState.data.gold, storedBeforeReset = game.Facilities.quote("mine").materials.iron_ore;
+  assert.strictEqual(resetPreview.spent.gold, 7500);
+  assert.strictEqual(resetPreview.spent.materials.iron_ore, 18);
+  assert((await game.GameClient.execute("facility.reset", { facilityId: "mine" })).ok);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameState.data.facilities.mine.levels)), { production: 1, storage: 1, speed: 1 });
+  assert.strictEqual(game.Items.count("iron_ore"), ironBeforeReset, "Reset does not refund materials spent on any track");
+  assert.strictEqual(game.GameState.data.gold, goldBeforeReset, "Reset does not refund gold spent on any track");
+  assert.strictEqual(game.Facilities.quote("mine").materials.iron_ore, storedBeforeReset, "Reset preserves already completed production");
+  assert.strictEqual(game.Facilities.upgradeCapacity("mine").remaining, 3, "Reset makes the story-earned points available for redistribution");
+  assert((await game.GameClient.execute("facility.upgrade", { facilityId: "mine", trackId: "production" })).ok, "A reset point can be reassigned by paying the material cost again");
 
   assert((await game.GameClient.execute("facility.upgrade", { facilityId: "guild", trackId: "production" })).ok);
   assert.strictEqual(game.Facilities.profile("guild").production.rewards.gold, 30);
@@ -77,6 +99,8 @@ async function run() {
 
   const before = JSON.stringify(game.GameState.data);
   fail = true;
+  assert(!(await game.GameClient.execute("facility.reset", { facilityId: "mine" })).ok);
+  assert.strictEqual(JSON.stringify(game.GameState.data), before, "Failed saves roll back facility resets");
   assert(!(await game.GameClient.execute("facility.collect", { facilityId: "guild" })).ok);
   assert.strictEqual(JSON.stringify(game.GameState.data), before, "Failed saves roll back collection");
   fail = false;
@@ -107,6 +131,7 @@ async function run() {
   assert(!game.SaveTransfer.parse(JSON.stringify(badStorage)).ok);
   assert(!(await game.GameClient.execute("facility.upgrade", { facilityId: "unknown", trackId: "speed" })).ok);
   assert(!(await game.GameClient.execute("facility.upgrade", { facilityId: "mine", trackId: "unknown" })).ok);
+  assert(!(await game.GameClient.execute("facility.reset", { facilityId: "unknown" })).ok);
 
   game.GameState.reset(); now -= initialInterval * 2;
   assert.strictEqual(game.Facilities.quote("mine").storedDuration, 0);

@@ -8,13 +8,13 @@
     partySlots: {
       initial: 1, maximum: 8,
       unlocks: [
-        { slot: 2, chapterNumber: 1, gold: 1000, seals: 2 },
-        { slot: 3, chapterNumber: 2, gold: 2500, seals: 4 },
-        { slot: 4, chapterNumber: 3, gold: 5000, seals: 6 },
-        { slot: 5, chapterNumber: 4, gold: 10000, seals: 8 },
-        { slot: 6, chapterNumber: 5, gold: 20000, seals: 10 },
-        { slot: 7, chapterNumber: 6, gold: 40000, seals: 12 },
-        { slot: 8, codeOnly: true, gold: 80000, seals: 15 }
+        { slot: 2, chapterNumber: 1, gold: 10000, seals: 2 },
+        { slot: 3, chapterNumber: 2, gold: 100000, seals: 4 },
+        { slot: 4, chapterNumber: 3, gold: 500000, seals: 6 },
+        { slot: 5, chapterNumber: 4, gold: 2000000, seals: 8 },
+        { slot: 6, chapterNumber: 5, gold: 8000000, seals: 10 },
+        { slot: 7, chapterNumber: 6, gold: 30000000, seals: 12 },
+        { slot: 8, codeOnly: true, gold: 100000000, seals: 15 }
       ]
     }
   };

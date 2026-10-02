@@ -15,6 +15,7 @@ async function run() {
   let game = load();
   assert.strictEqual(game.Encyclopedia.item("wooden_sword"), 1);
   assert.strictEqual(game.Encyclopedia.item("cloth_clothes"), 1);
+  assert.strictEqual(game.Encyclopedia.bestQuality("wooden_sword"), "standard");
   assert.strictEqual(game.Encyclopedia.item("steel_sword"), 0);
   assert.strictEqual(game.Encyclopedia.monster("slime"), null);
   game.Items.add("iron_ore", 3);
@@ -22,8 +23,31 @@ async function run() {
   assert.strictEqual(game.Encyclopedia.item("iron_ore"), 3);
   assert.strictEqual(game.Encyclopedia.item("iron_sword"), 2);
   assert(game.Encyclopedia.unreadItems().includes("iron_ore") && game.Encyclopedia.unreadItems().includes("iron_sword"));
+  assert.strictEqual(game.Encyclopedia.bestQuality("iron_sword"), "standard");
+  const lowerQuality = game.Items.add("iron_sword", 1, { source: "test", qualityId: "worn", modifiers: { hp: 0, attack: 0, defense: 0 } });
+  assert.strictEqual(lowerQuality.newBestQualityId, null);
+  const higherQuality = game.Items.add("iron_sword", 1, { source: "test", qualityId: "fine", modifiers: { hp: 0, attack: 0, defense: 0 } });
+  assert.strictEqual(higherQuality.newBestQualityId, "fine");
+  assert.strictEqual(game.Encyclopedia.bestQuality("iron_sword"), "fine");
+  assert(!(await game.GameClient.execute("encyclopedia.trackItem", { itemId: "steel_sword" })).ok, "Undiscovered items cannot become exploration targets");
+  assert((await game.GameClient.execute("encyclopedia.trackRequirement", { itemId: "slime_gel", targetQuantity: 2 })).ok, "Materials named by an unlocked recipe are valid targets before discovery");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "slime_gel", quantity: 2, progress: 0 });
+  assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok, "A recipe-derived target is valid save data");
+  assert((await game.GameClient.execute("encyclopedia.trackItem", { itemId: "iron_sword", targetQuantity: 5 })).ok);
+  assert.strictEqual(game.Encyclopedia.trackedItem(), "iron_sword");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "iron_sword", quantity: 5, progress: 0 });
+  assert.strictEqual(game.Encyclopedia.recordTargetProgress("iron_sword", 2).progress, 2);
+  assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok, "The exploration target is valid save data");
+  assert((await game.GameClient.execute("encyclopedia.clearTrackedItem", {})).ok);
+  assert.strictEqual(game.Encyclopedia.trackedItem(), null);
+  const firstUltra = game.Items.add("wooden_sword", 1, { source: "drop", qualityId: "standard", ultraRareTitleId: "worldbreaker", modifiers: { hp: 0, attack: 0, defense: 0 } });
+  assert.deepStrictEqual(Array.from(firstUltra.newUltraRareTitleIds), ["worldbreaker"]);
+  assert(game.Encyclopedia.ultraRareTitle("worldbreaker") && game.Encyclopedia.unreadUltraRareTitles().includes("worldbreaker"));
+  const repeatedUltra = game.Items.add("wooden_sword", 1, { source: "drop", qualityId: "standard", ultraRareTitleId: "worldbreaker", modifiers: { hp: 0, attack: 0, defense: 0 } });
+  assert.strictEqual(repeatedUltra.newUltraRareTitleIds.length, 0, "Repeated ultra-rare titles are not announced as new discoveries");
   assert((await game.GameClient.execute("encyclopedia.read", { kind: "items" })).ok);
   assert.strictEqual(game.Encyclopedia.unreadItems().length, 0);
+  assert.strictEqual(game.Encyclopedia.unreadUltraRareTitles().length, 0);
   const stickySources = game.Encyclopedia.itemAcquisitionSources("sticky_fluid");
   assert(stickySources.monsters.some(source => source.dungeonId === "meadow" && source.monsterId === "slime" && source.difficultyId === "normal"));
   assert(stickySources.monsters.some(source => source.dungeonId === "meadow" && source.monsterId === "slime" && source.difficultyId === "divine"), "Higher difficulties inherit lower titled drops");
@@ -32,18 +56,25 @@ async function run() {
   assert(game.Encyclopedia.itemAcquisitionSources("wooden_sword").shop, "Shop availability is retained alongside monster sources");
   const firstIronSword = game.Items.equipmentList().find(item => item.templateId === "iron_sword");
   game.Items.sell(firstIronSword.id);
-  assert.strictEqual(game.Items.count("iron_sword"), 1);
-  assert.strictEqual(game.Encyclopedia.item("iron_sword"), 2, "Selling must not erase discovery history");
+  assert.strictEqual(game.Items.count("iron_sword"), 3);
+  assert.strictEqual(game.Encyclopedia.item("iron_sword"), 4, "Selling must not erase discovery history");
+  assert.strictEqual(game.Encyclopedia.bestQuality("iron_sword"), "fine", "Selling must not erase the best-quality record");
 
   game.GameState.reset();
   const heroId = require("./helpers").createCharacter(game, "図鑑調査隊", "warrior").id;
   game.Characters.get(heroId).level = 50;
   game.Party.toggle(heroId);
+  assert(game.Encyclopedia.setTrackedItem("wooden_sword", 3).ok);
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0, timeMultiplier: 1 })).ok);
+  assert.strictEqual(game.GameState.data.expeditions[0].trackedItemId, "wooden_sword", "The target is snapshotted when the party departs");
+  assert.strictEqual(game.GameState.data.expeditions[0].trackedItemGoal, 3);
   now += 30000;
   const collected = await game.GameClient.execute("expedition.collect");
   assert(collected.ok && collected.result);
   const result = game.GameState.data.lastResult;
+  assert.strictEqual(result.trackedItemId, "wooden_sword");
+  assert.strictEqual(result.trackedItemGoal, 3);
+  assert.strictEqual(result.trackedItemQuantity, result.drops.filter(drop => drop.itemId === "wooden_sword").reduce((sum, drop) => sum + drop.quantity, 0));
   assert(Object.keys(result.monsterEncounters).length > 0);
   for (const [id, count] of Object.entries(result.monsterEncounters)) {
     const entry = game.Encyclopedia.monster(id);
@@ -65,6 +96,27 @@ async function run() {
   const invalidUnread = JSON.parse(JSON.stringify(game.GameState.data));
   invalidUnread.encyclopedia.unreadMonsters.push("missing_monster");
   assert(!game.SaveTransfer.parse(JSON.stringify(invalidUnread)).ok);
+  const invalidBestQuality = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidBestQuality.encyclopedia.bestQualities.iron_sword = "unknown_quality";
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidBestQuality)).ok);
+  const invalidUltraTitle = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidUltraTitle.encyclopedia.ultraRareTitles.push("unknown_title");
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidUltraTitle)).ok);
+  const invalidTrackedItem = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidTrackedItem.encyclopedia.itemTarget = { itemId: "unknown_relic", quantity: 5, progress: 0 };
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidTrackedItem)).ok);
+
+  game.Items.add("wooden_sword", 1, { source: "drop", qualityId: "standard", ultraRareTitleId: "worldbreaker", modifiers: { hp: 0, attack: 0, defense: 0 } });
+  const priorV8 = JSON.parse(JSON.stringify(game.GameState.data));
+  priorV8.encyclopedia.version = 8;
+  priorV8.encyclopedia.trackedItemId = "wooden_sword";
+  delete priorV8.encyclopedia.itemTarget;
+  storage.set(game.SaveSystem.exportKey, JSON.stringify(priorV8));
+  game = load();
+  assert.strictEqual(game.GameState.data.encyclopedia.version, 9);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "wooden_sword", quantity: 1, progress: 0 });
+  assert.strictEqual(game.Encyclopedia.bestQuality("wooden_sword"), "standard");
+  assert(game.Encyclopedia.ultraRareTitle("worldbreaker"), "Version 8 archives retain ultra-rare discoveries while migrating the exploration target");
 
   const prior = JSON.parse(JSON.stringify(game.GameState.data));
   delete prior.encyclopedia;
@@ -75,6 +127,6 @@ async function run() {
   assert(game.Encyclopedia.monster("alpha_wolf"), "Cleared dungeon boss is restored to the archive");
   assert((await game.GameClient.execute("progress.sync")).ok);
   assert(JSON.parse(storage.get(game.SaveSystem.exportKey)).encyclopedia);
-  console.log("Encyclopedia test passed: item history, exact dungeon/monster/difficulty sources, encounters/defeats, battle integration, validation, reset and additive current-save hydration");
+  console.log("Encyclopedia test passed: item history, exploration targets, exact sources, encounters/defeats, validation, reset and additive current-save hydration");
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

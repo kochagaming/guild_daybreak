@@ -9,13 +9,18 @@ for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").ma
 const game = context.window, definitions = game.GameData.achievements;
 assert(definitions.length >= 15, "The ledger provides enough goals for long-term play");
 assert.strictEqual(new Set(definitions.map(entry => entry.id)).size, definitions.length, "Achievement IDs are unique");
+const conditionTypes = new Set(["characters", "partyMembers", "chapters", "postgameChapters", "specificDungeonClear", "dungeonClears", "optionalClears", "divineClears", "monsterSpecies", "monsterDefeats", "itemTypes", "ultraRareOwned", "facilityUpgrades"]);
 for (const entry of definitions) {
   assert(entry.id && entry.name && entry.description && entry.category && entry.icon, `${entry.id} has display metadata`);
+  assert(entry.secret == null || typeof entry.secret === "boolean", `${entry.id} has a valid secrecy flag`);
   assert(Number.isInteger(entry.condition.target) && entry.condition.target > 0, `${entry.id} has a positive target`);
+  assert(conditionTypes.has(entry.condition.type), `${entry.id} has a supported condition type`);
+  if (entry.condition.type === "specificDungeonClear") assert(game.GameData.dungeons[entry.condition.dungeonId], `${entry.id} points to a known dungeon`);
 }
 
 game.GameState.reset();
 assert.strictEqual(game.Achievements.summary().completed, 0, "A new guild starts with an empty achievement ledger");
+assert(definitions.find(entry => entry.id === "five_reaches_wedge").secret, "The optional postgame boss remains a secret until defeated");
 const state = game.GameState.data;
 state.characters = Array.from({ length: 30 }, (_, index) => ({ id: `hero-${index + 1}` }));
 state.parties[0] = state.characters.slice(0, 6).map(character => character.id);
@@ -32,6 +37,8 @@ assert(all.every(entry => entry.complete && entry.ratio === 1), "Every milestone
 assert.strictEqual(game.Achievements.summary().completed, definitions.length);
 assert.strictEqual(game.Achievements.count({ type: "monsterDefeats" }, state), 120);
 assert.strictEqual(game.Achievements.count({ type: "facilityUpgrades" }, state), 6);
+assert.strictEqual(game.Achievements.count({ type: "postgameChapters" }, state), 1);
+assert.strictEqual(game.Achievements.count({ type: "specificDungeonClear", dungeonId: "five_reaches_nest" }, state), 1);
 assert(Object.isFrozen(all[0]), "Achievement results are read-only views, not save records");
 assert(!Object.prototype.hasOwnProperty.call(state, "achievements"), "Achievements do not add derived data to the save format");
 console.log("Achievements test passed: unique definitions, current-state derivation, all condition types, capped progress and no save-schema changes");

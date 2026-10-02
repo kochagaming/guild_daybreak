@@ -37,7 +37,7 @@ const ruinsParty = [
 const rates = { meadow: winRate("meadow", meadowParty), cave: winRate("cave", caveParty), ruins: winRate("ruins", ruinsParty) };
 // Regression bands for these fixed fixtures under the current cooldown and attack-count rules.
 // These are samples, not final recommended-party balance targets.
-if (rates.meadow < 37 || rates.meadow > 57 || rates.cave < 54 || rates.cave > 74 || rates.ruins < 8 || rates.ruins > 20) {
+if (rates.meadow < 37 || rates.meadow > 57 || rates.cave < 54 || rates.cave > 74 || rates.ruins < 15 || rates.ruins > 35) {
   throw new Error(`現行ルールの固定編成標本が回帰範囲外です: ${JSON.stringify(rates)}`);
 }
 console.log(`Balance sample passed: 草原 ${rates.meadow}% / 洞窟 ${rates.cave}% / 遺跡 ${rates.ruins}%`);

@@ -28,9 +28,12 @@ async function run() {
   let html = node("app").innerHTML;
   assert.strictEqual(count(html, 'class="character-card compact-record"'), 20, "Character directory renders one compact page");
   assert(html.includes("行を押すと能力・スキル・装備を表示します") && html.includes("1 / 3ページ · 45人"));
+  assert(html.includes('class="compact-filter-panel directory-filter-panel" data-detail="character-directory-filters"') && html.includes("全職業・レベル順"), "Character directory filters expose current conditions and retain their open state");
   assert(html.includes("record-summary") && html.includes('data-action="open-character"') && !html.includes("character-detail-card"));
+  node(".main-area").scrollTop = 780;
   await click("character-page", { page: "2" });
   html = node("app").innerHTML;
+  assert.strictEqual(node(".main-area").scrollTop, 0, "Changing character pages should return to the character list heading");
   assert.strictEqual(count(html, 'class="character-card compact-record"'), 5);
   assert(html.includes("3 / 3ページ · 45人"));
 
@@ -39,6 +42,18 @@ async function run() {
   const totalEquipment = game.Items.equipmentList().length;
   assert.strictEqual(count(html, 'class="owned-equipment equipment-stack compact-record'), 3, "Identical equipment renders as one stack");
   assert(html.includes(`3種 / 全${totalEquipment}点`) && html.includes("×30") && html.includes("同じ性能の装備はまとめて表示します"));
+  assert(html.includes('class="compact-filter-panel inventory-filter-panel" data-detail="inventory-filters"') && html.includes("全種・全品質・新しい順"), "Inventory filter heading exposes the current conditions and can retain its open state");
+  assert(html.includes('class="auto-sell-panel" data-detail="inventory-auto-sell"'), "Auto-sell settings have a stable open-state identity");
+  assert(html.includes('class="panel inventory-material-panel" data-detail="inventory-materials"') && html.includes("1種 · 4点") && !html.includes('data-detail="inventory-materials" open'), "Materials stay in a compact expandable ledger with a visible total");
+  node(".main-area").scrollTop = 610;
+  await listeners.change({ target: { checked: true, hasAttribute: key => key === "data-auto-sell-enabled" } });
+  assert.strictEqual(node(".main-area").scrollTop, 610, "Toggling auto-sell should preserve the inventory position");
+  assert.strictEqual(game.AutoSell.state().enabled, true);
+  const sellTarget = game.Items.equipmentList().find(item => item.templateId === "iron_sword");
+  node(".main-area").scrollTop = 410;
+  await click("request-sell", { instance: sellTarget.id });
+  await click("confirm-item-action", { kind: "sell", instance: sellTarget.id });
+  assert.strictEqual(node(".main-area").scrollTop, 410, "Selling an equipment instance should preserve the inventory position");
 
   game.UI.navigate("shop");
   html = node("app").innerHTML;
@@ -64,9 +79,20 @@ async function run() {
   await click("blacksmith-back"); await click("blacksmith-open", { view: "upgrade" });
   html = node("app").innerHTML;
   assert(html.includes("upgrade-record") && html.includes("upgrade-controls") && !html.includes("forge-shop-card") && html.includes("鍛冶メニュー"), "Upgrade has its own route, filters and back navigation");
+  assert(html.includes('class="compact-filter-panel blacksmith-filter-panel" data-detail="blacksmith-upgrade-filters"') && html.includes("全種・全状態・強化可能順"), "Upgrade filters expose current conditions and retain their open state");
   assert.strictEqual(count(html, 'class="commission-card compact-record upgrade-record"'), 3, "Identical equipment is grouped on the upgrade screen");
-  assert(html.includes("×30") && html.includes("強化する個体を選ぶ") && html.includes("3種（32点）"), "Upgrade groups show stack counts and individual selection");
+  assert(html.includes("×29") && html.includes("強化する個体を選ぶ") && html.includes("3種（31点）"), "Upgrade groups show stack counts and individual selection");
+  const upgradeTarget = game.Items.equipmentList().find(item => item.templateId === "iron_sword");
+  const upgradeQuote = game.Upgrades.quote(upgradeTarget.id);
+  game.GameState.data.gold = Math.max(game.GameState.data.gold, upgradeQuote.gold + 1000);
+  Object.entries(upgradeQuote.materials).forEach(([itemId, amount]) => game.Items.add(itemId, amount, { source: "test" }));
+  node(".main-area").scrollTop = 530;
+  await click("request-upgrade", { instance: upgradeTarget.id });
+  await click("confirm-upgrade");
+  assert.strictEqual(node(".main-area").scrollTop, 530, "Confirming an upgrade should preserve the upgrade-list position");
+  assert.strictEqual(game.Items.getInstance(upgradeTarget.id).upgradeLevel, 1);
   const styles = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
+  assert(styles.includes(".inventory-filter-panel:not([open]),") && styles.includes(".blacksmith-filter-panel:not([open]),") && styles.includes(".directory-filter-panel:not([open]),") && styles.includes(".roster-filter-panel:not([open]) { position: sticky; top: 0;"), "Collapsed inventory, crafting, character and roster filters remain reachable while scrolling on mobile");
   assert(!styles.includes(".forge-shop-card > summary { grid-template-columns: 34px"), "Mobile recipe rows must not reserve a hidden icon column");
   assert(styles.includes(".forge-shop-card > summary { grid-template-columns: minmax(0,1fr) auto") && styles.includes(".forge-shop-card .item-icon { display: none; }"), "Mobile recipe rows give the item summary the full available width");
   console.log("Compact ledgers test passed: collapsed character/equipment rows, directory/inventory paging, compact shop-style crafting catalog and upgrade views");

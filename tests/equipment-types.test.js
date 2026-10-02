@@ -27,7 +27,7 @@ ids.forEach(id => {
 
 const thiefId = require("./helpers").createCharacter(game, "装備試験", "thief", "human", "common").id;
 const thief = game.Characters.get(thiefId);
-thief.level = 3;
+thief.level = 6;
 const base = game.Characters.stats(thief);
 const rapier = game.Items.createInstance("bronze_rapier", { source: "shop", modifiers: { hp: 0, attack: 0, defense: 0 }, equipmentSkills: [] });
 assert(game.Items.equip(thiefId, rapier.id).ok);

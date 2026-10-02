@@ -8,8 +8,20 @@ const has = (table, id) => Object.prototype.hasOwnProperty.call(table || {}, id)
 const growth = data.characterGrowth;
 const actualAverageWeight = growth.averageEquipmentWeight;
 assert(Number.isFinite(actualAverageWeight) && actualAverageWeight > 0, "Reference equipment weight must remain an explicit, stable balance constant");
+assert.strictEqual(data.equipmentBalance.efficiencyGrowthPerTier, .04, "Tier equipment efficiency growth must be an explicit balance constant");
+for (const [typeId, expected] of Object.entries(data.equipmentBalance.referenceEfficiency)) {
+  const tierOneId = data.shop.standardTiers.find(entry => entry.tier === 1).itemIds.find(id => (data.items[id].weaponType || data.items[id].armorType) === typeId);
+  assert(tierOneId, `${typeId} needs a Tier 1 standard reference item`);
+  const reference = data.items[tierOneId];
+  assert(Math.abs(game.Items.performanceScore(reference) / reference.weight - expected) < 1e-9, `${typeId} reference efficiency must match its Tier 1 standard item`);
+}
 assert.deepStrictEqual(Array.from(growth.equipmentCapacityMilestones, entry => entry[0]), [1, 3, 6, 9, 12, 16, 20, 25, 30, 36, 42, 49, 58, 67, 77, 89, 102, 118, 134, 150, 166, 183, 200]);
-growth.equipmentCapacityMilestones.forEach(([level, items]) => assert.strictEqual(game.Characters.baseMaxWeight(level), items * actualAverageWeight));
+assert.deepStrictEqual(Array.from(growth.equipmentWeightUnitMilestones, entry => entry[0]), [1, 20, 49, 89]);
+growth.equipmentCapacityMilestones.forEach(([level, items]) => assert.strictEqual(game.Characters.baseMaxWeight(level), items * game.Characters.equipmentWeightUnitAtLevel(level)));
+assert.strictEqual(game.Characters.equipmentWeightUnitAtLevel(1), 3);
+assert.strictEqual(game.Characters.equipmentWeightUnitAtLevel(89), actualAverageWeight);
+assert.strictEqual(game.Characters.equipmentWeightUnitAtLevel(200), actualAverageWeight);
+assert(game.Characters.baseMaxWeight(1) < actualAverageWeight && game.Characters.baseMaxWeight(20) < 7 * actualAverageWeight, "Early weight capacity should no longer use the all-tier average");
 assert.strictEqual(game.Characters.equipmentCapacityAtLevel(285), 28);
 assert.strictEqual(game.Characters.equipmentCapacityAtLevel(1000), 28, "Post-200 capacity is capped at 28 average items");
 const namedTables = [data.items, data.skills, data.jobs, data.races, data.births, data.monsters, data.dungeons, data.equipmentTypes, data.elements, data.statusEffects, data.storyScenes];
@@ -26,6 +38,19 @@ for (const item of Object.values(data.items).filter(item => item.type === "weapo
   if (item.type === "weapon") assert(["melee", "ranged"].includes(item.range), `${item.id} needs a weapon range`);
   assert(Array.isArray(item.skillIds) && item.skillIds.length > 0 && new Set(item.skillIds).size === item.skillIds.length, `${item.id} needs unique fixed equipment skills`);
   item.skillIds.forEach(id => assert(has(data.equipmentSkills, id), `${item.id} references unknown equipment skill ${id}`));
+  const effect = game.Items.standardEffects(item.id);
+  const effectiveTemplate = { ...item, ...effect };
+  assert(game.Items.performanceScore(effectiveTemplate) / effect.weight + 1e-9 >= game.Items.performanceFloor(item), `${item.id} falls below its Tier ${item.tier} performance-per-weight floor`);
+  assert(game.Items.tierEfficiencyMultiplier(item) <= data.equipmentBalance.maximumAutomaticAdjustment, `${item.id} needs an excessive automatic efficiency adjustment`);
+}
+
+for (const type of Object.values(data.equipmentTypes)) {
+  const standard = data.shop.standardTiers.map(entry => entry.itemIds.find(id => (data.items[id].weaponType || data.items[id].armorType) === type.id));
+  standard.slice(1).forEach((itemId, index) => {
+    const previous = game.Items.performancePerWeight(data.items[standard[index]]);
+    const current = game.Items.performancePerWeight(data.items[itemId]);
+    assert(current > previous, `${type.id} Tier ${index + 2} must improve performance per weight over the previous Tier`);
+  });
 }
 
 const equipmentEffectTypes = new Set(["multiplier", "bonus", "conversion", "power", "healingPower", "slayer", "statusResistance"]);
@@ -73,6 +98,11 @@ const effectTypes = new Set(["damage", "heal", "guard", "counter", "statMultipli
 for (const skill of Object.values(data.skills)) {
   assert(data.skillCategories[skill.category], `${skill.id} has an invalid category`);
   assert(skill.activation && ["active", "passive", "reaction"].includes(skill.activation.type), `${skill.id} has an invalid activation`);
+  if (skill.activation.type === "active") {
+    assert(Number.isInteger(skill.activation.cooldownTurns) && skill.activation.cooldownTurns >= 1 && skill.activation.cooldownTurns <= 30, `${skill.id} needs an individual cooldown`);
+  } else {
+    assert(!Object.prototype.hasOwnProperty.call(skill.activation, "cooldownTurns"), `${skill.id} cannot have an active cooldown`);
+  }
   assert(skill.targeting && typeof skill.targeting.scope === "string", `${skill.id} needs targeting`);
   assert(Array.isArray(skill.effects) && skill.effects.length, `${skill.id} needs effects`);
   assert(skill.effects.every(effect => effectTypes.has(effect.type)), `${skill.id} has an unknown effect`);
@@ -92,6 +122,7 @@ for (const skill of Object.values(data.skills)) {
   });
   legacySkillFields.forEach(field => assert(!Object.prototype.hasOwnProperty.call(skill, field), `${skill.id} still uses legacy field ${field}`));
 }
+assert(new Set(Object.values(data.skills).filter(skill => skill.activation.type === "active").map(skill => skill.activation.cooldownTurns)).size >= 5, "Active skill cooldowns must not collapse to one shared value");
 
 const owners = { job: data.jobs, race: data.races, birth: data.births };
 for (const [ownerType, table] of Object.entries(owners)) {
@@ -117,6 +148,7 @@ for (const [ownerType, table] of Object.entries(owners)) {
 
 const pricing = data.recruitment.pricing;
 assert(pricing && pricing.base >= 0 && pricing.roundTo > 0, "Recruitment pricing needs base and rounding rules");
+assert(Array.isArray(pricing.foundingSubsidies) && pricing.foundingSubsidies.length === 3 && pricing.foundingSubsidies.every((value, index, values) => value >= 0 && (!index || value < values[index - 1])), "Recruitment needs three decreasing founding subsidies");
 assert.deepStrictEqual(Object.keys(pricing.jobCosts).sort(), Object.keys(data.jobs).sort(), "Every job needs a recruitment cost");
 assert.deepStrictEqual(Object.keys(pricing.raceCosts).sort(), Object.keys(data.races).sort(), "Every race needs a recruitment cost");
 Object.values(pricing.jobCosts).concat(Object.values(pricing.raceCosts)).forEach(value => assert(Number.isFinite(value) && value >= 0));
@@ -129,6 +161,7 @@ assert(Array.isArray(posting.brackets) && posting.brackets.length && posting.bra
 for (const recipe of data.recipes) {
   assert(has(data.items, recipe.resultId), `${recipe.id} has an unknown result`);
   Object.keys(recipe.materials).forEach(id => assert(has(data.items, id) && data.items[id].type === "material", `${recipe.id} has an invalid material`));
+  assert(!recipe.unlockAfter || data.storyChapters.some(chapter => chapter.id === recipe.unlockAfter) || has(data.dungeons, recipe.unlockAfter), `${recipe.id} has an invalid unlock reference`);
 }
 for (const dungeon of Object.values(data.dungeons)) {
   assert(data.storyChapters.some(chapter => chapter.id === dungeon.chapterId), `${dungeon.id} has an invalid chapter`);
@@ -180,9 +213,12 @@ for (const race of Object.values(data.races)) {
 for (const [jobId, rule] of Object.entries(data.classChanges)) assert(has(data.jobs, jobId) && has(data.skills, rule.masterSkillId));
 
 assert(Array.isArray(data.facilities.order) && new Set(data.facilities.order).size === data.facilities.order.length, "Facility order must contain unique IDs");
+assert.deepStrictEqual(Object.keys(data.facilities.upgradeGoldByTargetLevel).map(Number), [2, 3, 4, 5]);
+assert(Object.values(data.facilities.upgradeGoldByTargetLevel).every((value, index, values) => value > 0 && (!index || value > values[index - 1])), "Facility gold costs must rise with level");
 data.facilities.order.forEach(id => {
   const facility = data.facilities.definitions[id];
   assert(facility?.id === id, `${id} needs matching facility ID and definition`);
+  assert(Number.isFinite(facility.goldCostMultiplier) && facility.goldCostMultiplier > 0, `${id} needs a gold-cost multiplier`);
   data.facilities.trackOrder.forEach(trackId => {
     const levels = facility.upgrades[trackId];
     assert(Array.isArray(levels) && levels.length >= 1, `${id}.${trackId} needs upgrade levels`);
@@ -211,6 +247,7 @@ partyRules.unlocks.forEach((entry, index) => {
   assert.strictEqual(entry.slot, partyRules.initial + index + 1);
   assert(entry.gold >= 0 && entry.seals >= 0);
 });
+assert.deepStrictEqual(Array.from(partyRules.unlocks, entry => entry.gold), [10000, 100000, 500000, 2000000, 8000000, 30000000, 100000000]);
 game.GameState.ensurePartyCapacity(state);
 assert.strictEqual(game.Party.maximum(), 8);
 assert.strictEqual(state.parties.length, 8);

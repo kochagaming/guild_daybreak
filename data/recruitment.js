@@ -3,21 +3,23 @@
   window.GameData.recruitment = {
     version: 2, matchChance: .8,
     pricing: {
-      base: 30,
-      roundTo: 5,
+      base: 250,
+      roundTo: 10,
+      minimum: 100,
+      foundingSubsidies: [250, 150, 50],
       abilityBaselines: { hp: 45, attack: 8, defense: 6 },
-      abilityWeights: { hp: 1, attack: 6, defense: 5 },
+      abilityWeights: { hp: 3, attack: 20, defense: 16 },
       jobCosts: {
-        warrior: 25, thief: 20, mage: 30, cleric: 25,
-        knight: 40, ranger: 35, berserker: 45, monk: 35,
-        samurai: 55, ninja: 60, bard: 48, druid: 52,
-        hexer: 75, spellblade: 80, summoner: 75
+        warrior: 100, thief: 80, mage: 120, cleric: 110,
+        knight: 180, ranger: 160, berserker: 190, monk: 160,
+        samurai: 250, ninja: 270, bard: 230, druid: 240,
+        hexer: 360, spellblade: 400, summoner: 360
       },
       raceCosts: {
-        human: 0, elf: 10, dwarf: 12, beastkin: 15,
-        halfling: 18, gnome: 22, orc: 28, goblin: 16,
-        dragonewt: 40, fairy: 42, automaton: 42, giantkin: 48,
-        demonkin: 58, celestial: 60, undead: 55
+        human: 0, elf: 40, dwarf: 50, beastkin: 60,
+        halfling: 80, gnome: 90, orc: 110, goblin: 70,
+        dragonewt: 180, fairy: 190, automaton: 200, giantkin: 220,
+        demonkin: 300, celestial: 320, undead: 280
       }
     },
     postingCost: {

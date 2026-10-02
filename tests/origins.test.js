@@ -53,9 +53,10 @@ for (const race of Object.keys(game.GameData.races)) {
 }
 assert.strictEqual(count, 3375);
 const milestone = { id: "milestone", name: "節目", jobId: "warrior", raceId: "human", birthId: "common", level: 1, exp: 0, base: { hp: 50, attack: 10, defense: 8 }, equipment: [], career: null };
-const averageWeight = game.Characters.averageEquipmentWeight();
-assert.strictEqual(game.Characters.maxWeight(milestone), Math.round(averageWeight * game.GameData.jobs.warrior.weightMultiplier * 10) / 10, "Lv.1 warrior capacity should exceed one average item through its job bonus");
-assert.strictEqual(game.Characters.maxWeight({ ...milestone, jobId: "mage" }), Math.round(averageWeight * game.GameData.jobs.mage.weightMultiplier * 10) / 10, "Lv.1 mage capacity should stay below one average item");
+const startingWeightUnit = game.Characters.equipmentWeightUnitAtLevel(1);
+assert.strictEqual(game.Characters.maxWeight(milestone), Math.round(startingWeightUnit * game.GameData.jobs.warrior.weightMultiplier * 10) / 10, "Lv.1 warrior capacity should use the early-game reference weight plus its job bonus");
+assert.strictEqual(game.Characters.maxWeight({ ...milestone, jobId: "mage" }), Math.round(startingWeightUnit * game.GameData.jobs.mage.weightMultiplier * 10) / 10, "Lv.1 mage capacity should stay below one early-game reference item");
+assert(game.Characters.maxWeight(milestone) < game.Characters.averageEquipmentWeight(), "Lv.1 warrior should no longer receive an all-tier equipment weight allowance");
 const learnedAt = level => { milestone.level = level; return new Set(game.Characters.learnedSkills(milestone).map(skill => skill.id)); };
 assert(!learnedAt(1).has("power_strike") && learnedAt(1).has("adaptive_strike") && learnedAt(1).has("birth_common_resolve"));
 assert(!learnedAt(1).has("race_human_adapt") && learnedAt(30).has("race_human_adapt"));
@@ -64,6 +65,11 @@ assert(learnedAt(20).has("progression_birth_common_growth20"));
 assert(learnedAt(40).has("rear_protection"));
 const knight = { ...milestone, id: "knight-milestone", jobId: "knight", level: 10 };
 assert(game.Characters.learnedSkills(knight).some(skill => skill.id === "knight_guard"), "knights should learn an active guard before telegraphed bosses appear");
+const noviceCleric = { ...milestone, id: "novice-cleric", jobId: "cleric", level: 1 };
+const novicePrayer = game.Characters.learnedSkills(noviceCleric).find(skill => skill.id === "initial_job_cleric_specialty");
+assert(novicePrayer && novicePrayer.category === "healing", "clerics should be able to perform their role before the level 10 job milestone");
+assert.strictEqual(novicePrayer.effects.find(effect => effect.type === "heal").multiplier, .72);
+assert(!game.Characters.learnedSkills(noviceCleric).some(skill => skill.id === "heal"), "the stronger level 10 healing skill should remain a milestone reward");
 assert(learnedAt(60).has("progression_birth_common_growth60") && learnedAt(60).has("progression_race_human_awakening"));
 assert(learnedAt(70).has("iron_guard"));
 assert(learnedAt(100).has("progression_job_warrior_mastery") && learnedAt(100).has("progression_race_human_trueblood") && learnedAt(100).has("progression_birth_common_legacy"));

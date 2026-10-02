@@ -26,10 +26,14 @@ async function run() {
   assert(!(await game.GameClient.execute("preset.save", { slot: 6, name: "範囲外" })).ok);
   assert(!(await game.GameClient.execute("preset.save", { slot: 0, name: " " })).ok);
   assert((await game.GameClient.execute("preset.save", { slot: 0, name: "草原用" })).ok);
+  assert(game.Presets.lineupMatches(0), "A saved preset recognizes the same ordered lineup");
+  assert(game.Presets.matches(0), "A freshly saved preset matches the current party");
   const snapshot = JSON.stringify(game.Presets.slots()[0]);
   game.GameState.data.parties[0].reverse();
   game.Characters.get(a).equipment = [iron, "item-2"]; game.Characters.get(b).equipment = ["item-1"];
   game.Characters.setActionRates(a, { attack: 100, technique: 0, spell: 0, healing: 0 }); game.Characters.setActionRates(b, { attack: 0, technique: 100, spell: 0, healing: 0 });
+  assert(!game.Presets.lineupMatches(0), "Changing member order no longer matches the saved lineup");
+  assert(!game.Presets.matches(0), "Lineup, equipment or action-rate changes make the preset different");
   assert.strictEqual(JSON.stringify(game.Presets.slots()[0]), snapshot, "Presets are detached snapshots.");
   const before = JSON.stringify(game.GameState.data);
   failSave = true;
@@ -37,6 +41,7 @@ async function run() {
   failSave = false;
   assert.strictEqual(JSON.stringify(game.GameState.data), before, "Rollback restores gear/order/policies together.");
   assert((await game.GameClient.execute("preset.apply", { slot: 0 })).ok);
+  assert(game.Presets.matches(0), "Applying a preset restores an exact match");
   assert.strictEqual(game.Party.ids().join(","), [a, b].join(","));
   assert.strictEqual(game.Characters.get(a).equipment[0], "item-1");
   assert.strictEqual(game.Characters.get(b).equipment[0], iron);

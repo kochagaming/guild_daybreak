@@ -23,16 +23,22 @@ Object.assign(game.GameData.monsters.slime, { hp: 99999, attack: 1, magicAttack:
 game.GameRuntime.seededRandom = () => () => .5;
 function fight(members, targetDungeon = dungeon) { return game.Battle.resolve({ seed: 42, partyIds: [], partySnapshot: members }, targetDungeon); }
 const techniqueUser = hero("技使用者", ["power_strike"]);
-const spellUser = hero("呪文使用者", ["fireball"]); spellUser.actionRates = { attack: 0, technique: 0, spell: 100, healing: 0 };
+const spellUser = hero("呪文使用者", ["dark_wave"]); spellUser.actionRates = { attack: 0, technique: 0, spell: 100, healing: 0 };
 const cooldown = fight([techniqueUser, spellUser]);
 // Obsolete metadata cannot select a different combat implementation.
 for (const battleVersion of [1, 2, 3, 4, 5, 6]) {
   const tagged = game.Battle.resolve({ seed: 42, battleVersion, explorationVersion: 1, partyIds: [], partySnapshot: [techniqueUser, spellUser] }, dungeon);
   assert.strictEqual(JSON.stringify(tagged), JSON.stringify(cooldown));
 }
-const uses = cooldown.battleLog.filter(entry => entry.text.includes("次の同種スキル"));
-assert.deepStrictEqual(Array.from(uses, entry => entry.round), [1, 1, 11, 11, 21, 21]);
+const uses = cooldown.battleLog.filter(entry => entry.text.includes("再使用はターン"));
+assert.deepStrictEqual(Array.from(uses.filter(entry => entry.text.includes("強撃")), entry => entry.round), [1, 11, 21]);
+assert.deepStrictEqual(Array.from(uses.filter(entry => entry.text.includes("暗黒波")), entry => entry.round), [1, 21]);
+assert(uses.some(entry => entry.text.includes("CT 10")) && uses.some(entry => entry.text.includes("CT 20")), "The log exposes each skill's cooldown");
 assert(cooldown.battleLog.some(entry => entry.kind === "guard"), "A technique-only policy should defend while its technique is on cooldown");
+const techniqueRotation = fight([hero("使い分け役", ["iaijutsu", "power_strike"])]);
+const rotationUses = techniqueRotation.battleLog.filter(entry => entry.text.includes("再使用はターン"));
+assert(rotationUses.some(entry => entry.round === 1 && entry.text.includes("居合斬り")));
+assert(rotationUses.some(entry => entry.round === 2 && entry.text.includes("強撃")), "Another technique remains usable while the first technique cools down");
 const rear = hero("後列", [], { speed: 90 }); rear.position = 1;
 Object.assign(game.GameData.monsters.slime, { attack: 30, targetRule: "rear" });
 const unprotected = fight([hero("前列", []), rear]);
@@ -62,7 +68,7 @@ const counter = fight([hero("反撃役", ["counter_stance"], { hp: 9999 })]);
 assert(counter.battleLog.some(entry => entry.text.includes("【パッシブ・反撃】")));
 assert(counter.battleLog.length < 500);
 const restart = fight([hero("使用者", ["power_strike"])], { ...dungeon, encounters: [{ name: "一戦目", groups: [["horn_rabbit"]] }, { name: "二戦目", groups: [["horn_rabbit"]] }] });
-assert.strictEqual(restart.battleLog.filter(entry => entry.text.includes("次の同種スキル") && entry.round === 1).length, 2);
+assert.strictEqual(restart.battleLog.filter(entry => entry.text.includes("再使用はターン") && entry.round === 1).length, 2);
 async function run() {
   const id = require("./helpers").createCharacter(game, "分類保存", "warrior", "human", "guard").id;
   game.Characters.get(id).level = 40; game.Party.toggle(id);
@@ -72,6 +78,6 @@ async function run() {
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
   now += 30000; await game.GameClient.execute("expedition.collect");
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
-  console.log("Skill categories test passed: four types, independent 10-turn category cooldowns, normal fallback, aura/protection/no stacking/death, immediate one-shot healing/lethal guards, bounded counters, encounter reset and saved/offline rules");
+  console.log("Skill categories test passed: four types, individual skill cooldowns and same-category rotation, normal fallback, aura/protection/no stacking/death, immediate one-shot healing/lethal guards, bounded counters, encounter reset and saved/offline rules");
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

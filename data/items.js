@@ -2,6 +2,29 @@
   "use strict";
 
   window.GameData = window.GameData || {};
+  // 同じ重量なら高Tier装備ほど強くなるための共通基準。
+  // 装備種ごとに直前Tierの実効値を引き継ぎ、Tierが1上がるごとに役割性能/重量を4%以上高める。
+  window.GameData.equipmentBalance = Object.freeze({
+    efficiencyGrowthPerTier: .04,
+    maximumAutomaticAdjustment: 2.5,
+    // Tier 1商店品から算出した固定値。読み込み順や追加コンテンツに左右されない基準にする。
+    referenceEfficiency: Object.freeze({
+      rapier: 3, sword: 2, katana: 7 / 3, bow: 2, staff: 2.4,
+      cloth: 8, leather: 2.3, heavy: 1.5625, shield: 3.3, gauntlet: 3
+    }),
+    scoreWeights: Object.freeze({
+      rapier: Object.freeze({ attack: 1 }),
+      sword: Object.freeze({ attack: 1, defense: .4, hp: .05 }),
+      katana: Object.freeze({ attack: 1 }),
+      bow: Object.freeze({ attack: 1 }),
+      staff: Object.freeze({ magicAttack: 1, magicHealing: .5, hp: .05 }),
+      cloth: Object.freeze({ defense: 1, magicDefense: 1, magicHealing: .5, hp: .15 }),
+      leather: Object.freeze({ defense: 1, magicDefense: 1, hp: .15 }),
+      heavy: Object.freeze({ defense: 1, magicDefense: 1, hp: .15 }),
+      shield: Object.freeze({ defense: 1, magicDefense: 1, hp: .15 }),
+      gauntlet: Object.freeze({ attack: .5, defense: 1, magicDefense: .5 })
+    })
+  });
   window.GameData.items = {
     wooden_sword: { id: "wooden_sword", name: "木の剣", type: "weapon", range: "melee", tier: 1, price: 80, attack: 4, hitRate: .02, defense: 0, hp: 0, weight: 2, salvage: { itemId: "craft_material", quantity: 1 }, icon: "⚔" },
     iron_sword: { id: "iron_sword", name: "鉄の剣", type: "weapon", range: "melee", tier: 2, price: 220, attack: 9, hitRate: .03, defense: 0, hp: 0, weight: 5, salvage: { itemId: "iron_ore", quantity: 2 }, icon: "⚔" },

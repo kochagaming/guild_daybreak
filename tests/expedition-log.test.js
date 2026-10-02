@@ -56,6 +56,7 @@ async function run() {
   html = node("app").innerHTML;
   assert(html.includes("ADVENTURE LOG") && html.includes("探索の記録"));
   assert(html.includes("journey-conclusion") && html.includes("battle-log-list"));
+  assert(html.includes("battle-observation-summary") && html.includes("観測要点") && html.includes("命中・回避"), "Completed encounters summarize observable combat evidence before the full log");
   assert(!html.includes("戦闘ログを見る"), "Battle logs should be nested in encounter entries instead of a separate panel");
   console.log("Expedition log test passed: deterministic live reveal, story discoveries, arrival/search/treasure/stairs rows, nested encounter battles and completed journal reuse");
 }

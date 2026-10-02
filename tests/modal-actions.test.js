@@ -70,6 +70,14 @@ async function run() {
   await click("unequip", { character: hired.id, instance: "item-1" });
   assert.strictEqual(game.Characters.get(hired.id).equipment.join(","), "item-2");
   assert((await game.GameClient.execute("equipment.equip", { characterId: hired.id, instanceId: "item-1" })).ok);
+  await click("request-unequip-all", { character: hired.id }, true);
+  assert(modalRoot.innerHTML.includes("装備をすべて外しますか？") && modalRoot.innerHTML.includes("装備中の2点"), "Bulk unequip should require an explicit confirmation");
+  await click("cancel-unequip-all", {}, true);
+  assert(modalRoot.innerHTML.includes(`${game.Characters.get(hired.id).name}の装備`) && game.Characters.get(hired.id).equipment.length === 2, "Cancelling bulk unequip should return to the unchanged equipment screen");
+  await click("request-unequip-all", { character: hired.id }, true);
+  await click("confirm-unequip-all", {}, true);
+  assert.strictEqual(game.Characters.get(hired.id).equipment.length, 0, "Confirmed bulk unequip should atomically remove every item");
+  assert(modalRoot.innerHTML.includes("装備を一括解除（2点）") && modalRoot.innerHTML.includes("装備中 0点"), "Bulk unequip should return to the equipment screen with an in-place change summary");
   const before = JSON.stringify(game.GameState.data);
   await click("reset-save");
   await click("close-modal", {}, true);

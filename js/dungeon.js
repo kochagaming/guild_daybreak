@@ -1,6 +1,30 @@
 (function () {
   "use strict";
 
+  function battleSummary(result) {
+    const members = Array.isArray(result.memberReports) ? result.memberReports : [];
+    const sum = key => members.reduce((total, member) => total + (Number(member[key]) || 0), 0);
+    return {
+      encountersCleared: Number(result.encountersCleared) || 0,
+      totalEncounters: Number(result.totalEncounters) || 0,
+      monstersDefeated: Number(result.monstersDefeated) || 0,
+      damageDealt: sum("damageDealt"), damageTaken: sum("damageTaken"), healingDone: sum("healingDone"),
+      attackHits: sum("attackHits"), attackAttempts: sum("attackAttempts"),
+      knockouts: members.filter(member => (Number(member.remainingHp) || 0) <= 0).length
+    };
+  }
+
+  function partySetupSummary(partySnapshot) {
+    return (Array.isArray(partySnapshot) ? partySnapshot : []).map(member => ({
+      id: member.id, name: member.name, jobId: member.jobId, level: member.level, position: member.position,
+      actionRates: { ...member.actionRates },
+      equipmentCount: member.loadout?.equipmentCount || 0,
+      equipmentNames: (member.loadout?.equipmentNames || []).slice(0, 8),
+      equipmentWeight: member.loadout?.equipmentWeight || 0,
+      maximumWeight: member.loadout?.maximumWeight || 0
+    }));
+  }
+
   function historySummary(result) {
     const equipment = [], materialTotals = {};
     (result.drops || []).forEach(drop => {
@@ -12,8 +36,11 @@
     (result.autoSold || []).forEach(drop => equipment.push({ itemId: drop.itemId, name: drop.displayName, quantity: 1, autoSold: true }));
     return {
       id: result.id, completedAt: result.completedAt, dungeonId: result.dungeonId, difficultyId: result.difficultyId,
+      timeMultiplier: result.timeMultiplier || 1,
       success: result.success, gold: result.gold, exp: result.exp,
-      equipment, materials: Object.entries(materialTotals).map(([itemId, quantity]) => ({ itemId, quantity }))
+      equipment, materials: Object.entries(materialTotals).map(([itemId, quantity]) => ({ itemId, quantity })),
+      partySetup: Array.isArray(result.partySetup) ? result.partySetup.map(member => ({ ...member, actionRates: { ...member.actionRates }, equipmentNames: [...member.equipmentNames] })) : [],
+      battle: battleSummary(result)
     };
   }
 
@@ -37,24 +64,31 @@
     if (members.length > window.Party.memberLimit()) return { ok: false, message: "物語で解放された人数上限を超えています。" };
     const power = window.Party.power(partyIndex);
     const startedAt = window.GameRuntime.now();
-    const partySnapshot = members.map((member, position) => ({
-      id: member.id, name: member.name, level: member.level,
-      jobId: member.jobId || "warrior", raceId: member.raceId || "human", position,
-      familyIds: window.CreatureFamilies ? window.CreatureFamilies.familyIdsForRace(member.raceId || "human") : [],
-      actionRates: window.Characters.actionRates(member),
-      weaponRange: window.Characters.weaponRange(member),
-      basicDamageType: window.Characters.basicDamageType(member),
-      skillIds: window.Characters.learnedSkills(member).map((skill) => skill.id),
-      equipmentSkillIds: [...new Set(member.equipment.flatMap(id => {
-        const instance = window.Items.getInstance(id);
-        return instance ? window.EquipmentSkills.ids(instance) : [];
-      }))],
-      specialEquipment: window.Characters.specialEquipment(member),
-      stats: window.Characters.stats(member)
-    }));
+    const partySnapshot = members.map((member, position) => {
+      const equipped = member.equipment.map(id => window.Items.getInstance(id)).filter(Boolean);
+      return {
+        id: member.id, name: member.name, level: member.level,
+        jobId: member.jobId || "warrior", raceId: member.raceId || "human", position,
+        familyIds: window.CreatureFamilies ? window.CreatureFamilies.familyIdsForRace(member.raceId || "human") : [],
+        actionRates: window.Characters.actionRates(member),
+        weaponRange: window.Characters.weaponRange(member),
+        basicDamageType: window.Characters.basicDamageType(member),
+        skillIds: window.Characters.learnedSkills(member).map((skill) => skill.id),
+        equipmentSkillIds: [...new Set(equipped.flatMap(instance => window.EquipmentSkills.ids(instance)))],
+        specialEquipment: window.Characters.specialEquipment(member),
+        loadout: {
+          equipmentCount: equipped.length,
+          equipmentNames: equipped.slice(0, 8).map(instance => window.Items.displayName(instance)),
+          equipmentWeight: window.Characters.equipmentWeight(member),
+          maximumWeight: window.Characters.maxWeight(member)
+        },
+        stats: window.Characters.stats(member)
+      };
+    });
     const baseAcquisitionBonuses = acquisitionApi.resolve(partySnapshot);
     const acquisitionBonuses = window.AccessCodes ? window.AccessCodes.applyAcquisitionBonuses(baseAcquisitionBonuses) : baseAcquisitionBonuses;
     const accessDurationMultiplier = window.AccessCodes ? window.AccessCodes.explorationDurationMultiplier() : 1;
+    const itemTarget = window.Encyclopedia?.trackedTarget() || null;
     state.expeditions[partyIndex] = {
       partyIndex,
       timeMultiplier,
@@ -62,6 +96,8 @@
       partySnapshot,
       acquisitionBonuses,
       accessDurationMultiplier,
+      trackedItemId: itemTarget?.itemId || null,
+      trackedItemGoal: itemTarget?.quantity || null,
       startedAt, endsAt: startedAt + Math.max(1000, Math.round(acquisitionApi.durationMs(dungeon.duration, timeMultiplier, acquisitionBonuses) * accessDurationMultiplier)),
       power: Math.round(power),
       seed: Math.floor(window.GameRuntime.random() * 2147483646) + 1
@@ -84,7 +120,7 @@
     const difficultyId = expedition.difficultyId || "normal";
     const earnsFirstClearReward = outcome.success && difficultyId !== "normal" && !window.DungeonDifficulty.cleared(baseDungeon.id, difficultyId);
     state.gold += outcome.gold;
-    const grantedDrops = [], autoSold = [], newItemIds = new Set();
+    const grantedDrops = [], autoSold = [], newItemIds = new Set(), newBestQualities = new Map(), newUltraRareTitleIds = new Set();
     let autoSellGold = 0;
     const acquisitionApi = window.AcquisitionSkills || { normalize: () => ({ qualityRate: { multiplier: 1, flat: 0 } }), memberExperience: base => base };
     const acquisitionBonuses = acquisitionApi.normalize(expedition.acquisitionBonuses);
@@ -95,15 +131,21 @@
         source: "drop", seed: expedition.seed + (dropIndex + 1) * 100003,
         qualityRateMultiplier: qualityRate.multiplier
       });
+      const newBestQualityId = !newDiscovery ? grant.newBestQualityId : null;
       if (grant.instances.length) {
         grant.instances.forEach((instance) => grantedDrops.push({
           itemId: drop.itemId, quantity: 1, instanceId: instance.id,
-          displayName: window.Items.displayName(instance), qualityId: instance.qualityId, newDiscovery
+          displayName: window.Items.displayName(instance), qualityId: instance.qualityId, newDiscovery,
+          newBest: Boolean(newBestQualityId && instance.qualityId === newBestQualityId),
+          ultraRareTitleId: instance.ultraRareTitleId || null,
+          newUltraRareTitle: Boolean(instance.ultraRareTitleId && grant.newUltraRareTitleIds.includes(instance.ultraRareTitleId))
         }));
       } else if (grant.material) {
         grantedDrops.push({ itemId: drop.itemId, quantity: drop.quantity, newDiscovery });
       }
       if (newDiscovery) newItemIds.add(drop.itemId);
+      if (newBestQualityId) newBestQualities.set(drop.itemId, newBestQualityId);
+      grant.newUltraRareTitleIds.forEach(id => newUltraRareTitleIds.add(id));
       if (grant.autoSold?.length) autoSold.push(...grant.autoSold);
       autoSellGold += grant.autoSellGold || 0;
     });
@@ -116,14 +158,25 @@
       const gained = window.Characters.addExperience(character, experience);
       if (gained) levelUps.push({ name: character.name, levels: gained, level: character.level });
     });
+    const trackedItemId = expedition.trackedItemId || null;
+    const trackedItemQuantity = trackedItemId
+      ? outcome.drops.filter(drop => drop.itemId === trackedItemId).reduce((sum, drop) => sum + drop.quantity, 0)
+      : 0;
+    const trackedProgress = trackedItemQuantity ? window.Encyclopedia?.recordTargetProgress(trackedItemId, trackedItemQuantity) : null;
     state.lastResult = {
       id: `result-${window.GameRuntime.now()}-${partyIndex}`, partyIndex, dungeonId: baseDungeon.id, difficultyId, dungeonName: dungeon.name, completedAt: window.GameRuntime.now(),
       success: outcome.success, gold: outcome.gold, exp: outcome.exp, experienceGains, viewed: false,
       timeMultiplier: expedition.timeMultiplier || 1,
+      trackedItemId, trackedItemQuantity,
+      trackedItemGoal: expedition.trackedItemGoal || null,
+      trackedItemProgress: trackedProgress?.progress ?? null,
       drops: grantedDrops, autoSold, autoSellGold, levelUps, newItemIds: Array.from(newItemIds),
+      newBestQualities: Array.from(newBestQualities, ([itemId, qualityId]) => ({ itemId, qualityId })),
+      newUltraRareTitleIds: Array.from(newUltraRareTitleIds),
       partyNames: expedition.partySnapshot
         ? expedition.partySnapshot.map((member) => member.name)
         : expedition.partyIds.map(window.Characters.get).filter(Boolean).map((c) => c.name),
+      partySetup: partySetupSummary(expedition.partySnapshot),
       battleLog: outcome.battleLog,
       mechanicReport: outcome.mechanicReport,
       strategyReport: outcome.strategyReport,
@@ -165,6 +218,7 @@
       `${window.Party.name(partyIndex)}：${dungeon.shortName}の探索は${outcome.success ? "成功" : "失敗"}。${outcome.gold}Gを獲得${autoSellGold ? `、装備${autoSold.length}点を${autoSellGold}Gで自動売却` : ""}しました。`,
       outcome.success ? "success" : "danger"
     );
+    if (trackedItemQuantity) window.GameState.addLog(`探索目標「${window.GameData.items[trackedItemId].name}」を${trackedItemQuantity}個持ち帰りました。`, "success");
     window.GameState.save();
     return state.lastResult;
   }
@@ -181,5 +235,5 @@
     return expedition ? Math.max(0, expedition.endsAt - window.GameRuntime.now()) : 0;
   }
 
-  window.Dungeon = { start, completeIfReady, remaining, activeCount };
+  window.Dungeon = { start, completeIfReady, remaining, activeCount, battleSummary, partySetupSummary };
 })();

@@ -11,6 +11,8 @@
     { id: "long_road", category: "遠征", icon: "◆", name: "長い道の先へ", description: "ダンジョンを25か所攻略する。", condition: { type: "dungeonClears", target: 25 } },
     { id: "story_midpoint", category: "遠征", icon: "✦", name: "物語の折り返し", description: "本編を8章まで達成する。", condition: { type: "chapters", target: 8 } },
     { id: "starless_night", category: "遠征", icon: "★", name: "星なき夜を越えて", description: "本編15章を達成する。", condition: { type: "chapters", target: 15 } },
+    { id: "afterstar_wayfarer", category: "遠征", icon: "✺", name: "星後を歩く者", description: "星後領域を1章踏破する。", condition: { type: "postgameChapters", target: 1 } },
+    { id: "five_reaches_wedge", category: "遠征", icon: "✥", name: "五界を分かつ楔", description: "五界喰らいの巣を攻略する。", secret: true, condition: { type: "specificDungeonClear", dungeonId: "five_reaches_nest", target: 1 } },
     { id: "hidden_path", category: "遠征", icon: "⌁", name: "脇道の向こう", description: "任意攻略のダンジョンを1か所踏破する。", condition: { type: "optionalClears", target: 1 } },
     { id: "unmapped_frontier", category: "遠征", icon: "⌖", name: "地図なき辺境", description: "任意攻略のダンジョンを6か所踏破する。", condition: { type: "optionalClears", target: 6 } },
     { id: "divine_threshold", category: "遠征", icon: "☼", name: "神域の門", description: "神域難易度を1か所攻略する。", condition: { type: "divineClears", target: 1 } },

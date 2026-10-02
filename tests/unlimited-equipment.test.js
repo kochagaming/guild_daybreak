@@ -16,6 +16,11 @@ async function run() {
   const baseline = game.Characters.stats(hero);
   const gear = [...game.Items.add("wooden_sword", 4, { source: "shop", modifiers: { hp: 8, attack: 3, defense: 2 } }).instances,
     ...game.Items.add("cloth_clothes", 4, { source: "shop", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances];
+  const standard = id => game.Items.effects({ templateId: id, qualityId: "standard", modifiers: {}, upgradeLevel: 0 });
+  const attackPerWeight = id => standard(id).attack / standard(id).weight;
+  assert(attackPerWeight("iron_sword") > attackPerWeight("wooden_sword"), "Tier 2 sword improves attack per weight over Tier 1");
+  assert(attackPerWeight("steel_sword") > attackPerWeight("iron_sword"), "Tier 3 sword improves attack per weight over Tier 2");
+  assert(standard("steel_sword").attack > standard("wooden_sword").attack * Math.floor(standard("steel_sword").weight / standard("wooden_sword").weight), "One Tier 3 sword beats the whole Tier 1 sword stack that fits within the same weight");
   for (const item of gear) assert((await game.GameClient.execute("equipment.equip", { characterId: hero.id, instanceId: item.id })).ok);
   assert.strictEqual(hero.equipment.length, 8, "Four weapons and four armors coexist without replacement");
   const final = game.Characters.stats(hero);

@@ -46,6 +46,21 @@ assert(forcedDrop.ultraRareTitleId && forcedDrop.locked);
 const forcedShop = game.Items.createInstance("wooden_sword", { source: "shop", qualityId: "standard", modifiers: zero, random: () => 0 });
 assert.strictEqual(forcedShop.ultraRareTitleId, null, "shop purchases never roll ultra-rare titles");
 
+const hero = require("./helpers").createCharacter(game, "称号発見隊").id;
+game.Characters.get(hero).level = 50;
+assert(game.Party.toggle(hero).ok && game.Dungeon.start("meadow").ok);
+game.GameData.ultraRareConfig.dropChance = 1;
+game.Battle.resolve = () => ({
+  success: true, gold: 0, exp: 0, drops: [{ itemId: "wooden_sword", quantity: 1 }], battleLog: [],
+  mechanicReport: null, strategyReport: null, defeatFacts: [], encountersCleared: 1, totalEncounters: 1,
+  monstersDefeated: 1, monsterCounts: {}, monsterEncounters: {}, monsterObservations: {}, memberReports: [], survivors: []
+});
+game.GameState.data.expeditions[0].endsAt = 0;
+const ultraResult = game.Dungeon.completeIfReady(1);
+assert(ultraResult.drops[0].ultraRareTitleId && ultraResult.drops[0].displayName.startsWith("★"), "Expedition results preserve ultra-rare identity for reward presentation");
+assert(ultraResult.drops[0].newUltraRareTitle && ultraResult.newUltraRareTitleIds.includes(ultraResult.drops[0].ultraRareTitleId), "First ultra-rare titles are announced and archived");
+game.GameData.ultraRareConfig.dropChance = .001;
+
 const aggregated = game.EquipmentSkills.aggregate([first, first, ultra]);
 assert.strictEqual(aggregated.multipliers.attack, 1.05 * 1.05);
 assert.strictEqual(aggregated.physicalPower, 1.03 + .04 + .18);

@@ -30,6 +30,21 @@ report.entries.flatMap(entry => entry.results).forEach(result => {
 const text = balance.textReport(report);
 assert(text.includes("自動バランスレポート") && text.includes("白霜の海岸") && text.includes("均衡型"));
 
+const singleRoute = balance.generate({ runs: 20, dungeonId: "moonfang_den", profiles: ["balanced", "no_healer"] });
+assert.strictEqual(singleRoute.entries.length, 1);
+assert.strictEqual(singleRoute.entries[0].dungeonId, "moonfang_den");
+assert(singleRoute.entries[0].results.find(result => result.profileId === "balanced").averageHealing > 0, "the chapter-one healer fixture should actually heal");
+assert(!singleRoute.entries[0].warnings.includes("回復なし編成が均衡型を20pt以上上回る"), "the chapter-one healer should not create a large party-composition inversion");
+assert.throws(() => balance.generate({ runs: 1, dungeonId: "unknown-route" }), /No dungeons found for dungeon unknown-route/);
+const inversionWarnings = balance.warningsFor(
+  { requiredForStory: true, encounters: [{}, {}, {}] },
+  [
+    { profileId: "balanced", winRate: 45, averageRounds: 8, timeoutRate: 0 },
+    { profileId: "no_healer", winRate: 70, averageRounds: 6, timeoutRate: 0 }
+  ]
+);
+assert(inversionWarnings.includes("回復なし編成が均衡型を20pt以上上回る"));
+
 const preparedReport = balance.generate({
   runs: 1,
   chapterId: "afterstar_reaches_1",
@@ -48,13 +63,30 @@ const preparedText = balance.textReport(preparedReport);
 assert(preparedText.includes("装備品質 refined") && preparedText.includes("装備強化 解放上限の半分"));
 assert.throws(() => balance.generate({ runs: 1, quality: "unknown" }), /Unknown quality/);
 assert.throws(() => balance.generate({ runs: 1, enhancement: "unknown" }), /Unknown enhancement mode/);
+assert.throws(() => balance.generate({ runs: 1, preparation: "unknown" }), /Unknown preparation mode/);
+
+const progressionReport = balance.generate({
+  runs: 1,
+  chapterId: "end_of_starless_night",
+  profiles: ["balanced"],
+  preparation: "progression"
+});
+assert.strictEqual(progressionReport.preparation, "progression");
+progressionReport.entries.flatMap(entry => entry.results).flatMap(result => result.party).forEach(member => {
+  assert.strictEqual(member.qualityId, "wellmade");
+  assert(member.upgradeLevel > 0);
+});
+assert(balance.textReport(progressionReport).includes("進行相応装備"));
+assert.deepStrictEqual(balance.progressionPreparation(4), { quality: "standard", enhancement: "none" });
+assert.deepStrictEqual(balance.progressionPreparation(9), { quality: "wellmade", enhancement: "quarter" });
+assert.deepStrictEqual(balance.progressionPreparation(16), { quality: "familiar", enhancement: "quarter" });
 
 const blackwood = game.GameData.dungeons.night_bloom_sanctuary;
 const counterParty = balance.buildParty(game, "balanced", blackwood);
 const counterSkills = new Set(counterParty.flatMap(member => member.fixture.equipment).flatMap(itemId => game.GameData.items[itemId].skillIds || []));
 assert([...counterSkills].some(id => ["plant_slayer_15", "demon_slayer_15", "poison_resistance_20", "burn_resistance_20"].includes(id)), "chapter threat-aware fixtures should prefer at least one relevant counter skill");
 
-const chapterFour = balance.generate({ runs: 20, chapterId: "ember_crown", difficulty: "normal", profiles: ["balanced"] });
+const chapterFour = balance.generate({ runs: 50, chapterId: "ember_crown", difficulty: "normal", profiles: ["balanced"] });
 const chapterFourRates = Object.fromEntries(chapterFour.entries.map(entry => [entry.dungeonId, entry.results[0].winRate]));
 assert(chapterFourRates.skyfall_road >= chapterFourRates.cinder_throne, "chapter four should become harder toward its climax");
 assert(chapterFourRates.cinder_throne < 100 && chapterFourRates.elder_dragon_crater < 100, "climax and optional challenge must not be guaranteed wins");
