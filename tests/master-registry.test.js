@@ -189,6 +189,7 @@ contentFiles.forEach(file => {
 for (const [file, expectedCall] of [
   ["data/companions.js", "data.registry.entities(\"companions\""],
   ["data/companionStories.js", "data.registry.relationList(\"storyTriggers\""],
+  ["data/storyDialogues.js", "data.registry.relations(\"storySceneScripts\""],
   ["data/dungeonDifficulties.js", "data.registry.relations(\"monsterDifficultyDropOverrides\""],
   ["data/dungeonPartyRestrictions.js", "data.registry.relations(\"dungeonPartyRestrictions\""],
   ["data/monsterSkills.js", "data.registry.relations(\"monsterDifficultySkillGrants\""],

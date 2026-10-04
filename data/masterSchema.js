@@ -11,7 +11,7 @@
       "companionSkillGrants", "companionProgressions", "companionStoryArcs",
       "itemSkillGrants", "monsterDifficultySkillGrants", "monsterDifficultyDropOverrides",
       "adventurerFamilies", "monsterFamilies", "monsterMaterialDrops", "monsterSignatureDrops",
-      "dungeonStoryLinks", "dungeonPartyRestrictions", "equipmentAffinities", "upgradeSkillProgression", "skillGrants", "storySceneOverlays"
+      "dungeonStoryLinks", "dungeonPartyRestrictions", "equipmentAffinities", "upgradeSkillProgression", "skillGrants", "storySceneOverlays", "storySceneScripts"
     ]),
     relationLists: freezeNames(["storyTriggers", "chapterUnlockAdditions"]),
     derived: freezeNames(["weaponTypes", "armorTypes", "itemCombatStats", "monsterCombatStats", "monsterDifficultyDrops"])
@@ -23,7 +23,7 @@
   // config: システム全体の上限や既定値
   // relations: ID同士を結ぶ付与・発火・制限条件
   // derived: 元の定義を変更せず、共通ルールで補完した参照用データ
-  data.masterMeta = Object.freeze({ schemaVersion: 41, tables: tableManifest, validators: validatorManifest });
+  data.masterMeta = Object.freeze({ schemaVersion: 42, tables: tableManifest, validators: validatorManifest });
   data.config = data.config || {};
   data.relations = data.relations || {};
   data.derived = data.derived || {};
@@ -45,6 +45,7 @@
     upgradeSkillProgression: data.relations.upgradeSkillProgression || {},
     skillGrants: data.relations.skillGrants || {},
     storySceneOverlays: data.relations.storySceneOverlays || {},
+    storySceneScripts: data.relations.storySceneScripts || {},
     storyTriggers: data.relations.storyTriggers || [],
     chapterUnlockAdditions: data.relations.chapterUnlockAdditions || []
   });

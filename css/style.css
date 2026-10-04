@@ -940,6 +940,19 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .story-reader-scene header { display: flex; justify-content: space-between; gap: 1rem; padding-bottom: .8rem; color: #8a6428; border-bottom: 1px solid rgba(139,100,42,.2); font-size: .72rem; font-weight: 800; }
 .story-reader-scene h3 { margin: 1.2rem 0 1rem; color: #261e15; font-family: Georgia,"Yu Mincho",serif; font-size: clamp(1.25rem,4vw,1.7rem); text-align: center; letter-spacing: .05em; }
 .story-reader-scene p { margin: 0 0 1rem; color: #332a20; font-family: Georgia,"Yu Mincho",serif; font-size: 1rem; line-height: 2.15; text-align: justify; }
+.story-reader-script { display: grid; gap: .9rem; }
+.story-reader-script > .story-reader-narration { margin: 0; }
+.story-reader-setting { display: flex; align-items: flex-start; gap: .6rem; margin: .1rem 0 .35rem; padding: .75rem .85rem; color: #6f5b3e; border-block: 1px solid rgba(139,100,42,.22); background: rgba(225,211,181,.28); }
+.story-reader-setting > span { flex: 0 0 auto; color: #a67832; line-height: 1.8; }
+.story-reader-setting p { margin: 0; color: inherit; font-size: .84rem; line-height: 1.8; text-align: left; }
+.story-reader-dialogue { display: grid; grid-template-columns: 92px minmax(0,1fr); gap: .8rem; margin: .15rem 0; padding: .8rem .9rem; border: 1px solid rgba(116,91,53,.2); border-left: 3px solid #b68a43; border-radius: 7px; background: rgba(255,255,255,.66); box-shadow: 0 4px 12px rgba(65,46,20,.05); }
+.story-reader-speaker { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+.story-reader-speaker > img,.story-reader-speaker > span { width: 38px; height: 46px; flex: 0 0 auto; border-radius: 5px; background: #ebe1cd; object-fit: contain; object-position: center bottom; }
+.story-reader-speaker > span { display: grid; place-items: center; color: #f8ecd2; background: linear-gradient(145deg,#3a4852,#17242e); font-family: Georgia,"Yu Mincho",serif; font-size: 1.05rem; }
+.story-reader-speaker > div { display: grid; min-width: 0; gap: .1rem; }
+.story-reader-speaker strong { color: #473820; font-size: .78rem; line-height: 1.35; }
+.story-reader-speaker small { color: #8a704c; font-size: .62rem; line-height: 1.35; }
+.story-reader-dialogue > p { align-self: center; margin: 0; font-size: .94rem; line-height: 1.9; text-align: left; }
 .story-reader-character { display: flex; align-items: center; gap: .8rem; margin: 1rem 0; padding: .65rem; background: #eee4d1; border-radius: 6px; }
 .story-reader-character img { width: 52px; height: 62px; object-fit: contain; background: #faf6ec; border-radius: 4px; }
 .story-reader-character span { display: grid; gap: .15rem; }
@@ -3009,6 +3022,15 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .story-reader-scene header { font-size: .63rem; }
   .story-reader-scene h3 { margin: .8rem 0 .65rem; font-size: 1.12rem; }
   .story-reader-scene p { font-size: .9rem; line-height: 2; }
+  .story-reader-script { gap: .65rem; }
+  .story-reader-setting { padding: .55rem .6rem; }
+  .story-reader-setting p { font-size: .76rem; line-height: 1.65; }
+  .story-reader-dialogue { grid-template-columns: 64px minmax(0,1fr); gap: .55rem; padding: .65rem .6rem; }
+  .story-reader-speaker { display: grid; justify-items: center; gap: .25rem; text-align: center; }
+  .story-reader-speaker > img,.story-reader-speaker > span { width: 36px; height: 42px; }
+  .story-reader-speaker strong { font-size: .7rem; }
+  .story-reader-speaker small { font-size: .56rem; }
+  .story-reader-dialogue > p { font-size: .82rem; line-height: 1.75; }
   .story-next-step, .story-completion-summary { margin: .5rem 0; padding: .6rem; }
   .story-next-step strong { font-size: .82rem; }
   .story-next-step small { font-size: .7rem; line-height: 1.4; }

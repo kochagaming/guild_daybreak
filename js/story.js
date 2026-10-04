@@ -20,7 +20,9 @@
   function scene(id) {
     const base = window.GameData.storyScenes[id];
     const overlay = window.GameData.relations?.storySceneOverlays?.[id];
-    return base && overlay ? Object.assign({}, base, overlay) : base;
+    const script = window.GameData.relations?.storySceneScripts?.[id];
+    if (!base) return base;
+    return Object.assign({}, base, overlay || {}, script ? { script: script.blocks } : {});
   }
   function chapterUnlockText(chapterOrId) {
     const chapter = typeof chapterOrId === "string" ? chapters().find(entry => entry.id === chapterOrId) : chapterOrId;

@@ -986,6 +986,22 @@
     return paragraphs.length ? paragraphs : ["静かな記録だけが残されている。"];
   }
 
+  function storyReaderBlocks(scene) {
+    if (Array.isArray(scene?.script) && scene.script.length) return scene.script;
+    return storyParagraphs(scene).map(text => ({ kind: "narration", text }));
+  }
+
+  function storyReaderBlock(block) {
+    if (block.kind === "setting") return `<aside class="story-reader-setting"><span aria-hidden="true">◇</span><p>${escape(block.text)}</p></aside>`;
+    if (block.kind !== "dialogue") return storyParagraphs({ text: block.text }).map(text => `<p class="story-reader-narration">${escape(text)}</p>`).join("");
+    const character = window.GameData.companions?.[block.speakerId];
+    const portrait = character ? window.GameData.portraits?.[character.portraitId] : null;
+    const name = character?.name || block.speakerName;
+    const role = character?.title || block.speakerRole;
+    const mark = name === "ギルドオーナー" ? "主" : String(name || "語").slice(0, 1);
+    return `<section class="story-reader-dialogue" data-story-speaker="${escape(block.speakerId)}"><div class="story-reader-speaker">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : `<span aria-hidden="true">${escape(mark)}</span>`}<div><strong>${escape(name)}</strong><small>${escape(role)}</small></div></div><p>「${escape(block.text)}」</p></section>`;
+  }
+
   function refreshStoryReaderProgress(scroller) {
     const maximum = Math.max(0, (Number(scroller?.scrollHeight) || 0) - (Number(scroller?.clientHeight) || 0));
     const position = Math.max(0, Number(scroller?.scrollTop) || 0);
@@ -1004,7 +1020,7 @@
       const protagonist = window.GameData.companions?.[entry.scene.protagonistId];
       const portrait = protagonist ? window.GameData.portraits?.[protagonist.portraitId] : null;
       const cast = (entry.scene.castIds || []).map(id => window.GameData.companions?.[id]?.name).filter(Boolean);
-      return `<article class="story-reader-scene"><header><span>${index + 1} / ${episode.entries.length} · ${escape(entry.label)}</span><small>${escape(place)}</small></header>${protagonist ? `<div class="story-reader-character">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<span><small>この場面の視点</small><strong>${escape(protagonist.name)}</strong>${cast.length ? `<em>共にいる者：${escape(cast.join("、"))}</em>` : ""}</span></div>` : ""}<h3>${escape(entry.scene.name)}</h3>${storyParagraphs(entry.scene).map(paragraph => `<p>${escape(paragraph)}</p>`).join("")}</article>`;
+      return `<article class="story-reader-scene"><header><span>${index + 1} / ${episode.entries.length} · ${escape(entry.label)}</span><small>${escape(place)}</small></header>${protagonist ? `<div class="story-reader-character">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<span><small>この場面の視点</small><strong>${escape(protagonist.name)}</strong>${cast.length ? `<em>共にいる者：${escape(cast.join("、"))}</em>` : ""}</span></div>` : ""}<h3>${escape(entry.scene.name)}</h3><div class="story-reader-script">${storyReaderBlocks(entry.scene).map(storyReaderBlock).join("")}</div></article>`;
     }).join("");
     document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop story-reader-backdrop"><section class="modal story-reader-modal" role="dialog" aria-modal="true" aria-labelledby="story-reader-title"><header class="story-reader-heading"><button class="button ghost" data-action="close-modal">あとで読む</button><div><span class="label">STORY</span><h2 id="story-reader-title">${escape(episode.title)}</h2></div><span data-story-read-progress>読書中 0%</span></header><div class="story-reader-scroll" data-story-reader-scroll tabindex="0">${scenes}<footer class="story-reader-ending"><span aria-hidden="true">◆</span><strong>ここまでの物語を記録する</strong><p>${escape(episode.subtitle)}</p><button class="button primary" data-action="finish-story-reader" data-episode="${escape(episode.id)}" disabled>読み終える</button></footer></div></section></div>`;
     const scroller = document.querySelector("[data-story-reader-scroll]");

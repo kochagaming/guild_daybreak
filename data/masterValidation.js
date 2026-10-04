@@ -1087,6 +1087,27 @@
         if (overlay[field] != null && (typeof overlay[field] !== "string" || !overlay[field].trim())) errors.push(`relations.storySceneOverlays.${sceneId}.${field} が不正です`);
       });
     });
+    Object.entries(master.relations.storySceneScripts).forEach(([sceneId, script]) => {
+      const source = `relations.storySceneScripts.${sceneId}`;
+      requireRef(master.storyScenes, sceneId, source);
+      if (script?.sceneId !== sceneId) errors.push(`${source}.sceneId が一致しません`);
+      if (!Array.isArray(script?.blocks) || script.blocks.length < 3) {
+        errors.push(`${source}.blocks は3件以上必要です`);
+        return;
+      }
+      script.blocks.forEach((block, index) => {
+        const blockSource = `${source}.blocks.${index}`;
+        if (!["setting", "narration", "dialogue"].includes(block?.kind)) errors.push(`${blockSource}.kind -> ${block?.kind ?? "(未指定)"}`);
+        if (typeof block?.text !== "string" || !block.text.trim()) errors.push(`${blockSource}.text がありません`);
+        if (block?.kind !== "dialogue") return;
+        if (typeof block.speakerId !== "string" || !block.speakerId.trim()) errors.push(`${blockSource}.speakerId がありません`);
+        if (typeof block.speakerName !== "string" || !block.speakerName.trim()) errors.push(`${blockSource}.speakerName がありません`);
+        if (typeof block.speakerRole !== "string" || !block.speakerRole.trim()) errors.push(`${blockSource}.speakerRole がありません`);
+      });
+    });
+    Object.keys(master.storyScenes).forEach(sceneId => {
+      if (!master.relations.storySceneScripts[sceneId]) errors.push(`relations.storySceneScripts.${sceneId} がありません`);
+    });
 
     const storyTriggerTypes = new Set(["chapterActive", "chapterCompleted", "dungeonOpened", "dungeonDiscovered", "dungeonCleared"]);
     master.relations.storyTriggers.forEach(trigger => {

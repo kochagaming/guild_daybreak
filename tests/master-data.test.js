@@ -245,7 +245,7 @@ for (const [id, companion] of Object.entries(data.companions)) {
     assert(Object.entries(stage.replacements || {}).every(([fromId, toId]) => has(data.skills, fromId) && has(data.skills, toId)), `${id}:${stageId} has invalid skill replacements`);
   }
 }
-assert.strictEqual(data.masterMeta.schemaVersion, 41, "The master schema version is explicit");
+assert.strictEqual(data.masterMeta.schemaVersion, 42, "The master schema version is explicit");
 assert.strictEqual(Object.keys(data.equipmentSets).length, 17, "Crafted equipment families through the postgame publish data-driven set bonuses");
 for (const definition of Object.values(data.equipmentSets)) {
   assert(definition.itemIds.length === 3 && definition.itemIds.every(id => has(data.items, id)), `${definition.id} references three equipment templates`);
@@ -321,6 +321,13 @@ for (const [sceneId, overlay] of Object.entries(data.relations.storySceneOverlay
   if (scene.protagonistId) assert(has(data.companions, scene.protagonistId), `${scene.id} has a known companion protagonist`);
   if (scene.castIds) assert(Array.isArray(scene.castIds) && new Set(scene.castIds).size === scene.castIds.length && scene.castIds.every(id => has(data.companions, id)), `${scene.id} has a valid companion cast`);
 }
+for (const [sceneId, script] of Object.entries(data.relations.storySceneScripts)) {
+  assert(has(data.storyScenes, sceneId) && script.sceneId === sceneId, `${sceneId} script references its story scene`);
+  assert(Array.isArray(script.blocks) && script.blocks.length >= 3, `${sceneId} has a substantial story script`);
+  assert(script.blocks.every(block => ["setting", "narration", "dialogue"].includes(block.kind) && typeof block.text === "string" && block.text.trim()), `${sceneId} has valid story blocks`);
+  assert(script.blocks.filter(block => block.kind === "dialogue").every(block => block.speakerId && block.speakerName && block.speakerRole), `${sceneId} dialogue identifies its speaker`);
+}
+assert.deepStrictEqual(new Set(Object.keys(data.relations.storySceneScripts)), new Set(Object.keys(data.storyScenes)), "Every story scene has a reader script");
 const storyTriggerIds = data.relations.storyTriggers.map(trigger => trigger.id);
 assert.strictEqual(new Set(storyTriggerIds).size, storyTriggerIds.length, "Story trigger IDs must be unique");
 data.relations.storyTriggers.forEach(trigger => {

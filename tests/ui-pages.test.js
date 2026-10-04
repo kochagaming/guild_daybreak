@@ -138,6 +138,7 @@ async function run() {
   const introductoryEpisodeId = game.Story.pendingEpisode().id;
   await click("open-story-reader");
   assert(node("modal-root").innerHTML.includes("story-reader-scroll") && node("modal-root").innerHTML.includes("読み終える") && node("modal-root").innerHTML.includes("disabled"), "The dedicated reader groups scenes and requires reaching its ending");
+  assert(node("modal-root").innerHTML.includes("story-reader-setting") && node("modal-root").innerHTML.includes("story-reader-dialogue") && node("modal-root").innerHTML.includes("受付係") && node("modal-root").innerHTML.includes("ギルドオーナー"), "Story scenes mix world description with identifiable character conversations");
   await click("finish-story-reader", { episode: introductoryEpisodeId });
   assert(html().includes('data-action="party-view" data-view="adventure"'));
   await click("party-view", { view: "adventure" });
