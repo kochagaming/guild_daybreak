@@ -19,9 +19,9 @@ context.window.window = context.window;
 context.window.localStorage = context.localStorage;
 
 [
-  "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/characterGrowth.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/monsters.js", "data/dungeons.js", "data/recipes.js", "js/runtime.js", "js/storage.js", "js/save.js",
+  "data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/characterGrowth.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/monsters.js", "data/dungeons.js", "data/recipes.js", "js/runtime.js", "js/storage.js", "js/save.js",
   "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/shop.js",
-  "js/party.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/battle.js", "js/dungeon.js", "js/blacksmith.js"
+  "js/party.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/dungeon.js", "js/blacksmith.js"
 ].forEach((file) => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file }));
 
 const game = context.window;

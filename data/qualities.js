@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  window.GameData = window.GameData || {};
-  window.GameData.qualities = {
+  const data = window.GameData = window.GameData || {};
+  const qualities = {
     broken: { id: "broken", prefix: "壊れかけの", qualityBand: "low", rank: 10, statMultiplier: 0.5, weightMultiplier: 1, valueMultiplier: 0.5, affixes: [0, 0], color: "broken" },
     worn: { id: "worn", prefix: "使い古しの", qualityBand: "low", rank: 20, statMultiplier: 0.5, weightMultiplier: 1, valueMultiplier: 0.5, affixes: [0, 1], color: "worn" },
     featherlight: { id: "featherlight", prefix: "羽根のような", qualityBand: "high", rank: 25, statMultiplier: 0.5, weightMultiplier: 0.5, valueMultiplier: 0.5, affixes: [1, 2], color: "featherlight" },
@@ -18,7 +18,9 @@
     divine: { id: "divine", prefix: "神がかった", qualityBand: "high", rank: 120, statMultiplier: 5, weightMultiplier: 1, valueMultiplier: 5, affixes: [2, 3], color: "divine" }
   };
 
-  window.GameData.qualityTables = {
+  data.registry.entities("qualities", qualities);
+
+  const qualityTables = {
     drop: [
       ["broken", 8], ["worn", 14], ["crude", 14], ["standard", 28], ["wellmade", 12],
       ["familiar", 8], ["refined", 4], ["fine", 4], ["exquisite", 2], ["hefty", 2],
@@ -33,4 +35,5 @@
       ["exquisite", 5], ["hefty", 3], ["featherlight", 3], ["legendary", 2], ["divine", 2]
     ]
   };
+  data.registry.config("qualityTables", qualityTables);
 })();

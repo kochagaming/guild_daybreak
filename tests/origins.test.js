@@ -8,7 +8,7 @@ function load() {
   const context = vm.createContext({ console, Date, Math, window: {}, localStorage: {
     getItem: () => saved, setItem: (key, value) => { saved = value; }, removeItem: () => { saved = null; }
   } });
-  ["data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/characterGrowth.js", "data/origins.js", "data/affinities.js", "data/progressionSkills.js", "data/skillGrants.js", "data/skillCategories.js", "data/monsters.js", "data/dungeons.js", "data/combatEffects.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/party.js", "js/exploration.js", "js/skillCombat.js", "js/statusCombat.js", "js/battle.js", "js/dungeon.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context));
+  ["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/characterGrowth.js", "data/origins.js", "data/affinities.js", "data/progressionSkills.js", "data/skillGrants.js", "data/skillCategories.js", "data/monsters.js", "data/dungeons.js", "data/combatEffects.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/party.js", "js/monsterLoot.js", "js/exploration.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/dungeon.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context));
   return context.window;
 }
 let game = load();
@@ -17,23 +17,23 @@ assert.strictEqual(Object.keys(game.GameData.races).length, 15);
 assert.strictEqual(Object.keys(game.GameData.jobs).length, 15);
 assert.strictEqual(Object.keys(game.GameData.births).length, 15);
 for (const job of Object.values(game.GameData.jobs)) {
-  const grants = game.GameData.skillGrants.job[job.id];
+  const grants = game.GameData.relations.skillGrants.job[job.id];
   assert.strictEqual(grants.filter(entry => entry.initial).length, 4, `${job.name} should have four starting skills`);
   assert.deepStrictEqual(Array.from(grants.filter(entry => !entry.initial), entry => entry.level), [10, 40, 70, 100]);
-  grants.forEach(entry => assert(game.GameData.skills[entry.skillId] && game.GameData.skillCategories[game.GameData.skills[entry.skillId].category]));
+  grants.forEach(entry => assert(game.GameData.skills[entry.skillId] && game.GameData.config.skillCategories[game.GameData.skills[entry.skillId].category]));
 }
 for (const race of Object.values(game.GameData.races)) {
-  const grants = game.GameData.skillGrants.race[race.id];
+  const grants = game.GameData.relations.skillGrants.race[race.id];
   assert.strictEqual(grants.filter(entry => entry.initial).length, 4);
   assert.deepStrictEqual(Array.from(grants.filter(entry => !entry.initial), entry => entry.level), [1, 30, 60, 100]);
 }
 for (const birth of Object.values(game.GameData.births)) {
-  const grants = game.GameData.skillGrants.birth[birth.id];
+  const grants = game.GameData.relations.skillGrants.birth[birth.id];
   assert.strictEqual(grants.filter(entry => entry.initial).length, 4);
   assert(grants.filter(entry => entry.initial).every(entry => game.GameData.skills[entry.skillId].effects.some(effect => effect.type === "combatModifier")), `${birth.name} should provide starting traits`);
   assert.deepStrictEqual(Array.from(grants.filter(entry => !entry.initial), entry => entry.level), [1, 20, 60, 100]);
 }
-for (const group of ["race", "birth"]) Object.values(game.GameData.skillGrants[group]).flat().forEach(entry => {
+for (const group of ["race", "birth"]) Object.values(game.GameData.relations.skillGrants[group]).flat().forEach(entry => {
   assert(game.GameData.skills[entry.skillId], `${group} has an invalid skill`);
 });
 for (const race of Object.keys(game.GameData.races)) {

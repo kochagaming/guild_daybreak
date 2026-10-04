@@ -78,7 +78,14 @@
     nameless_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "spirit_slayer_15", "celestial_slayer_15"],
     afterstar_armor: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "demon_slayer_15"]
   };
+  const pendingGrants = {};
   Object.values(data.items).filter(item => item.type === "weapon" || item.type === "armor").forEach(item => {
-    item.skillIds = (assignments[item.id] || item.skillIds || []).slice();
+    const assigned = assignments[item.id];
+    const existing = data.relations.itemSkillGrants[item.id];
+    if (assigned && existing && JSON.stringify(assigned) !== JSON.stringify(existing)) throw new Error(`装備スキル関係が競合しています: ${item.id}`);
+    const skillIds = assigned || existing;
+    if (!Array.isArray(skillIds) || !skillIds.length) throw new Error(`装備スキル関係が未定義です: ${item.id}`);
+    if (!existing) pendingGrants[item.id] = skillIds.slice();
   });
+  data.registry.relations("itemSkillGrants", pendingGrants);
 })();

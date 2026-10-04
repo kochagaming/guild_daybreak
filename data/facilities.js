@@ -4,8 +4,9 @@
   const track = (values, costs) => values.map((value, index) => ({ ...value, cost: index ? costs[index - 1] : null }));
   const storageValues = [1, 2, 4, 8, 12].map(duration => ({ duration: hours(duration) }));
   const speedValues = [1, 2, 3, 4, 5].map(divisor => ({ interval: Math.floor(hours(1) / divisor), divisor }));
+  const data = window.GameData = window.GameData || {};
 
-  window.GameData.facilities = {
+  const facilityConfig = {
     version: 1,
     order: ["mine", "guild", "herb_garden"],
     trackOrder: ["production", "storage", "speed"],
@@ -16,8 +17,10 @@
       production: { name: "生産量", description: "1回の作業で得られる量を増やします。" },
       storage: { name: "保管庫", description: "受け取らずに保持できる時間を延ばします。" },
       speed: { name: "作業速度", description: "1時間を設備レベルで割った時間ごとに生産します。" }
-    },
-    definitions: {
+    }
+  };
+
+  const facilities = {
       mine: {
         id: "mine", name: "採掘場", goldCostMultiplier: 1, description: "鉱員と設備を整え、鉄鉱石を採取します。生産設備を強化すると、まれに希少な鉱石も見つかります。",
         upgrades: {
@@ -60,6 +63,7 @@
           speed: track(speedValues, [{ black_sap: 8 }, { black_sap: 16, moonleaf: 3 }, { moonleaf: 10, witch_ember: 3 }, { moonleaf: 16, saint_thorn: 4 }])
         }
       }
-    }
   };
+  data.registry.config("facilities", facilityConfig);
+  data.registry.entities("facilities", facilities);
 })();

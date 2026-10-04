@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  window.GameData = window.GameData || {};
-  window.GameData.characterGrowth = Object.freeze({
+  const data = window.GameData = window.GameData || {};
+  const characterGrowth = Object.freeze({
     // 現在の武器・防具マスター全体の平均重量。装備追加時はテストで実平均との差を検出する。
     averageEquipmentWeight: 6.975,
     // 序盤装備は全装備平均よりかなり軽いため、Lv.1から全体平均を使うと軽装を積みすぎられる。
@@ -18,4 +18,5 @@
     postMilestoneLevelsPerItem: 17,
     maximumAverageItems: 28
   });
+  data.registry.config("characterGrowth", characterGrowth);
 })();

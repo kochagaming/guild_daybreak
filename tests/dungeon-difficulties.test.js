@@ -37,13 +37,12 @@ assert(divineSlime.signatureDropTiers.some(entry => entry.drops.materials.some(d
 assert(game.Encyclopedia.itemSources("divine_slime_core").includes("神域のスライム"));
 assert.deepStrictEqual(Array.from(abyssSlime.difficultySkillIds), ["viscous_wave"]);
 assert.deepStrictEqual(Array.from(divineSlime.difficultySkillIds), ["viscous_wave", "divine_mitosis"]);
-assert(game.GameData.monsterDifficultyProfiles.blackmoon_priest.abyss.skillIds.includes("memory_seal"));
+assert(game.GameData.relations.monsterDifficultySkillGrants.blackmoon_priest.abyss.includes("memory_seal"));
 
 Object.values(game.GameData.monsters).forEach(monster => {
-  const profile = game.GameData.monsterDifficultyProfiles[monster.id];
+  const drops = game.GameData.derived.monsterDifficultyDrops[monster.id];
   ["abyss", "divine"].forEach(id => {
-    assert(profile[id] && Array.isArray(profile[id].skillIds) && profile[id].combatOverrides, `${monster.id}:${id} needs an extensible titled profile`);
-    assert(profile[id].signatureDrops.materials.length && profile[id].signatureDrops.equipment, `${monster.id}:${id} needs fixed titled drops`);
+    assert(drops[id]?.materials.length && drops[id].equipment, `${monster.id}:${id} needs resolved titled drops`);
   });
 });
 
@@ -56,12 +55,13 @@ assert.strictEqual(game.GameState.data.expeditions[0].endsAt - game.GameState.da
 const sealsBefore = game.Items.count("guild_seal");
 const firstClearResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
 assert(firstClearResult.success && firstClearResult.firstClearReward, "First hard-mode clear grants a separate reward");
-assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1);
+assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1 + (firstClearResult.rumorConfirmationReward?.quantity || 0));
+const sealsAfterFirstClear = game.Items.count("guild_seal");
 assert(game.DungeonDifficulty.cleared("meadow", "abyss") && game.DungeonDifficulty.unlocked("meadow", "divine"));
 assert(game.Dungeon.start("meadow", 0, 1, "abyss").ok);
 const repeatResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
 assert(repeatResult.success && !repeatResult.firstClearReward, "Repeat clears do not grant the one-time reward again");
-assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1);
+assert.strictEqual(game.Items.count("guild_seal"), sealsAfterFirstClear + (repeatResult.rumorConfirmationReward?.quantity || 0));
 
 const slimeHp = game.GameData.monsters.slime.hp, slimeAttack = game.GameData.monsters.slime.attack;
 game.GameData.monsters.slime.hp = 9999; game.GameData.monsters.slime.attack = 5;

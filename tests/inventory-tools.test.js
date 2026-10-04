@@ -10,7 +10,7 @@ function load() {
     setItem: (key, value) => { if (fail) throw new Error("quota"); storage.set(key, value); },
     removeItem: key => storage.delete(key)
   } });
-  ["data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/battle.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
+  ["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/equipmentSets.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
   return context.window;
 }
 let game = load();
@@ -34,7 +34,6 @@ const grouped = game.Items.groupEquipment([
 assert.strictEqual(grouped.length, 2);
 assert.strictEqual(grouped.find(group => group.instances.some(item => item.id === iron.id)).instances.length, 2, "Only functionally identical equipment shares a stack");
 assert(game.Items.equip(hero.id, "item-1").ok);
-const all = JSON.stringify(game.Items.equipmentList());
 const ids = options => Array.from(game.Items.queryEquipment(options), item => item.id);
 assert.deepStrictEqual(ids({ kind: "weapon:sword", quality: "fine", equipped: "free", lock: "unlocked" }), [iron.id]);
 assert.deepStrictEqual(ids({ kind: "weapon:bow" }), [bow.id]);
@@ -46,6 +45,11 @@ assert.strictEqual(ids({ sort: "defense" })[0], "item-2");
 assert.strictEqual(ids({ sort: "value" })[0], iron.id);
 assert.strictEqual(ids({ sort: "weight" })[0], "item-2");
 assert.strictEqual(ids({ kind: "weapon:sword", quality: "broken" }).length, 0);
+const setStaff = game.Items.createInstance("greenwood_staff", { qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 } });
+const setVest = game.Items.createInstance("windrunner_vest", { qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 } });
+assert.deepStrictEqual(ids({ set: "windtrail_craft" }).sort(), [setStaff.id, setVest.id].sort());
+assert(ids({ set: "any" }).includes(setStaff.id) && !ids({ set: "any" }).includes(iron.id), "組合せ装備だけを横断して探せること");
+const all = JSON.stringify(game.Items.equipmentList());
 assert.deepStrictEqual(ids({ sort: "newest" }), ids({ sort: "newest" }));
 assert.strictEqual(JSON.stringify(game.Items.equipmentList()), all, "絞り込み・ソートで保存データを変えないこと");
 game.Items.setLocked(iron.id, true);

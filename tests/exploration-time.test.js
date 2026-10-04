@@ -15,7 +15,7 @@ let game = load();
 function expectation(dungeon) {
   const totals = {};
   dungeon.encounters.forEach(encounter => encounter.groups.forEach(group => group.forEach(id => {
-    (game.GameData.monsters[id].materialDrops || []).forEach(drop => {
+    game.MonsterLoot.materialDrops(id).forEach(drop => {
       totals[drop.itemId] = (totals[drop.itemId] || 0) + drop.chance * (drop.quantity[0] + drop.quantity[1]) / 2 / encounter.groups.length * (dungeon.materialRates ? dungeon.materialRates[drop.itemId] : 1);
     });
   })));
@@ -40,14 +40,20 @@ for (const dungeon of Object.values(game.GameData.dungeons)) {
 async function run() {
   const id = require("./helpers").createCharacter(game, "長時間試験", "warrior").id;
   game.Characters.get(id).base = { hp: 99999, attack: 99999, defense: 99999 };
+  game.Characters.get(id).level = 9;
+  game.Characters.get(id).exp = game.Characters.expToNext(9) - 1;
   assert(game.Party.toggle(id).ok);
+  game.GameData.config.explorationEvents.routeEvents.forEach(event => { game.GameState.data.story.facts.routeEvents[event.id] = { encounters: 4, successes: 3 }; });
   for (const value of [0, 7, 1.5, "6", null]) assert(!(await game.GameClient.execute("expedition.start", { dungeonId: "meadow", timeMultiplier: value })).ok);
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", timeMultiplier: 6 })).ok);
   const expedition = JSON.parse(JSON.stringify(game.GameState.data.expeditions[0]));
+  assert.deepStrictEqual(Array.from(expedition.knownRouteMasteryIds).sort(), Array.from(game.GameData.config.explorationEvents.routeEvents, event => event.id).sort(), "Departure snapshots route knowledge already established in the observation journal");
   assert.strictEqual(expedition.endsAt - expedition.startedAt, 180000);
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
   const bad = JSON.parse(JSON.stringify(game.GameState.data)); bad.expeditions[0].timeMultiplier = 7;
   assert(!game.SaveTransfer.parse(JSON.stringify(bad)).ok);
+  const invalidKnowledge = JSON.parse(JSON.stringify(game.GameState.data)); invalidKnowledge.expeditions[0].knownRouteMasteryIds.push("missing-route-event");
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidKnowledge)).ok);
   bad.expeditions[0].timeMultiplier = 2;
   assert(!game.SaveTransfer.parse(JSON.stringify(bad)).ok);
   const legacy = JSON.parse(JSON.stringify(game.GameState.data));
@@ -73,6 +79,11 @@ async function run() {
   assert(!game.GameState.data.expeditions[0]);
   assert.strictEqual(game.GameState.data.lastResult.timeMultiplier, 6);
   assert.strictEqual(game.GameState.data.lastResult.totalEncounters, 18);
+  const growth = game.GameState.data.lastResult.levelUps.find(entry => entry.name === "長時間試験");
+  assert(growth && growth.newSkillIds.includes("power_strike"), "The return result records skills learned at crossed level milestones");
+  assert(growth.statChanges.hp > 0 && growth.statChanges.maxWeight > 0, "The return result records actual stat and equipment-capacity gains");
+  const historyGrowth = game.GameState.data.partyHistory[0][0].growth.find(entry => entry.name === "長時間試験");
+  assert(historyGrowth && historyGrowth.newSkillIds.includes("power_strike") && historyGrowth.statChanges.maxWeight > 0, "Stat and skill growth remain in the compact expedition history after the latest report is replaced");
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
   const gold = game.GameState.data.gold;
   now += 999999; await game.GameClient.execute("expedition.collect");

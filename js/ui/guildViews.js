@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   window.GameUIViews = window.GameUIViews || {};
-  const trackIds = () => window.GameData.facilities.trackOrder;
+  const trackIds = () => window.GameData.config.facilities.trackOrder;
 
   function duration(milliseconds) {
     const minutes = Math.round(milliseconds / 60000);
@@ -38,7 +38,7 @@
     return [spent.gold ? context.formatGold(spent.gold) : "", ...Object.entries(spent.materials || {}).map(([itemId, amount]) => `${context.itemName(itemId)}×${amount}`)].filter(Boolean).join("・") || "消費なし";
   }
   function upgradeRow(id, trackId, context) {
-    const definition = window.GameData.facilities.definitions[id], meta = window.GameData.facilities.tracks[trackId];
+    const definition = window.GameData.facilities[id], meta = window.GameData.config.facilities.tracks[trackId];
     const state = window.GameState.data.facilities[id], currentLevel = state.levels[trackId];
     const current = definition.upgrades[trackId][currentLevel - 1], request = window.Facilities.upgradeQuote(id, trackId);
     const next = request.maximum ? null : definition.upgrades[trackId][currentLevel];
@@ -50,7 +50,7 @@
     return `<article class="facility-upgrade-row"><div class="facility-upgrade-copy"><span><strong>${meta.name}</strong><small>Lv.${currentLevel}</small></span><p>${context.escape(trackValue(id, trackId, current, context))}${next ? ` <b>→ ${context.escape(trackValue(id, trackId, next, context))}</b>` : ""}</p></div><div class="facility-upgrade-action">${action}</div></article>`;
   }
   function facilityCard(id, context) {
-    const definition = window.GameData.facilities.definitions[id];
+    const definition = window.GameData.facilities[id];
     if (!window.Facilities.unlocked(id)) {
       const chapter = window.GameData.storyChapters.find(entry => entry.id === definition.unlockAfter);
       return `<section class="facility-card is-locked"><header><div><span class="label">LOCKED FACILITY</span><h4>${definition.name}</h4></div><span class="badge">未解放</span></header><p class="facility-description">${definition.description}</p><p class="small-note">${context.escape(chapter?.title || "物語")}の攻略後に利用できます。</p></section>`;
@@ -64,7 +64,7 @@
   }
   function facilities(context) {
     const count = window.Facilities.collectable().length;
-    return `<div class="section-heading"><div><span class="label">GUILD FACILITIES</span><h3>ギルド施設</h3></div><button class="button secondary" data-action="collect-all-facilities" ${count ? "" : "disabled"}>まとめて受取${count ? `（${count}施設）` : ""}</button></div><div class="facility-grid">${window.GameData.facilities.order.map(id => facilityCard(id, context)).join("")}</div><p class="small-note">章を達成するごとに、各施設の強化枠が1回ずつ増えます。強化には所持金と素材が必要です。枠は生産量・保管庫・作業速度へ自由に配分できます。施設ごとのリセットで枠は振り直せますが、使用済みの費用は返却されません。保管済みの生産物は失われません。</p>`;
+    return `<div class="section-heading"><div><span class="label">GUILD FACILITIES</span><h3>ギルド施設</h3></div><button class="button secondary" data-action="collect-all-facilities" ${count ? "" : "disabled"}>まとめて受取${count ? `（${count}施設）` : ""}</button></div><div class="facility-grid">${window.GameData.config.facilities.order.map(id => facilityCard(id, context)).join("")}</div><p class="small-note">章を達成するごとに、各施設の強化枠が1回ずつ増えます。強化には所持金と素材が必要です。枠は生産量・保管庫・作業速度へ自由に配分できます。施設ごとのリセットで枠は振り直せますが、使用済みの費用は返却されません。保管済みの生産物は失われません。</p>`;
   }
   function page(context) {
     const state = window.GameState.data;

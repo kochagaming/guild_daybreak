@@ -105,13 +105,23 @@
     ];
     const materialEntries = materials.map(([id, quantity]) => ({ name: window.GameData.items[id]?.name || id, quantity, note: "" }));
     const discovery = Array.isArray(result.newItemIds) && result.newItemIds.length ? `<span class="discovery">初発見 ${result.newItemIds.length}種</span>` : "";
+    const setDiscovery = Array.isArray(result.newSetDiscoveries) && result.newSetDiscoveries.length ? `<span class="set-discovery">組合せ ${result.newSetDiscoveries.length}件</span>` : "";
     const qualityRecord = Array.isArray(result.newBestQualities) && result.newBestQualities.length ? `<span class="quality-record">最高品質更新 ${result.newBestQualities.length}種</span>` : "";
     const ultraRare = ultraRareDrops.length ? `<span class="ultra-rare">超レア ${ultraRareDrops.length}点</span>` : "";
     const newUltraRare = Array.isArray(result.newUltraRareTitleIds) && result.newUltraRareTitleIds.length ? `<span class="ultra-title">新称号 ${result.newUltraRareTitleIds.length}種</span>` : "";
     const trackedItem = result.trackedItemId ? window.GameData.items[result.trackedItemId] : null;
     const trackedProgress = Number.isInteger(result.trackedItemProgress) && result.trackedItemGoal ? `・累計 ${result.trackedItemProgress}/${result.trackedItemGoal}` : "";
     const tracked = trackedItem && result.trackedItemQuantity > 0 ? `<span class="tracked">目標 +${result.trackedItemQuantity} ${escape(trackedItem.name)}${trackedProgress}</span>` : "";
-    return `<div class="fleet-result-loot" aria-label="直近の獲得報酬">${tracked}${ultraRare}${newUltraRare}${discovery}${qualityRecord}<span class="gold">${formatGold(result.gold)}</span><span class="experience">${escape(experienceText)}</span>${breakdown("equipment", equipmentText, equipmentEntries, "獲得装備")}${breakdown("materials", materialText, materialEntries, "獲得素材")}</div>`;
+    const companionGrowthNames = (result.companionAdvancements || []).map(entry => window.GameData.companions[entry.companionId]?.name).filter(Boolean);
+    const companionGrowth = companionGrowthNames.length ? `<span class="companion-growth">人物成長 ${escape(companionGrowthNames.join("・"))}</span>` : "";
+    const learnedSkillCount = (result.levelUps || []).reduce((sum, entry) => sum + (entry.newSkillIds?.length || 0), 0);
+    const skillGrowth = learnedSkillCount ? `<span class="skill-growth">新スキル ${learnedSkillCount}種</span>` : "";
+    const fieldKnowledge = result.newRouteMasteryIds?.length ? `<span class="field-knowledge">新しい道中知見 ${result.newRouteMasteryIds.length}種</span>` : "";
+    const rumorConfirmations = result.newRumorConfirmationIds?.length ? `<span class="field-knowledge">初めて確かめた噂 ${result.newRumorConfirmationIds.length}種${result.rumorConfirmationReward ? `・印章+${result.rumorConfirmationReward.quantity}` : ""}</span>` : "";
+    const routeEvents = window.GameUIViews.results?.routeEvents(result) || [];
+    const routeEvent = routeEvents[0];
+    const routeEventChip = routeEvent ? `<span class="route-event ${routeEvent.success ? "success" : "failure"}">道中 ${routeEvent.rumorMatched ? "噂と一致・" : ""}${escape(routeEvent.name)}・${routeEvent.success ? "成功" : "失敗"}${routeEvent.personalPracticeApplied ? "・経験活用" : ""}${routeEvent.masteryApplied ? "・記録活用" : ""}${routeEvents.length > 1 ? `・ほか${routeEvents.length - 1}件` : ""}</span>` : "";
+    return `<div class="fleet-result-loot" aria-label="直近の獲得報酬">${routeEventChip}${rumorConfirmations}${fieldKnowledge}${companionGrowth}${skillGrowth}${tracked}${ultraRare}${newUltraRare}${discovery}${setDiscovery}${qualityRecord}<span class="gold">${formatGold(result.gold)}</span><span class="experience">${escape(experienceText)}</span>${breakdown("equipment", equipmentText, equipmentEntries, "獲得装備")}${breakdown("materials", materialText, materialEntries, "獲得素材")}</div>`;
   }
 
   function compactHistory(history, partyIndex, escape, formatGold) {
@@ -210,6 +220,15 @@
       const battleSummary = battle
         ? `<div class="party-history-battle"><span>到達 <strong>${battle.encountersCleared}/${battle.totalEncounters}戦</strong></span><span>討伐 <strong>${battle.monstersDefeated}体</strong></span><span>命中 <strong>${battle.attackHits}/${battle.attackAttempts}</strong></span><span>与 <strong>${battle.damageDealt.toLocaleString("ja-JP")}</strong></span><span>被 <strong>${battle.damageTaken.toLocaleString("ja-JP")}</strong></span><span>回復 <strong>${battle.healingDone.toLocaleString("ja-JP")}</strong></span><span>戦闘不能 <strong>${battle.knockouts}人</strong></span></div>`
         : `<p class="small-note">この帰還時点では詳細戦績を保存していません。</p>`;
+      const highlightViews = {
+        exploration: ["路", "道中の難所を解いた", entry => `発見${entry.routeSuccesses}件・宝箱${entry.chestsOpened}個`],
+        damage: ["剣", "敵陣を切り開いた", entry => `実ダメージ ${entry.value.toLocaleString("ja-JP")}`],
+        healing: ["癒", "仲間の命をつないだ", entry => `実回復 ${entry.value.toLocaleString("ja-JP")}`],
+        endurance: ["盾", "最後まで立ち続けた", entry => `被ダメージ ${entry.value.toLocaleString("ja-JP")}・帰還HP ${entry.remainingHp}/${entry.maxHp}`]
+      };
+      const memberHighlights = (entry.memberHighlights || []).length
+        ? `<div class="party-history-contributions"><strong>遠征の働き</strong><div>${entry.memberHighlights.map(highlight => { const view = highlightViews[highlight.kind]; return `<span class="${highlight.kind}"><i>${view[0]}</i><small>${view[1]}</small><b>${escape(highlight.name)}</b><em>${escape(view[2](highlight))}</em></span>`; }).join("")}</div></div>`
+        : "";
       const setup = Array.isArray(entry.partySetup) && entry.partySetup.length
         ? `<details class="party-history-setup"><summary>遠征時の編成 ${entry.partySetup.length}人</summary><div>${entry.partySetup.map(member => {
           const job = window.GameData.jobs[member.jobId]?.name || "冒険者", rates = member.actionRates;
@@ -226,12 +245,56 @@
       const previousSetupDifferences = previous && Array.isArray(previous.partySetup) && previous.partySetup.length && Array.isArray(entry.partySetup) && entry.partySetup.length
         ? setupDifferences(previous.partySetup, entry.partySetup, "今回") : [];
       const previousBattleRows = previous ? historyBattleComparison(previous.battle, entry.battle) : [];
+      const previousRouteSummary = previous && (previous.routeEvents?.length || entry.routeEvents?.length)
+        ? `<span><small>道中成功</small><strong>${(previous.routeEvents || []).filter(event => event.success).length}/${(previous.routeEvents || []).length} → ${(entry.routeEvents || []).filter(event => event.success).length}/${(entry.routeEvents || []).length}</strong></span>`
+        : "";
       const previousComparison = previous
-        ? `<details class="party-history-attempt"><summary>同条件の前回との差 <span>${previousSetupDifferences.length ? `編成変更 ${previousSetupDifferences.length}人` : "編成変更なし"}</span></summary><div><small>前回 ${new Date(previous.completedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</small><div class="party-history-attempt-battle">${previousBattleRows.map(([label, oldValue, newValue]) => `<span><small>${label}</small><strong>${oldValue} → ${newValue}</strong></span>`).join("")}</div>${previousSetupDifferences.length ? `<ul>${previousSetupDifferences.map(change => `<li><strong>${escape(change.name)}</strong><span>${change.facts.map(escape).join("・")}</span></li>`).join("")}</ul>` : `<p>隊列、職業、レベル、行動率、装備、重量に変更はありません。</p>`}</div></details>`
+        ? `<details class="party-history-attempt"><summary>同条件の前回との差 <span>${previousSetupDifferences.length ? `編成変更 ${previousSetupDifferences.length}人` : "編成変更なし"}</span></summary><div><small>前回 ${new Date(previous.completedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</small><div class="party-history-attempt-battle">${previousBattleRows.map(([label, oldValue, newValue]) => `<span><small>${label}</small><strong>${oldValue} → ${newValue}</strong></span>`).join("")}${previousRouteSummary}</div>${previousSetupDifferences.length ? `<ul>${previousSetupDifferences.map(change => `<li><strong>${escape(change.name)}</strong><span>${change.facts.map(escape).join("・")}</span></li>`).join("")}</ul>` : `<p>隊列、職業、レベル、行動率、装備、重量に変更はありません。</p>`}</div></details>`
+        : "";
+      const storyMoments = (entry.storyMoments || []).map(moment => {
+        const scene = window.Story?.scene(moment.sceneId), place = window.GameData.dungeons[moment.dungeonId];
+        if (!scene) return "";
+        const label = { opening: "新たな探索地", discovery: "探索で判明", ending: "攻略後" }[moment.kind] || "遠征の記録";
+        return `<article><small>${label} · ${escape(place?.name || dungeon.name)}</small><strong>${escape(scene.name)}</strong><p>${escape(scene.text)}</p></article>`;
+      }).filter(Boolean).join("");
+      const witnesses = (entry.partySetup || []).map(member => member.name).filter(Boolean);
+      const story = storyMoments
+        ? `<details class="party-history-story"><summary>物語の記録 <span>${entry.storyMoments.length}場面</span></summary><div>${storyMoments}${witnesses.length ? `<p class="party-history-witnesses">この遠征を歩いた冒険者：${escape(witnesses.join("、"))}</p>` : ""}</div></details>`
+        : "";
+      const adventurerBondMoments = (entry.adventurerBondMoments || []).map(moment => { const definition = window.GameData.config.explorationEvents.adventurerBondMoments.find(candidate => candidate.id === moment.id); return `<article><small>${moment.memberNames.map(escape).join("と")} · 同行${moment.sharedSorties}回</small><strong>${escape(definition?.title || "旅仲間のひと幕")}</strong><p>${escape(moment.text)}</p></article>`; }).join("");
+      const adventurerBonds = adventurerBondMoments
+        ? `<details class="party-history-story party-history-bonds"><summary>旅仲間の記録 <span>${entry.adventurerBondMoments.length}場面</span></summary><div>${adventurerBondMoments}</div></details>`
+        : "";
+      const bondTierEntries = (entry.newAdventurerBondTiers || []).map(tier => `<article><small>${tier.memberNames.map(escape).join("と")} · 同行${tier.sharedSorties}回</small><strong>旅仲間の呼吸が深まった</strong><p>${[tier.routeLabel ? `道中「${escape(tier.routeLabel)}」` : "", tier.battleLabel ? `戦列「${escape(tier.battleLabel)}」` : ""].filter(Boolean).join("・")}</p></article>`).join("");
+      const bondTierGrowth = bondTierEntries
+        ? `<details class="party-history-story party-history-bonds"><summary>旅仲間の成長 <span>${entry.newAdventurerBondTiers.length}組</span></summary><div>${bondTierEntries}</div></details>`
+        : "";
+      const battleBondEntries = (entry.bondFormations || []).map(formation => `<article><small>${(formation.positions || []).map(position => `${Number(position) + 1}列`).join("・")} · 同行${formation.sharedSorties || 0}回</small><strong>${(formation.memberNames || []).map(escape).join("と")} · ${escape(formation.label || "旅仲間の布陣")}</strong><p>隣り合った二人が、戦列で互いの合図を拾いました。</p></article>`).join("");
+      const battleBonds = battleBondEntries
+        ? `<details class="party-history-story party-history-bonds"><summary>戦列の連携 <span>${entry.bondFormations.length}組</span></summary><div>${battleBondEntries}</div></details>`
+        : "";
+      const routeEvents = (entry.routeEvents || []).map(event => {
+        const definition = window.GameData.config.explorationEvents.routeEvents.find(candidate => candidate.id === event.id);
+        return `<article class="${event.success ? "success" : "failure"} ${event.rumorMatched ? "is-rumor-match" : ""}"><span>${event.rumorMatched ? "噂" : event.success ? "成" : "否"}</span><div><strong>${event.teamSurveyApplied ? "連携探索 · " : ""}${event.rumorMatched ? "噂と一致 · " : ""}${escape(definition?.name || "道中の出来事")}${event.personalPracticeApplied ? " · 本人の経験" : ""}${event.masteryApplied ? " · 記録活用" : ""}${event.bondSupportApplied ? ` · ${escape(event.bondSupportLabel || "旅仲間の連携")}` : ""}</strong>${event.teamSurveyMemberNames?.length ? `<small>地図を重ねた者：${event.teamSurveyMemberNames.map(escape).join("、")}</small>` : ""}${event.bondSupportMemberNames?.length ? `<small>息を合わせた者：${event.bondSupportMemberNames.map(escape).join("、")}</small>` : ""}<p>${escape(event.text)}</p></div></article>`;
+      }).join("");
+      const routeMasteries = (entry.routeMasteryIds || []).map(id => window.GameData.config.explorationEvents.routeEvents.find(event => event.id === id)?.name).filter(Boolean);
+      const journey = routeEvents
+        ? `<details class="party-history-journey"><summary>道中の記録 <span>成功 ${(entry.routeEvents || []).filter(event => event.success).length}/${entry.routeEvents.length}${routeMasteries.length ? ` · 知見完成 ${routeMasteries.length}種` : ""}</span></summary><div>${routeMasteries.length ? `<p class="party-history-mastery">知見が仲間へ共有された：${escape(routeMasteries.join("、"))}</p>` : ""}${routeEvents}</div></details>`
+        : "";
+      const growthEntries = (entry.growth || []).filter(growth => growth?.name && Number.isInteger(growth.level));
+      const learnedCount = growthEntries.reduce((sum, growth) => sum + (growth.newSkillIds?.length || 0), 0);
+      const growth = growthEntries.length
+        ? `<details class="party-history-growth"><summary>成長の記録 <span>${growthEntries.length}人${learnedCount ? ` · 新スキル${learnedCount}種` : ""}</span></summary><div>${growthEntries.map(member => {
+          const skills = (member.newSkillIds || []).map(id => window.GameData.skills[id]).filter(Boolean);
+          const labels = { hp: "HP", attack: "物攻", defense: "物防", magicAttack: "魔攻", magicDefense: "魔防", magicHealing: "魔回", speed: "速度", maxWeight: "重量上限" };
+          const stats = Object.entries(member.statChanges || {}).filter(([, value]) => value).map(([key, value]) => `${labels[key] || key}+${value}`).join("・");
+          const detail = [stats, ...skills.map(skill => `${window.GameData.config.skillCategories[skill.category] || "スキル"}「${skill.name}」`)].filter(Boolean).join("／");
+          return `<article><span><strong>${escape(member.name)}</strong><small>Lv.${member.level}へ成長</small></span><p>${escape(detail || "能力と装備可能重量が上昇")}</p></article>`;
+        }).join("")}</div></details>`
         : "";
       const equipment = entry.equipment.length ? entry.equipment.map(item => `<li><span>${escape(item.name)}</span><strong>×${item.quantity}${item.autoSold ? "・売却済" : ""}</strong></li>`).join("") : "<li>装備なし</li>";
       const materials = entry.materials.length ? entry.materials.map(item => `<li><span>${escape(window.GameData.items[item.itemId]?.name || item.itemId)}</span><strong>×${item.quantity}</strong></li>`).join("") : "<li>素材なし</li>";
-      return `<details class="party-history-record ${entry.success ? "success" : "failure"}" ${index === 0 ? "open" : ""}><summary><span class="party-history-mark">${entry.success ? "勝" : "退"}</span><span class="party-history-name"><small>${index === 0 ? "最新の帰還" : completed} · ${entry.timeMultiplier || 1}倍探索</small><strong>${escape(dungeon.name)}</strong></span><span class="party-history-reward"><strong>${formatGold(entry.gold)}</strong><small>EXP +${entry.exp}</small></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="party-history-detail">${battleSummary}${previousComparison}${setup}${comparison}<div class="party-history-loot"><section><strong>装備 ${equipmentCount}点</strong><ul>${equipment}</ul></section><section><strong>素材 ${materialCount}個</strong><ul>${materials}</ul></section></div></div></details>`;
+      return `<details class="party-history-record ${entry.success ? "success" : "failure"}" ${index === 0 ? "open" : ""}><summary><span class="party-history-mark">${entry.success ? "勝" : "退"}</span><span class="party-history-name"><small>${index === 0 ? "最新の帰還" : completed} · ${entry.timeMultiplier || 1}倍探索</small><strong>${escape(dungeon.name)}</strong></span><span class="party-history-reward"><strong>${formatGold(entry.gold)}</strong><small>EXP +${entry.exp}</small></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="party-history-detail">${battleSummary}${memberHighlights}${battleBonds}${journey}${adventurerBonds}${bondTierGrowth}${growth}${story}${previousComparison}${setup}${comparison}<div class="party-history-loot"><section><strong>装備 ${equipmentCount}点</strong><ul>${equipment}</ul></section><section><strong>素材 ${materialCount}個</strong><ul>${materials}</ul></section></div></div></details>`;
     }).join("");
     return `<section class="panel party-history-page"><div class="section-heading"><div><span class="label">EXPEDITION HISTORY</span><h3>遠征履歴</h3><p>新しい順に最大10件。詳細戦績は実際の戦闘記録を集計しています。</p></div><button class="button primary" data-action="party-view" data-view="results" ${window.Party.result(partyIndex) ? "" : "disabled"}>直近ログを開く</button></div><div class="party-history-list">${records}</div></section>`;
   }
@@ -264,8 +327,11 @@
     const targetComplete = trackedTarget && trackedTarget.progress >= trackedTarget.quantity;
     const targetRecipeButton = targetRecipeIds.length ? `<button class="button ${targetComplete ? "primary" : "ghost"}" data-action="open-target-recipes" data-recipes="${escape(targetRecipeIds.join(","))}">${targetComplete ? "製作へ" : "関連レシピ"}</button>` : "";
     const targetStrip = trackedItem ? `<section class="fleet-target-strip ${targetComplete ? "is-complete" : ""}"><span class="fleet-target-icon" aria-hidden="true">${escape(trackedItem.icon || "◇")}</span><div><small>現在の探索目標</small><strong>${escape(trackedItem.name)}</strong><span>${targetComplete ? "達成" : "収集中"} ${trackedTarget.progress}/${trackedTarget.quantity}・入手記録のある探索地 ${targetRoutes.length}か所</span><i><b style="width:${Math.min(100, trackedTarget.progress / trackedTarget.quantity * 100)}%"></b></i>${targetRouteList}</div><div>${targetRecipeButton}<button class="button ghost" data-action="open-item-codex">図鑑で変更</button></div></section>` : "";
-    const readyPartyCount = Array.from({ length: window.Party.limit() }, (_, index) => index)
-      .filter(index => !window.Party.expedition(index) && window.Party.members(index).length && window.Party.plan(index)).length;
+    const partyPlanReady = index => {
+      const members = window.Party.members(index), plan = window.Party.plan(index);
+      return Boolean(!window.Party.expedition(index) && members.length && plan && window.DungeonPartyRules.check(plan.dungeonId, members).ok);
+    };
+    const readyPartyCount = Array.from({ length: window.Party.limit() }, (_, index) => index).filter(partyPlanReady).length;
     const visiblePartyCount = Math.min(window.Party.maximum(), window.Party.limit() + 1);
     const hiddenPartyCount = window.Party.maximum() - visiblePartyCount;
     const partyCounts = {
@@ -287,7 +353,7 @@
     } else if (partyOverviewFilter === "waiting") {
       const readiness = index => {
         const hasMembers = window.Party.members(index).length > 0;
-        if (hasMembers && window.Party.plan(index)) return 0;
+        if (hasMembers && window.Party.plan(index) && partyPlanReady(index)) return 0;
         return hasMembers ? 1 : 2;
       };
       visibleIndexes.sort((left, right) => readiness(left) - readiness(right) || left - right);
@@ -302,7 +368,7 @@
       const unlocked = index < window.Party.limit(), active = index === selected;
       if (!unlocked) {
         const slot = index + 1;
-        const entry = window.GameData.partyProgression.partySlots.unlocks.find(candidate => candidate.slot === slot);
+        const entry = window.GameData.config.partyProgression.partySlots.unlocks.find(candidate => candidate.slot === slot);
         const available = slot === window.Party.limit() + 1 && slot <= window.Party.availableLimit();
         const cost = entry ? `${formatGold(entry.gold)}・ギルド印章 ${entry.seals}` : "今後の物語で解放";
         return `<article class="party-overview-row is-locked" data-party-overview="${index}"><div><strong>第${slot}パーティ</strong><span class="fleet-status">${available ? "増設可能" : "未解放"}</span></div><div><p class="small-note">${available ? `増設費用：${cost}` : entry?.codeOnly ? "設定で追加パーティ増設権のコードを解放" : `第${entry?.chapterNumber || slot - 1}章クリアで増設権を獲得`}</p>${available ? `<button class="button primary" data-action="unlock-party" data-party="${index}">第${slot}パーティを増設</button>` : ""}</div></article>`;
@@ -314,11 +380,14 @@
       const unreadResult = Boolean(result && result.viewed !== true);
       const percent = expedition ? Math.min(100, Math.max(0, (window.GameRuntime.now() - expedition.startedAt) / (expedition.endsAt - expedition.startedAt) * 100)) : 0;
       const destination = selectedVariant(context, index), multiplier = destination ? (explorationChoices[index][destination.baseDungeonId] || 1) : 1;
+      const partyRuleCheck = destination ? window.DungeonPartyRules.check(destination, members) : { ok: true, restricted: false, message: "" };
       const activeDungeon = expedition ? window.DungeonDifficulty.variant(expedition.dungeonId, expedition.difficultyId || "normal") : null;
-      const journey = expedition ? `<div class="fleet-journey" data-expedition="${index}"><strong>${escape(activeDungeon.name)} · ${expedition.timeMultiplier}倍探索</strong><span>残り <strong class="fleet-timer" data-countdown="${index}">${time(window.Dungeon.remaining(index))}</strong></span><div class="progress"><i style="width:${percent}%"></i></div><small>時間経過 <span data-overview-percent>${Math.floor(percent)}</span>%</small></div>` : `<div class="fleet-journey"><strong>${members.length && destination ? `攻略先：${escape(destination.name)} · ${multiplier}倍探索` : members.length ? "攻略先を設定してください" : "仲間を加えてパーティを編成"}</strong>${result ? `<small><span class="fleet-result-mark ${resultState}">${result.success ? "攻略成功" : "撤退"}</span>${escape(result.dungeonName || window.GameData.dungeons[result.dungeonId].name)}</small>${compactResultLoot(result, escape, formatGold)}${compactHistory(state.partyHistory[index], index, escape, formatGold)}` : "<small>探索記録なし</small>"}</div>`;
+      const restrictionWarning = !partyRuleCheck.ok ? `<small class="fleet-restriction-warning">編成条件未達：${escape(partyRuleCheck.message)}</small>` : "";
+      const journey = expedition ? `<div class="fleet-journey" data-expedition="${index}"><strong>${escape(activeDungeon.name)} · ${expedition.timeMultiplier}倍探索</strong><span>残り <strong class="fleet-timer" data-countdown="${index}">${time(window.Dungeon.remaining(index))}</strong></span><div class="progress"><i style="width:${percent}%"></i></div><small>時間経過 <span data-overview-percent>${Math.floor(percent)}</span>%</small></div>` : `<div class="fleet-journey"><strong>${members.length && destination ? `攻略先：${escape(destination.name)} · ${multiplier}倍探索` : members.length ? "攻略先を設定してください" : "仲間を加えてパーティを編成"}</strong>${restrictionWarning}${result ? `<small><span class="fleet-result-mark ${resultState}">${result.success ? "攻略成功" : "撤退"}</span>${escape(result.dungeonName || window.GameData.dungeons[result.dungeonId].name)}</small>${compactResultLoot(result, escape, formatGold)}${compactHistory(state.partyHistory[index], index, escape, formatGold)}` : "<small>探索記録なし</small>"}</div>`;
       const memberStrip = members.length ? members.map((member, position) => {
         const stat = window.Characters.stats(member);
-        return `<span class="fleet-member"><span class="fleet-member-level">Lv.${member.level}</span>${portraitImage(member, true)}<strong>${escape(member.name)}</strong><small>HP ${stat.hp}</small><i>${position + 1}</i></span>`;
+        const recordTitle = window.Characters.recordTitle(member);
+        return `<span class="fleet-member"${recordTitle ? ` title="${escape(recordTitle.name)}"` : ""}><span class="fleet-member-level">Lv.${member.level}</span>${portraitImage(member, true)}<strong>${escape(member.name)}</strong>${recordTitle ? `<small class="fleet-member-title">${escape(recordTitle.icon)} ${escape(recordTitle.name)}</small>` : ""}<small>HP ${stat.hp}</small><i>${position + 1}</i></span>`;
       }).join("") : `<span class="fleet-empty-member">メンバーなし</span>`;
       const partyName = window.Party.name(index);
       const memberLimit = window.Party.memberLimit(), vacancies = Math.max(0, memberLimit - members.length);
@@ -326,8 +395,15 @@
       const changedPreset = matchingPreset ? null : window.Presets.slots().find((preset, slot) => preset && window.Presets.lineupMatches(slot, index));
       const presetState = matchingPreset ? `保存「${escape(matchingPreset.name)}」` : changedPreset ? `保存「${escape(changedPreset.name)}」と差あり` : "";
       const presetLink = presetState ? `<button class="fleet-preset-link ${changedPreset ? "is-changed" : ""}" data-action="open-party-presets" data-party="${index}" aria-label="${escape(partyName)}の編成プリセットを開く">${presetState}</button>` : "";
+      const bondMembers = members.map((member, position) => ({
+        id: member.id, name: member.name, position,
+        sharedSorties: Object.fromEntries(window.Characters.sharedSorties(member).map(entry => [entry.characterId, entry.count]))
+      }));
+      const bondPairs = window.Battle.bondFormationPairs(bondMembers);
+      const bondTitle = bondPairs.map(pair => `${pair.left.name}・${pair.right.name}：${pair.tier.label}`).join("／");
+      const bondStatus = bondPairs.length ? `<span class="fleet-bond-status" title="${escape(bondTitle)}">旅仲間 ${bondPairs.length}組</span>` : "";
       const partyPower = Math.round(window.Party.power(index)).toLocaleString("ja-JP");
-      return `<article class="party-overview-row ${active ? "is-selected" : ""} ${expedition ? "is-exploring" : result ? `is-last-${resultState}` : ""} ${unreadResult ? "has-unread-result" : ""}" data-party-overview="${index}"><div class="fleet-party"><button class="fleet-party-select" data-action="rename-party" data-party="${index}" aria-label="${escape(partyName)}の名前を変更"><span>${escape(partyName)}</span><i aria-hidden="true">✎</i></button><span class="fleet-status ${expedition ? "exploring" : resultState}">${status}</span>${unreadResult ? '<span class="fleet-new-result">NEW</span>' : ""}<div class="fleet-party-meta" aria-label="第${index + 1}隊の編成情報"><span>第${index + 1}隊</span><span>${members.length}/${memberLimit}人</span><span>${vacancies ? `空き${vacancies}` : "満員"}</span><span>戦力 ${partyPower}</span>${presetLink}</div><div class="fleet-member-strip">${memberStrip}</div></div>${journey}<div class="fleet-actions"><button class="button ghost" data-action="party-open" data-party="${index}" data-view="formation" aria-label="${escape(partyName)}を編成する">パーティを編成する</button>${expedition ? `<button class="button ghost" data-action="party-open" data-party="${index}" data-view="adventure" aria-label="${escape(partyName)}の探索ログ">探索ログ</button>` : `<button class="button primary" data-action="quick-start-party" data-party="${index}" aria-label="${escape(partyName)}を${destination ? escape(destination.name) : "設定した攻略先"}へ出撃" ${!members.length || !destination ? "disabled" : ""}>出撃</button>`}<button class="button secondary ${unreadResult ? "has-notice" : ""}" data-action="party-open" data-party="${index}" data-view="results" aria-label="${escape(partyName)}の直近ログ${unreadResult ? "・未読" : ""}" ${!result ? "disabled" : ""}>直近ログ${unreadResult ? "・新着" : ""}</button></div></article>`;
+      return `<article class="party-overview-row ${active ? "is-selected" : ""} ${expedition ? "is-exploring" : result ? `is-last-${resultState}` : ""} ${unreadResult ? "has-unread-result" : ""}" data-party-overview="${index}"><div class="fleet-party"><button class="fleet-party-select" data-action="rename-party" data-party="${index}" aria-label="${escape(partyName)}の名前を変更"><span>${escape(partyName)}</span><i aria-hidden="true">✎</i></button><span class="fleet-status ${expedition ? "exploring" : resultState}">${status}</span>${unreadResult ? '<span class="fleet-new-result">NEW</span>' : ""}<div class="fleet-party-meta" aria-label="第${index + 1}隊の編成情報"><span>第${index + 1}隊</span><span>${members.length}/${memberLimit}人</span><span>${vacancies ? `空き${vacancies}` : "満員"}</span><span>戦力 ${partyPower}</span>${bondStatus}${presetLink}</div><div class="fleet-member-strip">${memberStrip}</div></div>${journey}<div class="fleet-actions"><button class="button ghost" data-action="party-open" data-party="${index}" data-view="formation" aria-label="${escape(partyName)}を編成する">パーティを編成する</button>${expedition ? `<button class="button ghost" data-action="party-open" data-party="${index}" data-view="adventure" aria-label="${escape(partyName)}の探索ログ">探索ログ</button>` : `<button class="button primary" data-action="quick-start-party" data-party="${index}" aria-label="${escape(partyName)}を${destination ? escape(destination.name) : "設定した攻略先"}へ出撃" ${!members.length || !destination || !partyRuleCheck.ok ? "disabled" : ""}>出撃</button>`}<button class="button secondary ${unreadResult ? "has-notice" : ""}" data-action="party-open" data-party="${index}" data-view="results" aria-label="${escape(partyName)}の直近ログ${unreadResult ? "・未読" : ""}" ${!result ? "disabled" : ""}>直近ログ${unreadResult ? "・新着" : ""}</button></div></article>`;
     }).join("");
     const stateFilters = `<nav class="fleet-state-filters" aria-label="パーティの状態で絞り込み">${[["all", "全隊"], ["exploring", "探索中"], ["waiting", "待機中"], ["reports", "報告あり"]].map(([id, label]) => {
       const unread = id === "reports" ? unreadReports : 0;
@@ -345,10 +421,12 @@
     if (expedition) return `<section class="party-live-summary"><span>探索中</span><strong>${escape(window.DungeonDifficulty.variant(expedition.dungeonId, expedition.difficultyId || "normal").name)}</strong><small>帰還まで <b data-countdown="${window.Party.selected()}">${time(window.Dungeon.remaining())}</b></small></section>${departureSummary()}${activeJournalPanel(expedition)}`;
     const destination = selectedVariant(context, window.Party.selected());
     const multiplier = destination ? (explorationChoices[window.Party.selected()][destination.baseDungeonId] || 1) : 1;
+    const partyRuleCheck = destination ? window.DungeonPartyRules.check(destination, window.Party.members()) : { ok: true, restricted: false, message: "" };
     const trackedTarget = window.Encyclopedia.trackedTarget();
     const tracked = trackedTarget ? window.GameData.items[trackedTarget.itemId] : null;
     const trackedGuide = tracked ? `<section class="tracked-loot-guide ${trackedTarget.progress >= trackedTarget.quantity ? "is-complete" : ""}"><span>探索目標</span><strong>${escape(tracked.icon || "◇")} ${escape(tracked.name)}</strong><small>${trackedTarget.progress >= trackedTarget.quantity ? "達成済み" : "収集中"} ${trackedTarget.progress}/${trackedTarget.quantity}・過去の入手記録がある攻略先に印を付けています。</small></section>` : "";
-    return `${departureSummary()}<section class="departure-selection-bar"><div><span>選択中の攻略先</span><strong>${destination ? `${escape(destination.name)} · ${multiplier}倍探索` : "攻略先を選択してください"}</strong></div><button class="button primary" data-action="quick-start-party" data-party="${window.Party.selected()}" ${destination ? "" : "disabled"}>この攻略先へ出撃</button></section><div class="section-heading route-selection-heading"><div><span class="label">DESTINATION</span><h3>攻略先を選択</h3></div></div><p class="small-note">章を切り替えて攻略先を選びます。探索時間が長いほど連戦・報酬が増えますが、時間あたりの報酬は等倍が有利です。</p>${trackedGuide}${chapterNavigator(context)}${dungeonCards(context)}`;
+    const restrictionMessage = !partyRuleCheck.ok ? `<small class="departure-restriction-warning">編成条件未達：${escape(partyRuleCheck.message)}</small>` : partyRuleCheck.restricted ? `<small class="departure-restriction-ready">編成条件を満たしています</small>` : "";
+    return `${departureSummary()}<section class="departure-selection-bar"><div><span>選択中の攻略先</span><strong>${destination ? `${escape(destination.name)} · ${multiplier}倍探索` : "攻略先を選択してください"}</strong>${restrictionMessage}</div><button class="button primary" data-action="quick-start-party" data-party="${window.Party.selected()}" ${destination && partyRuleCheck.ok ? "" : "disabled"}>この攻略先へ出撃</button></section><div class="section-heading route-selection-heading"><div><span class="label">DESTINATION</span><h3>攻略先を選択</h3></div></div><p class="small-note">章を切り替えて攻略先を選びます。探索時間が長いほど連戦・報酬が増えますが、時間あたりの報酬は等倍が有利です。</p>${trackedGuide}${chapterNavigator(context)}${dungeonCards(context)}`;
   }
 
   function chapterNavigator(context) {
@@ -396,6 +474,8 @@
     const trackedItemId = window.Encyclopedia.trackedItem();
     const trackedItem = trackedItemId ? window.GameData.items[trackedItemId] : null;
     const trackedSources = trackedItem ? window.Encyclopedia.itemAcquisitionSources(trackedItemId) : null;
+    const partyHistory = window.GameState.data.partyHistory?.[partyIndex] || [];
+    const currentRumor = window.ExpeditionRumors?.current() || null;
     function routeCards(group) { return group.map((dungeon, index) => {
       const emblem = dungeon.color === "green" ? "♧" : dungeon.color === "blue" ? "◭" : "⌘";
       const routeNumber = dungeon.requiredForStory ? String(dungeon.orderInChapter).padStart(2, "0") : String(index + 1).padStart(2, "0");
@@ -414,7 +494,44 @@
       const monsters = monsterIds.map(id => window.DungeonDifficulty.monster(id, difficultyId));
       const monsterPreview = monsters.map(monster => { const record = window.Encyclopedia.monster(monster.id); return `<span class="monster-chip ${monster.boss && record ? "boss" : ""}">${record ? `${monster.icon} ${escape(monster.name)}` : "？ 未確認"}</span>`; }).join("") + dungeonIntel(dungeon, monsters);
       const selected = dungeon.id === selectedId;
+      const partyRuleCheck = window.DungeonPartyRules.check(dungeon, window.Party.members(partyIndex));
+      const restrictionCompanions = window.DungeonPartyRules.companionIds(dungeon)
+        .map(id => window.GameData.companions[id])
+        .filter(Boolean);
+      const restrictionPortraits = restrictionCompanions.length
+        ? `<div class="dungeon-restriction-companions">${restrictionCompanions.map(companion => {
+          const portrait = window.GameData.portraits[companion.portraitId];
+          return `<span>${portrait ? `<img src="${escape(portrait.image)}" alt="" loading="lazy">` : ""}<b>${escape(companion.name)}</b></span>`;
+        }).join("")}</div>`
+        : "";
+      const partyRestriction = partyRuleCheck.restricted
+        ? `<div class="dungeon-party-restriction ${partyRuleCheck.ok ? "is-ready" : "is-unmet"}"><span>編成条件</span><strong>${escape(partyRuleCheck.descriptions.join("・"))}</strong>${restrictionPortraits}<small>${partyRuleCheck.ok ? "現在のパーティは条件を満たしています。" : escape(partyRuleCheck.message)}</small></div>`
+        : "";
       const multiplier = explorationChoices[window.Party.selected()][dungeon.id] || 1;
+      const previousAttempt = partyHistory.find(entry => entry.dungeonId === dungeon.id
+        && (entry.difficultyId || "normal") === difficultyId
+        && (entry.timeMultiplier || 1) === multiplier
+        && entry.battle);
+      const previousBattle = previousAttempt?.battle;
+      const previousRecord = previousBattle
+        ? `<p class="dungeon-attempt-record ${previousAttempt.success ? "success" : "failure"}"><span>この隊の前回・${multiplier}倍探索</span><strong>${previousAttempt.success ? "攻略成功" : "撤退"}　${previousBattle.encountersCleared}/${previousBattle.totalEncounters}戦</strong><small>討伐 ${previousBattle.monstersDefeated}体</small></p>`
+        : "";
+      const rumorDefinition = currentRumor?.dungeonId === dungeon.id ? window.ExpeditionRumors.definition(currentRumor) : null;
+      const rumorNote = rumorDefinition ? `<p class="dungeon-rumor-note"><span>${escape(rumorDefinition.icon)} 旅人の噂</span><strong>${escape(rumorDefinition.name)}</strong><small>${escape(rumorDefinition.text)}</small></p>` : "";
+      const routeRumor = window.Exploration.routeRumor(dungeon);
+      const routeRumorEntry = window.Exploration.routeRumorEntry(dungeon);
+      const routeRumorRecord = window.Story.ensure().facts.routeEvents?.[routeRumorEntry.eventId];
+      const routeRumorStatus = (routeRumorRecord?.rumorMatches || 0) > 0
+        ? `<small class="dungeon-route-rumor-status is-confirmed">以前の遠征で、この兆しを実地確認済み</small>`
+        : `<small class="dungeon-route-rumor-status">まだ記録と結び付いていない噂</small>`;
+      const routeRumorLead = (routeRumorRecord?.rumorMatches || 0) > 0
+        ? `<span class="dungeon-route-rumor-lead is-confirmed">噂を照合済み</span>`
+        : `<span class="dungeon-route-rumor-lead">未照合の噂あり</span>`;
+      const routeMasteryThreshold = window.GameData.config.explorationEvents?.routeMastery?.successes || 3;
+      const knownRouteMasteryIds = (window.GameData.config.explorationEvents?.routeEvents || [])
+        .filter(event => (window.Story.ensure().facts.routeEvents?.[event.id]?.successes || 0) >= routeMasteryThreshold)
+        .map(event => event.id);
+      const routeReadiness = window.Exploration.routeReadiness(dungeon, window.Party.members(partyIndex), knownRouteMasteryIds);
       const cleared = window.DungeonDifficulty.cleared(dungeon.id, difficultyId);
       const firstClearReward = !cleared ? window.DungeonDifficulty.firstClearReward(difficultyId) : null;
       const firstClearText = firstClearReward ? [firstClearReward.gold ? `${firstClearReward.gold.toLocaleString("ja-JP")} G` : "", ...Object.entries(firstClearReward.materials).map(([id, quantity]) => `${itemName(id)}×${quantity}`)].filter(Boolean).join("・") : "";
@@ -422,7 +539,7 @@
         const tier = window.DungeonDifficulty.tier(id), unlocked = window.DungeonDifficulty.unlocked(dungeon.id, id), done = window.DungeonDifficulty.cleared(dungeon.id, id);
         return `<button class="dungeon-difficulty-option ${id === difficultyId ? "is-active" : ""} ${done ? "is-cleared" : ""}" data-action="select-dungeon-difficulty" data-dungeon="${dungeon.id}" data-difficulty="${id}" ${busy || !unlocked ? "disabled" : ""}><strong>${tier.name}</strong><small>${done ? "攻略済" : unlocked ? "挑戦可能" : "未解放"}</small></button>`;
       }).join("") + trackedBadge;
-      return `<article class="dungeon-card compact-route route-choice ${selected ? "is-selected" : ""} ${nextRoute?.id === dungeon.id ? "is-next-route" : ""} ${cleared ? "is-cleared" : ""} ${dungeon.color}"><div class="dungeon-difficulty-selector" aria-label="${escape(dungeon.name)}の難易度">${difficultyButtons}</div><div class="dungeon-route-summary"><span class="dungeon-route-emblem" aria-hidden="true">${emblem}</span><div class="dungeon-route-name"><span>推奨Lv.${variant.recommendedLevel} · ${routeLabel}${cleared ? " · 攻略済" : nextRoute?.id === dungeon.id && difficultyId === "normal" ? " · 次の攻略先" : ""}</span><h3>${escape(variant.name)}</h3><p>${escape(dungeon.description)}</p></div><div class="dungeon-route-metrics"><span><small>基本時間</small><strong>${variant.duration}秒</strong></span><span><small>戦闘</small><strong>${variant.encounters.length}戦</strong></span></div></div>${firstClearText ? `<p class="difficulty-first-clear"><span>初回踏破</span><strong>${escape(firstClearText)}</strong></p>` : ""}<div class="dungeon-route-controls"><label for="exploration-${dungeon.id}"><span>探索時間</span><select id="exploration-${dungeon.id}" data-exploration-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${[1, 2, 3, 4, 5, 6].map(value => `<option value="${value}" ${value === multiplier ? "selected" : ""}>${value}倍 · ${variant.duration * value}秒 · ${variant.encounters.length * value}戦</option>`).join("")}</select></label><button class="button ${selected ? "secondary" : "primary"}" data-action="select-dungeon" data-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${selected ? "選択中" : "選択する"}</button></div><details class="dungeon-details" data-detail="route-${dungeon.id}"><summary>依頼・噂・現地記録を見る</summary><div class="dungeon-route-detail-grid"><div><h4>確認された気配</h4><div class="monster-preview">${monsterPreview}</div></div><div><h4>主な発見物</h4><p>${escape(drops)}</p><h4>探索時間と報酬</h4><p class="small-note">${multiplier}倍探索は${variant.encounters.length * multiplier}戦。${window.DungeonDifficulty.tier(difficultyId).name}では基本探索時間と敵の強さ、報酬が変化します。</p></div></div></details></article>`;
+      return `<article class="dungeon-card compact-route route-choice ${selected ? "is-selected" : ""} ${nextRoute?.id === dungeon.id ? "is-next-route" : ""} ${cleared ? "is-cleared" : ""} ${rumorDefinition ? "has-rumor" : ""} ${dungeon.color}"><div class="dungeon-difficulty-selector" aria-label="${escape(dungeon.name)}の難易度">${difficultyButtons}</div><div class="dungeon-route-summary"><span class="dungeon-route-emblem" aria-hidden="true">${emblem}</span><div class="dungeon-route-name"><span>推奨Lv.${variant.recommendedLevel} · ${routeLabel}${cleared ? " · 攻略済" : nextRoute?.id === dungeon.id && difficultyId === "normal" ? " · 次の攻略先" : ""}</span><h3>${escape(variant.name)}</h3><p>${escape(dungeon.description)}</p></div><div class="dungeon-route-metrics"><span><small>基本時間</small><strong>${variant.duration}秒</strong></span><span><small>戦闘</small><strong>${variant.encounters.length}戦</strong></span></div></div>${routeRumorLead}${rumorNote}${previousRecord}${firstClearText ? `<p class="difficulty-first-clear"><span>初回踏破</span><strong>${escape(firstClearText)}</strong></p>` : ""}${partyRestriction}<div class="dungeon-route-controls"><label for="exploration-${dungeon.id}"><span>探索時間</span><select id="exploration-${dungeon.id}" data-exploration-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${[1, 2, 3, 4, 5, 6].map(value => `<option value="${value}" ${value === multiplier ? "selected" : ""}>${value}倍 · ${variant.duration * value}秒 · ${variant.encounters.length * value}戦</option>`).join("")}</select></label><button class="button ${selected ? "secondary" : "primary"}" data-action="select-dungeon" data-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${selected ? "選択中" : "選択する"}</button></div><details class="dungeon-details" data-detail="route-${dungeon.id}"><summary>依頼・噂・現地記録を見る</summary><div class="dungeon-route-detail-grid"><div><h4>道中で聞いた話</h4><p class="dungeon-route-field-rumor">「${escape(routeRumor)}」</p>${routeRumorStatus}<p class="dungeon-route-readiness is-${routeReadiness.state}"><span>観察記録との照合</span><strong>${escape(routeReadiness.text)}</strong></p><h4>確認された気配</h4><div class="monster-preview">${monsterPreview}</div></div><div><h4>主な発見物</h4><p>${escape(drops)}</p><h4>探索時間と報酬</h4><p class="small-note">${multiplier}倍探索は${variant.encounters.length * multiplier}戦。${window.DungeonDifficulty.tier(difficultyId).name}では基本探索時間と敵の強さ、報酬が変化します。</p></div></div></details></article>`;
     }).join(""); }
     if (!chapter) return `<p class="small-note">攻略できる章がありません。</p>`;
     const progressLabel = postgame ? "領域踏破" : "本編攻略";

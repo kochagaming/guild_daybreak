@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const definitions = () => window.GameData.recurringMissions.groups;
+  const definitions = () => window.GameData.config.recurringMissions.groups;
   const state = () => window.GameState.data.recurringMissions;
   const pad = value => String(value).padStart(2, "0");
 

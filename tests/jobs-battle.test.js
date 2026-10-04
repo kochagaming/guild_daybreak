@@ -5,7 +5,7 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const context = vm.createContext({ console, window: {} });
 context.window.window = context.window;
-["data/skills.js", "data/jobs.js", "data/monsters.js", "data/dungeons.js", "js/runtime.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/battle.js"].forEach((file) => {
+["data/masterSchema.js", "data/skills.js", "data/jobs.js", "data/monsters.js", "data/dungeons.js", "js/runtime.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js"].forEach((file) => {
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
 });
 

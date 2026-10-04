@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  window.GameData.commissions = [];
+  const commissions = [];
   const rows = [
     ["meadow", "slime", 60, "beast_hide", 2, 1],
     ["cave", "cave_bat", 130, "iron_ore", 3, 1],
@@ -21,7 +21,8 @@
   ];
   rows.forEach(([dungeonId, monsterId, gold, materialId, quantity, seals]) => {
     const dungeon = window.GameData.dungeons[dungeonId], monster = window.GameData.monsters[monsterId];
-    window.GameData.commissions.push({ id: `first_${dungeonId}`, dungeonId, title: `${dungeon.shortName}の初回攻略`, description: `${dungeon.name}の全戦闘を突破する。`, type: "clear", target: 1, rewards: { gold, materials: { [materialId]: quantity, guild_seal: seals } } });
-    window.GameData.commissions.push({ id: `hunt_${dungeonId}`, dungeonId, monsterId, title: `${monster.name}討伐`, description: `${dungeon.name}で${monster.name}を累計5体倒す。撤退しても討伐数は加算。`, type: "kills", target: 5, rewards: { gold, materials: { [materialId]: quantity, guild_seal: seals } } });
+    commissions.push({ id: `first_${dungeonId}`, dungeonId, title: `${dungeon.shortName}の初回攻略`, description: `${dungeon.name}の全戦闘を突破する。`, type: "clear", target: 1, rewards: { gold, materials: { [materialId]: quantity, guild_seal: seals } } });
+    commissions.push({ id: `hunt_${dungeonId}`, dungeonId, monsterId, title: `${monster.name}討伐`, description: `${dungeon.name}で${monster.name}を累計5体倒す。撤退しても討伐数は加算。`, type: "kills", target: 5, rewards: { gold, materials: { [materialId]: quantity, guild_seal: seals } } });
   });
+  window.GameData.registry.entityList("commissions", commissions);
 })();

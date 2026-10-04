@@ -2,7 +2,7 @@ const fs = require("fs"), path = require("path"), vm = require("vm"), assert = r
 const root = path.resolve(__dirname, ".."), storage = new Map();
 const context = vm.createContext({ window: {}, console, Date, Math, Blob, localStorage: { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) } });
 for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g)) {
-  if (["js/ui.js", "js/main.js"].includes(file)) continue;
+  if (["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file)) continue;
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
 }
 const game = context.window, data = game.GameData, state = game.GameState.data;
@@ -24,11 +24,14 @@ required.forEach((dungeon, index) => {
   const completed = game.Story.recordResult({ success: true, dungeonId: dungeon.id });
   if (index < required.length - 1) {
     assert(!completed.includes("ember_crown"));
+    assert(!game.Story.canEnter(required[index + 1].id), "The next route waits for its home story episode");
+    assert(game.Story.readPending().ok);
     assert(game.Story.canEnter(required[index + 1].id));
   } else {
     assert(completed.includes("ember_crown"));
   }
 });
+while (game.Story.pendingEpisode()) game.Story.readPending();
 assert.strictEqual(state.gold, rewardGold + chapter.rewards.gold);
 assert.strictEqual(game.Items.count("crown_core"), 2);
 assert(game.Story.canEnter("elder_dragon_crater"));
@@ -40,7 +43,7 @@ assert.strictEqual(state.gold, rewardGold + chapter.rewards.gold, "任意攻略�
 
 for (const id of ["skyglass", "ashwood", "ember_ore", "crown_core", "elder_scale"]) {
   assert(data.items[id]?.type === "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
 }
 for (const id of ["dawn_rapier", "ember_bulwark", "ashweave_mantle"]) {
   const item = data.items[id], recipe = data.recipes.find(entry => entry.resultId === id);

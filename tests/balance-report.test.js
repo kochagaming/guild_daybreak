@@ -35,6 +35,17 @@ assert.strictEqual(singleRoute.entries.length, 1);
 assert.strictEqual(singleRoute.entries[0].dungeonId, "moonfang_den");
 assert(singleRoute.entries[0].results.find(result => result.profileId === "balanced").averageHealing > 0, "the chapter-one healer fixture should actually heal");
 assert(!singleRoute.entries[0].warnings.includes("回復なし編成が均衡型を20pt以上上回る"), "the chapter-one healer should not create a large party-composition inversion");
+
+const earlyPhysicalParty = balance.buildParty(game, "physical", game.GameData.dungeons.moonfang_den);
+const earlyMagicParty = balance.buildParty(game, "magic", game.GameData.dungeons.moonfang_den);
+assert.strictEqual(earlyPhysicalParty.length, 3);
+assert.strictEqual(earlyMagicParty.length, 3);
+assert(earlyPhysicalParty.some(member => member.fixture.role === "physical") && earlyPhysicalParty.some(member => member.fixture.role === "healer"), "the early physical profile must include both its damage role and a healer");
+assert(earlyMagicParty.some(member => member.fixture.role === "magic") && earlyMagicParty.some(member => member.fixture.role === "healer"), "the early magic profile must include both its damage role and a healer");
+assert.strictEqual(earlyMagicParty.at(-1).fixture.role, "magic", "the early magic attacker belongs in the rear formation");
+assert.deepStrictEqual(balance.rolesForProfile("magic", 5), ["tank", "healer", "support", "magic", "magic"]);
+assert.deepStrictEqual(balance.rolesForProfile("physical", 5), ["tank", "physical", "healer", "physical", "ranged"]);
+assert.strictEqual(balance.rolesForProfile("no_healer", 6).includes("healer"), false);
 assert.throws(() => balance.generate({ runs: 1, dungeonId: "unknown-route" }), /No dungeons found for dungeon unknown-route/);
 const inversionWarnings = balance.warningsFor(
   { requiredForStory: true, encounters: [{}, {}, {}] },
@@ -83,7 +94,7 @@ assert.deepStrictEqual(balance.progressionPreparation(16), { quality: "familiar"
 
 const blackwood = game.GameData.dungeons.night_bloom_sanctuary;
 const counterParty = balance.buildParty(game, "balanced", blackwood);
-const counterSkills = new Set(counterParty.flatMap(member => member.fixture.equipment).flatMap(itemId => game.GameData.items[itemId].skillIds || []));
+const counterSkills = new Set(counterParty.flatMap(member => member.fixture.equipment).flatMap(itemId => game.GameData.relations.itemSkillGrants[itemId] || []));
 assert([...counterSkills].some(id => ["plant_slayer_15", "demon_slayer_15", "poison_resistance_20", "burn_resistance_20"].includes(id)), "chapter threat-aware fixtures should prefer at least one relevant counter skill");
 
 const chapterFour = balance.generate({ runs: 50, chapterId: "ember_crown", difficulty: "normal", profiles: ["balanced"] });

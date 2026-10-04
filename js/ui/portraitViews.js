@@ -6,7 +6,7 @@
 
   function image(context, character, small) {
     const portrait = window.GameData.portraits[window.Characters.portraitId(character)];
-    return `<span class="character-avatar ${small ? "compact" : ""}" role="img" aria-label="${context.escape(portrait.name)}"><img class="character-avatar-image" src="${portrait.image}?v=47" alt="" loading="lazy"></span>`;
+    return `<span class="character-avatar ${small ? "compact" : ""}" role="img" aria-label="${context.escape(portrait.name)}"><img class="character-avatar-image" src="${portrait.image}?v=48" alt="" loading="lazy"></span>`;
   }
 
   function editButton(context, character) {
@@ -14,7 +14,7 @@
   }
 
   function portraitType(portrait) {
-    return portrait.legacy ? "legacy" : portrait.sourceType || "all";
+    return portrait.legacy ? "legacy" : portrait.companionId ? "companion" : portrait.sourceType || "all";
   }
 
   function catalog(choices, options) {
@@ -70,10 +70,10 @@
     const selected = window.GameData.portraits[selectedId];
     const initialType = portraitType(selected), initial = initialCatalog(choices, selected);
     const visibleIds = new Set(initial.items.map(portrait => portrait.id));
-    const options = [["all", "すべて"], ["job", "職業画像"], ["race", "種族画像"], ["birth", "生まれ画像"], ["legacy", "従来の画像"]]
+    const options = [["all", "すべて"], ["job", "職業画像"], ["race", "種族画像"], ["birth", "生まれ画像"], ["companion", "物語人物"], ["legacy", "従来の画像"]]
       .map(([value, label]) => `<option value="${value}" ${value === initialType ? "selected" : ""}>${label}</option>`).join("");
     const portraits = choices.map(portrait => `<label class="portrait-option" data-portrait-type="${portraitType(portrait)}" data-portrait-name="${context.escape(portrait.name.toLocaleLowerCase("ja-JP"))}" ${visibleIds.has(portrait.id) ? "" : "hidden"}><input type="radio" name="character-portrait" value="${portrait.id}" ${portrait.id === selectedId ? "checked" : ""} required><span class="portrait-option-body">${image(context, { portraitId: portrait.id })}<span>${context.escape(portrait.name)}</span><small class="portrait-selected">選択中</small></span></label>`).join("");
-    return `<fieldset class="portrait-picker"><legend>キャラクター画像を選択</legend><p>職業・種族・生まれに関係なく、全143種類から選べます。見た目のみで能力には影響しません。</p><div class="portrait-catalog-tools"><label>名称で検索<input type="search" data-portrait-query maxlength="30" placeholder="例：戦士、神官の家"></label><label>分類<select data-portrait-type>${options}</select></label></div><div class="portrait-catalog-meta"><span data-portrait-count>${initial.page * PAGE_SIZE + 1}〜${Math.min((initial.page + 1) * PAGE_SIZE, initial.total)} / ${initial.total}種類</span><span data-portrait-page-label>${initial.page + 1} / ${initial.pages}ページ</span></div><div class="portrait-options">${portraits}</div><div class="portrait-pagination" aria-label="キャラクター画像のページ切り替え"><button type="button" class="button ghost" data-action="portrait-page" data-direction="-1" ${initial.page === 0 ? "disabled" : ""}>前へ</button><button type="button" class="button ghost" data-action="portrait-page" data-direction="1" ${initial.page >= initial.pages - 1 ? "disabled" : ""}>次へ</button></div></fieldset>`;
+    return `<fieldset class="portrait-picker"><legend>キャラクター画像を選択</legend><p>職業・種族・生まれに関係なく、全${choices.length}種類から選べます。見た目のみで能力には影響しません。</p><div class="portrait-catalog-tools"><label>名称で検索<input type="search" data-portrait-query maxlength="30" placeholder="例：戦士、神官の家"></label><label>分類<select data-portrait-type>${options}</select></label></div><div class="portrait-catalog-meta"><span data-portrait-count>${initial.page * PAGE_SIZE + 1}〜${Math.min((initial.page + 1) * PAGE_SIZE, initial.total)} / ${initial.total}種類</span><span data-portrait-page-label>${initial.page + 1} / ${initial.pages}ページ</span></div><div class="portrait-options">${portraits}</div><div class="portrait-pagination" aria-label="キャラクター画像のページ切り替え"><button type="button" class="button ghost" data-action="portrait-page" data-direction="-1" ${initial.page === 0 ? "disabled" : ""}>前へ</button><button type="button" class="button ghost" data-action="portrait-page" data-direction="1" ${initial.page >= initial.pages - 1 ? "disabled" : ""}>次へ</button></div></fieldset>`;
   }
 
   function open(context, characterId) {

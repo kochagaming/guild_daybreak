@@ -30,22 +30,25 @@ assert(game.Story.optionalStories().some(entry => entry.scene.id === "worldscar_
 
 for (const id of ["black_ice", "aurora_ore", "star_sinew", "vessel_fragment", "northstar_core"]) {
   assert.strictEqual(data.items[id].type, "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)));
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)));
 }
 for (const id of ["northstar_katana", "aurora_heavy", "vessel_shield"]) {
   const recipe = data.recipes.find(entry => entry.resultId === id);
   assert(data.items[id].craftOnly && data.items[id].tier === 14 && recipe.unlockAfter === chapter.id && game.Story.canCraft(recipe));
-  assert(data.items[id].skillIds.length >= 4);
+  assert(data.relations.itemSkillGrants[id].length >= 4);
 }
 assert.strictEqual(data.monsters.sleeping_vessel.bossDrop.itemId, "sleeper_crown");
 assert.strictEqual(data.monsters.worldscar_dragon.bossDrop.itemId, "worldscar_bow");
-for (const monster of Object.values(data.monsters).filter(entry => data.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
-  assert(data.monsterFamilies[monster.id].length && monster.signatureDrops?.equipment, `${monster.id} has family and signature equipment`);
+for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
+  assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }
 for (const id of ["shore_warden", "grave_colossus", "sleeping_vessel", "worldscar_dragon"]) assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst");
-for (const dungeon of routes) assert(data.storyScenes[dungeon.openingStoryId] && data.storyScenes[dungeon.discoveryStoryId]);
+for (const dungeon of routes) {
+  const links = data.relations.dungeonStoryLinks[dungeon.id];
+  assert(data.storyScenes[links.openingStoryId] && data.storyScenes[links.discoveryStoryId]);
+}
 assert(data.commissions.some(entry => entry.dungeonId === "northstar_cradle" && entry.type === "clear"));
-assert(data.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 27));
-assert(data.shop.standardTiers.some(entry => entry.tier === 14 && entry.unlockAfter === chapter.id));
+assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 27));
+assert(data.config.shop.standardTiers.some(entry => entry.tier === 14 && entry.unlockAfter === chapter.id));
 assert(game.SaveTransfer.parse(JSON.stringify(state)).ok);
 console.log("Chapter thirteen test passed: five northern-star routes, optional worldscar glacier, stories, materials, recipes, commissions, boss gear and upgrade cap");

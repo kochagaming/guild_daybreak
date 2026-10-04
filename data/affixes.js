@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+  const data = window.GameData = window.GameData || {};
   const labels = { hp: "HP", attack: "攻撃", defense: "防御", magicAttack: "魔法攻撃", magicDefense: "魔法防御", magicHealing: "魔法回復", hitRate: "命中", evasionRate: "回避", speed: "速度", attackCount: "攻撃回数" };
   const profiles = {
     rapier: { attack: 4, hitRate: 7, speed: 5, evasionRate: 3, attackCount: 5 },
@@ -13,5 +14,5 @@
     shield: { defense: 7, magicDefense: 5, hp: 5 },
     gauntlet: { attack: 4, defense: 3, hitRate: 6, speed: 4, attackCount: 2 }
   };
-  window.GameData.affixes = { labels, profiles };
+  data.registry.config("affixes", { labels, profiles });
 })();

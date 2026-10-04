@@ -1,7 +1,11 @@
 (function () {
   "use strict";
-  function familyIdsForRace(raceId) { return (window.GameData.adventurerFamilies?.[raceId] || []).slice(); }
-  function familyIdsForMonster(monsterId) { return (window.GameData.monsterFamilies?.[monsterId] || []).slice(); }
+  function familyIdsForRace(raceId) { return (window.GameData.relations?.adventurerFamilies?.[raceId] || []).slice(); }
+  function familyIdsForMonster(monsterId) { return (window.GameData.relations?.monsterFamilies?.[monsterId] || []).slice(); }
+  function materialDrops(monsterOrId) {
+    const id = typeof monsterOrId === "string" ? monsterOrId : monsterOrId?.baseMonsterId || monsterOrId?.id;
+    return (window.GameData.relations?.monsterMaterialDrops?.[id] || []).slice();
+  }
   function familyIds(unit) {
     if (Array.isArray(unit?.familyIds)) return unit.familyIds;
     return unit?.side === "enemy" ? familyIdsForMonster(unit.id) : familyIdsForRace(unit?.raceId);
@@ -12,7 +16,7 @@
     const chapter = window.GameData.storyChapters?.find(entry => entry.id === dungeon.chapterId);
     const baseTier = Math.max(1, chapter?.number || 1);
     const difficultyBonus = window.GameData.dungeonDifficulties?.[dungeon.difficultyId]?.order || 0;
-    const maximumTier = Math.max(1, ...(window.GameData.shop?.standardTiers || []).map(entry => entry.tier));
+    const maximumTier = Math.max(1, ...(window.GameData.config.shop?.standardTiers || []).map(entry => entry.tier));
     const targetTier = Math.min(maximumTier, baseTier + difficultyBonus);
     return window.Shop.standardTier(targetTier);
   }
@@ -31,7 +35,7 @@
     let armor = pool.filter(item => item.type === "armor" && allowed.armorTypes.has(item.armorType));
     if (!weapons.length && !armor.length) {
       const tier = Math.max(1, ...pool.map(item => item.tier || 1));
-      pool = (window.GameData.shop?.standardTiers || []).filter(entry => entry.tier < tier).sort((a, b) => b.tier - a.tier).flatMap(entry => window.Shop.standardTier(entry.tier));
+      pool = (window.GameData.config.shop?.standardTiers || []).filter(entry => entry.tier < tier).sort((a, b) => b.tier - a.tier).flatMap(entry => window.Shop.standardTier(entry.tier));
       weapons = pool.filter(item => item.type === "weapon" && allowed.weaponTypes.has(item.weaponType));
       armor = pool.filter(item => item.type === "armor" && allowed.armorTypes.has(item.armorType));
     }
@@ -39,7 +43,8 @@
   }
   function choose(random, values) { return values[Math.floor(random() * values.length)]; }
   function roll(random, dungeon, monster) {
-    const config = window.GameData.monsterLoot || {};
+    if (!window.Shop) return null;
+    const config = window.GameData.config.monsterLoot || {};
     const baseChance = (monster.boss ? config.bossChance || .2 : config.normalChance || .1) * (dungeon.equipmentDropRate || 1);
     const chance = window.AcquisitionSkills ? window.AcquisitionSkills.chance(baseChance, dungeon.itemRateModifier) : baseChance;
     if (random() >= chance) return null;
@@ -55,5 +60,5 @@
   }); }
 
   window.CreatureFamilies = { familyIdsForRace, familyIdsForMonster, familyIds, labels };
-  window.MonsterLoot = { standardPool, candidates, roll, preview };
+  window.MonsterLoot = { materialDrops, standardPool, candidates, roll, preview };
 })();

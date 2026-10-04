@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101723">
   <meta name="description" content="冒険者を育て、放置探索へ送り出すブラウザ向けギルド運営RPG。">
-  <title>ギルド・クロニクル v0.252</title>
+  <title>ギルド・クロニクル v0.355</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -13,7 +13,7 @@
     <aside class="sidebar">
       <div class="brand">
         <div class="brand-mark" aria-hidden="true">G</div>
-        <div><p class="eyebrow">ADVENTURER'S GUILD</p><h1>ギルド・クロニクル</h1><span>v0.252</span></div>
+        <div><p class="eyebrow">ADVENTURER'S GUILD</p><h1>ギルド・クロニクル</h1><span>v0.355</span></div>
       </div>
       <nav id="main-nav" class="main-nav" aria-label="メインメニュー"></nav>
       <div class="sidebar-footer">
@@ -42,6 +42,7 @@
   <div id="modal-root"></div>
   <input id="save-import-file" type="file" accept=".json,application/json" hidden aria-label="セーブJSONファイル">
 
+  <script defer src="data/masterSchema.js"></script>
   <script defer src="data/items.js"></script>
   <script defer src="data/qualities.js"></script>
   <script defer src="data/shop.js"></script>
@@ -82,6 +83,7 @@
   <script defer src="data/dungeonDifficulties.js"></script>
   <script defer src="data/monsterSkills.js"></script>
   <script defer src="data/itemSkills.js"></script>
+  <script defer src="data/equipmentSets.js"></script>
   <script defer src="data/explorationEvents.js"></script>
   <script defer src="data/recruitment.js"></script>
   <script defer src="data/commissions.js"></script>
@@ -94,6 +96,13 @@
   <script defer src="data/accessCodes.js"></script>
   <script defer src="data/observationNotes.js"></script>
   <script defer src="data/achievements.js"></script>
+  <script defer src="data/adventurerMilestones.js"></script>
+  <script defer src="data/expeditionRumors.js"></script>
+  <script defer src="data/companions.js"></script>
+  <script defer src="data/companionStories.js"></script>
+  <script defer src="data/dungeonPartyRestrictions.js"></script>
+  <script defer src="data/masterValidation.js"></script>
+  <script defer src="data/masterFinalize.js"></script>
   <script defer src="js/runtime.js"></script>
   <script defer src="js/recurringMissions.js"></script>
   <script defer src="js/storage.js"></script>
@@ -102,7 +111,11 @@
   <script defer src="js/accessCodes.js"></script>
   <script defer src="js/equipmentSkills.js"></script>
   <script defer src="js/characters.js"></script>
+  <script defer src="js/companions.js"></script>
+  <script defer src="js/storyEffects.js"></script>
+  <script defer src="js/dungeonPartyRules.js"></script>
   <script defer src="js/acquisitionSkills.js"></script>
+  <script defer src="js/expeditionRumors.js"></script>
   <script defer src="js/classChange.js"></script>
   <script defer src="js/items.js"></script>
   <script defer src="js/autoSell.js"></script>
@@ -112,9 +125,11 @@
   <script defer src="js/monsterLoot.js"></script>
   <script defer src="js/dungeonDifficulty.js"></script>
   <script defer src="js/exploration.js"></script>
-  <script defer src="js/statusCombat.js"></script>
-  <script defer src="js/battle.js"></script>
   <script defer src="js/skillCombat.js"></script>
+  <script defer src="js/statusCombat.js"></script>
+  <script defer src="js/combatMath.js"></script>
+  <script defer src="js/combatDecision.js"></script>
+  <script defer src="js/battle.js"></script>
   <script defer src="js/dungeon.js"></script>
   <script defer src="js/expeditionLog.js"></script>
   <script defer src="js/blacksmith.js"></script>
@@ -132,6 +147,8 @@
   <script defer src="js/portraitPress.js"></script>
   <script defer src="js/recruitmentReveal.js"></script>
   <script defer src="js/ui/partyViews.js"></script>
+  <script defer src="js/ui/resultViews.js"></script>
+  <script defer src="js/ui/journalViews.js"></script>
   <script defer src="js/ui/catalogViews.js"></script>
   <script defer src="js/ui/recruitmentViews.js"></script>
   <script defer src="js/ui/equipmentViews.js"></script>

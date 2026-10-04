@@ -13,8 +13,8 @@ function load() {
 
 const game = load(), create = require("./helpers").createCharacter;
 game.GameState.reset();
-assert.strictEqual(Object.keys(game.GameData.classChanges).length, 15);
-Object.keys(game.GameData.jobs).forEach(id => assert(game.GameData.classChanges[id] && game.GameData.skills[game.GameData.classChanges[id].masterSkillId]));
+assert.strictEqual(Object.keys(game.GameData.config.classChanges).length, 15);
+Object.keys(game.GameData.jobs).forEach(id => assert(game.GameData.config.classChanges[id] && game.GameData.skills[game.GameData.config.classChanges[id].masterSkillId]));
 const hero = game.Characters.get(create(game, "転職試験", "warrior").id);
 hero.level = 10;
 hero.base = { hp: 150, attack: 40, defense: 35, magicAttack: 50, magicDefense: 40, magicHealing: 45 };
@@ -22,7 +22,7 @@ const sword = game.Items.add("wooden_sword", 1, { source: "test", modifiers: { h
 hero.equipment.push(sword.id);
 const quote = game.ClassChange.quote(hero.id, "mage");
 assert(quote.eligible);
-assert.deepStrictEqual(Array.from(quote.retainedSkillIds), Array.from(game.GameData.skillGrants.job.warrior).filter(entry => entry.initial).map(entry => entry.skillId));
+assert.deepStrictEqual(Array.from(quote.retainedSkillIds), Array.from(game.GameData.relations.skillGrants.job.warrior).filter(entry => entry.initial).map(entry => entry.skillId));
 const changed = game.GameCommands.dispatch({ version: 1, type: "character.classChange", payload: { characterId: hero.id, targetJobId: "mage" } });
 assert(changed.ok);
 assert.strictEqual(hero.jobId, "mage");
@@ -31,9 +31,9 @@ assert.strictEqual(hero.exp, 0);
 assert.strictEqual(hero.equipment.length, 0);
 assert(hero.career && hero.career.previousJobId === "warrior" && !hero.career.master);
 const learned = game.Characters.learnedSkills(hero).map(skill => skill.id);
-assert(game.GameData.skillGrants.job.warrior.filter(entry => entry.initial).every(entry => learned.includes(entry.skillId)));
+assert(game.GameData.relations.skillGrants.job.warrior.filter(entry => entry.initial).every(entry => learned.includes(entry.skillId)));
 assert(!learned.includes("power_strike") && !learned.includes("rear_protection") && !learned.includes("job_warrior_discipline"), "level-based former job skills must not be retained");
-assert(game.GameData.skillGrants.job.mage.filter(entry => entry.initial).every(entry => learned.includes(entry.skillId)));
+assert(game.GameData.relations.skillGrants.job.mage.filter(entry => entry.initial).every(entry => learned.includes(entry.skillId)));
 assert(!learned.includes("fireball") && !learned.includes("job_mage_focus"), "new job level skills should require their milestones");
 assert(!game.ClassChange.change(hero.id, "cleric").ok, "a second class change must be rejected");
 

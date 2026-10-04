@@ -254,4 +254,23 @@ for ($index = 0; $index -lt 8; $index++) {
   [PortraitSpriteExtractor]::Extract($legacySource, $outputPath, $left, $top, $right, $bottom)
 }
 
-Write-Output "Generated 143 individual portrait PNG files in $outputRoot"
+$companionSource = Join-Path $projectRoot "assets/characters/companions-v1.png"
+$companionIds = @("mina", "elena", "garm", "shia", "tio", "rize", "kai", "noah")
+if (Test-Path -LiteralPath $companionSource) {
+  $companionBitmap = New-Object System.Drawing.Bitmap($companionSource)
+  try {
+    for ($index = 0; $index -lt $companionIds.Count; $index++) {
+      $column = $index % 4
+      $row = [math]::Floor($index / 4)
+      $left = [math]::Floor($column * $companionBitmap.Width / 4)
+      $right = [math]::Floor(($column + 1) * $companionBitmap.Width / 4)
+      $top = [math]::Floor($row * $companionBitmap.Height / 2)
+      $bottom = [math]::Floor(($row + 1) * $companionBitmap.Height / 2)
+      $outputPath = Join-Path $outputRoot ("companion-{0}.png" -f $companionIds[$index])
+      [PortraitSpriteExtractor]::Extract($companionSource, $outputPath, $left, $top, $right, $bottom)
+    }
+  }
+  finally { $companionBitmap.Dispose() }
+}
+
+Write-Output "Generated 143 selectable portraits and 8 story companion portraits in $outputRoot"

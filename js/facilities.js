@@ -1,7 +1,7 @@
 (function () {
   "use strict";
-  const config = () => window.GameData.facilities;
-  function definition(id) { return config().definitions[id] || null; }
+  const config = () => window.GameData.config.facilities;
+  function definition(id) { return window.GameData.facilities[id] || null; }
   function saved(id) { return window.GameState.data.facilities[id]; }
   function unlocked(id) { const facility = definition(id); return Boolean(facility && (!facility.unlockAfter || window.GameState.data.story.completed.includes(facility.unlockAfter))); }
   function sync(now = window.GameRuntime.now()) {

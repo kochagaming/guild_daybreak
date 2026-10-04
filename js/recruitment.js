@@ -1,7 +1,7 @@
 (function () {
   "use strict";
-  const data = () => window.GameData.recruitment;
-  const defaultActionRates = () => Object.assign({}, window.GameData.combatRules.defaultActionRates);
+  const data = () => window.GameData.config.recruitment;
+  const defaultActionRates = () => Object.assign({}, window.GameData.config.combatRules.defaultActionRates);
   function state() { return window.GameState.data.recruitment; }
   function unlocked(field) { return !field.unlockAfter || window.GameState.data.story.completed.includes(field.unlockAfter); }
   function entryUnlocked(entry) { return !entry.unlockAfter || window.GameState.data.story.completed.includes(entry.unlockAfter); }
@@ -38,7 +38,8 @@
     }, 0);
     const raw = pricing.base + job + race + ability;
     const subtotal = Math.ceil(raw / pricing.roundTo) * pricing.roundTo;
-    const subsidy = pricing.foundingSubsidies?.[window.GameState.data.characters.length] || 0;
+    const recruitedCount = window.GameState.data.characters.filter(character => character.source?.type !== "companion").length;
+    const subsidy = pricing.foundingSubsidies?.[recruitedCount] || 0;
     const total = Math.max(pricing.minimum || 0, subtotal - subsidy);
     return { base: pricing.base, job, race, ability, subtotal, subsidy, total };
   }
@@ -61,7 +62,7 @@
       const field = data().fields.find(entry => entry.id === fieldId), selected = window.GameData[field.table][normalized[fieldId]];
       return {
         type, id: selected.id, fieldName: field.name, name: selected.name, description: selected.description || "",
-        skills: (window.GameData.skillGrants[type][selected.id] || []).map(grant => {
+        skills: (window.GameData.relations.skillGrants[type][selected.id] || []).map(grant => {
           const skill = window.GameData.skills[grant.skillId];
           return { id: grant.skillId, name: skill.name, description: skill.description, category: skill.category, initial: Boolean(grant.initial), level: grant.level };
         })
@@ -123,7 +124,8 @@
       jobId: applicant.jobId, raceId: applicant.raceId, birthId: applicant.birthId,
       portraitId: applicant.portraitId, talentId: applicant.talentId,
       recruitmentId: pending.id, level: 1, exp: 0, base: Object.assign({}, applicant.base),
-      actionRates: defaultActionRates(), equipment: [], career: null, createdAt: window.GameRuntime.now()
+      source: { type: "recruitment", recruitmentId: pending.id },
+      actionRates: defaultActionRates(), equipment: [], career: null, expeditionRecord: window.Characters.emptyExpeditionRecord(), recordTitleId: null, createdAt: window.GameRuntime.now()
     });
     state().pending = null;
     window.GameState.addLog(`${window.GameData.jobs[applicant.jobId].name}の${cleanName}を${hiringCost}Gで雇用しました。ほかの応募者は退出しました。`, "success");

@@ -1,16 +1,16 @@
 (function () {
   "use strict";
 
-  window.GameData = window.GameData || {};
+  const data = window.GameData = window.GameData || {};
   // 同じ重量なら高Tier装備ほど強くなるための共通基準。
   // 装備種ごとに直前Tierの実効値を引き継ぎ、Tierが1上がるごとに役割性能/重量を4%以上高める。
-  window.GameData.equipmentBalance = Object.freeze({
+  const equipmentBalance = Object.freeze({
     efficiencyGrowthPerTier: .04,
     maximumAutomaticAdjustment: 2.5,
     // Tier 1商店品から算出した固定値。読み込み順や追加コンテンツに左右されない基準にする。
     referenceEfficiency: Object.freeze({
       rapier: 3, sword: 2, katana: 7 / 3, bow: 2, staff: 2.4,
-      cloth: 8, leather: 2.3, heavy: 1.5625, shield: 3.3, gauntlet: 3
+      cloth: 8, leather: 2.3, heavy: 23 / 16, shield: 3.3, gauntlet: 3
     }),
     scoreWeights: Object.freeze({
       rapier: Object.freeze({ attack: 1 }),
@@ -25,28 +25,23 @@
       gauntlet: Object.freeze({ attack: .5, defense: 1, magicDefense: .5 })
     })
   });
-  window.GameData.items = {
-    wooden_sword: { id: "wooden_sword", name: "木の剣", type: "weapon", range: "melee", tier: 1, price: 80, attack: 4, hitRate: .02, defense: 0, hp: 0, weight: 2, salvage: { itemId: "craft_material", quantity: 1 }, icon: "⚔" },
-    iron_sword: { id: "iron_sword", name: "鉄の剣", type: "weapon", range: "melee", tier: 2, price: 220, attack: 9, hitRate: .03, defense: 0, hp: 0, weight: 5, salvage: { itemId: "iron_ore", quantity: 2 }, icon: "⚔" },
-    steel_sword: { id: "steel_sword", name: "鋼の剣", type: "weapon", range: "melee", tier: 3, price: 520, attack: 16, hitRate: .04, defense: 0, hp: 0, weight: 8, salvage: { itemId: "iron_ore", quantity: 4 }, icon: "⚔" },
-    short_bow: { id: "short_bow", name: "短弓", type: "weapon", range: "ranged", tier: 1, price: 100, attack: 4, attackCount: 1, hitRate: .05, defense: 0, hp: 0, weight: 2, salvage: { itemId: "craft_material", quantity: 1 }, icon: "➳" },
-    hunter_bow: { id: "hunter_bow", name: "狩人の弓", type: "weapon", range: "ranged", tier: 2, price: 260, attack: 9, attackCount: 1, hitRate: .07, defense: 0, hp: 0, weight: 4, salvage: { itemId: "craft_material", quantity: 2 }, icon: "➳" },
-    arcane_staff: { id: "arcane_staff", name: "魔導杖", type: "weapon", range: "ranged", tier: 3, price: 540, attack: 2, magicAttack: 16, magicHealing: 13, hitRate: .04, defense: 0, hp: 0, weight: 6, salvage: { itemId: "iron_ore", quantity: 3 }, icon: "⚕" },
-    cloth_clothes: { id: "cloth_clothes", name: "布の服", type: "armor", tier: 1, price: 60, attack: 0, defense: 3, hp: 0, weight: 1, salvage: { itemId: "craft_material", quantity: 1 }, icon: "♜" },
-    leather_armor: { id: "leather_armor", name: "革の鎧", type: "armor", tier: 2, price: 190, attack: 0, defense: 7, hp: 0, weight: 4, salvage: { itemId: "craft_material", quantity: 2 }, icon: "♜" },
-    iron_armor: { id: "iron_armor", name: "鉄の鎧", type: "armor", tier: 3, price: 480, attack: 0, defense: 13, hp: 0, weight: 7, salvage: { itemId: "iron_ore", quantity: 4 }, icon: "♜" },
+  data.registry.config("equipmentBalance", equipmentBalance);
+  const items = {
+    wooden_sword: { id: "wooden_sword", name: "木の剣", type: "weapon", weaponType: "sword", range: "melee", tier: 1, price: 80, attack: 4, hitRate: .02, defense: 0, hp: 0, weight: 2, salvage: { itemId: "craft_material", quantity: 1 }, icon: "⚔" },
+    iron_sword: { id: "iron_sword", name: "鉄の剣", type: "weapon", weaponType: "sword", range: "melee", tier: 2, price: 220, attack: 9, hitRate: .03, defense: 0, hp: 0, weight: 5, salvage: { itemId: "iron_ore", quantity: 2 }, icon: "⚔" },
+    steel_sword: { id: "steel_sword", name: "鋼の剣", type: "weapon", weaponType: "sword", range: "melee", tier: 3, price: 520, attack: 16, hitRate: .04, defense: 0, hp: 0, weight: 8, salvage: { itemId: "iron_ore", quantity: 4 }, icon: "⚔" },
+    short_bow: { id: "short_bow", name: "短弓", type: "weapon", weaponType: "bow", range: "ranged", tier: 1, price: 100, attack: 4, attackCount: 1, hitRate: .05, defense: 0, hp: 0, weight: 2, salvage: { itemId: "craft_material", quantity: 1 }, icon: "➳" },
+    hunter_bow: { id: "hunter_bow", name: "狩人の弓", type: "weapon", weaponType: "bow", range: "ranged", tier: 2, price: 260, attack: 9, attackCount: 1, hitRate: .07, defense: 0, hp: 0, weight: 4, salvage: { itemId: "craft_material", quantity: 2 }, icon: "➳" },
+    arcane_staff: { id: "arcane_staff", name: "魔導杖", type: "weapon", weaponType: "staff", range: "ranged", tier: 3, price: 540, attack: 2, magicAttack: 16, magicHealing: 13, hitRate: .04, defense: 0, hp: 0, weight: 6, salvage: { itemId: "iron_ore", quantity: 3 }, icon: "⚕" },
+    cloth_clothes: { id: "cloth_clothes", name: "布の服", type: "armor", armorType: "cloth", tier: 1, price: 60, attack: 0, defense: 3, hp: 0, weight: 1, salvage: { itemId: "craft_material", quantity: 1 }, icon: "♜" },
+    leather_armor: { id: "leather_armor", name: "革の鎧", type: "armor", armorType: "leather", tier: 2, price: 190, attack: 0, defense: 7, hp: 0, weight: 4, salvage: { itemId: "craft_material", quantity: 2 }, icon: "♜" },
+    iron_armor: { id: "iron_armor", name: "鉄の鎧", type: "armor", armorType: "heavy", tier: 3, price: 480, attack: 0, defense: 13, hp: 0, weight: 7, salvage: { itemId: "iron_ore", quantity: 4 }, icon: "♜" },
     craft_material: { id: "craft_material", name: "加工材", type: "material", price: 0, attack: 0, defense: 0, hp: 0, weight: 0, icon: "◇" },
     iron_ore: { id: "iron_ore", name: "鉄鉱石", type: "material", price: 0, attack: 0, defense: 0, icon: "◆" },
-    magic_stone: { id: "magic_stone", name: "魔石", type: "material", price: 0, attack: 0, defense: 0, hp: 0, weight: 0, icon: "✦" }
+    magic_stone: { id: "magic_stone", name: "魔石", type: "material", price: 0, attack: 0, defense: 0, hp: 0, weight: 0, icon: "✦" },
+    guild_seal: { id: "guild_seal", name: "ギルド印章", type: "material", price: 0, attack: 0, defense: 0, hp: 0, weight: 0, icon: "◆" }
   };
-  window.GameData.items.guild_seal = { id: "guild_seal", name: "ギルド印章", type: "material", price: 0, attack: 0, defense: 0, hp: 0, weight: 0, icon: "◆" };
-  ["wooden_sword", "iron_sword", "steel_sword"].forEach((id) => { window.GameData.items[id].weaponType = "sword"; });
-  ["short_bow", "hunter_bow"].forEach((id) => { window.GameData.items[id].weaponType = "bow"; });
-  window.GameData.items.arcane_staff.weaponType = "staff";
-  window.GameData.items.cloth_clothes.armorType = "cloth";
-  window.GameData.items.leather_armor.armorType = "leather";
-  window.GameData.items.iron_armor.armorType = "heavy";
-  Object.assign(window.GameData.items, {
+  Object.assign(items, {
     bronze_rapier: { id: "bronze_rapier", name: "青銅の細剣", type: "weapon", weaponType: "rapier", range: "melee", tier: 1, price: 110, attack: 3, attackCount: 1, hitRate: .08, speed: 1, defense: 0, hp: 0, weight: 1, icon: "†", salvage: { itemId: "craft_material", quantity: 1 } },
     silver_rapier: { id: "silver_rapier", name: "銀の細剣", type: "weapon", weaponType: "rapier", range: "melee", tier: 2, price: 280, attack: 7, attackCount: 1, hitRate: .1, speed: 2, defense: 0, hp: 0, weight: 3, icon: "†", craftOnly: true, salvage: { itemId: "iron_ore", quantity: 2 } },
     moon_rapier: { id: "moon_rapier", name: "月光の細剣", type: "weapon", weaponType: "rapier", range: "melee", tier: 3, price: 620, attack: 12, magicAttack: 5, attackCount: 2, hitRate: .12, speed: 2, defense: 0, hp: 0, weight: 5, icon: "†", craftOnly: true, salvage: { itemId: "magic_stone", quantity: 1 } },
@@ -106,4 +101,5 @@
     stormcloak: { id: "stormcloak", name: "雷羽の外套", type: "armor", armorType: "leather", tier: 4, price: 1160, attack: 0, defense: 12, magicDefense: 13, hp: 18, speed: 4, evasionRate: .04, weight: 3, icon: "♜", craftOnly: true, salvage: { itemId: "storm_feather", quantity: 1 } },
     astral_katana: { id: "astral_katana", name: "星断ちの太刀", type: "weapon", weaponType: "katana", range: "melee", tier: 4, price: 1240, attack: 33, magicAttack: 5, attackCount: -1, hitRate: .03, defense: 2, hp: 0, weight: 10, icon: "⌁", craftOnly: true, salvage: { itemId: "starsteel_ore", quantity: 2 } }
   });
+  window.GameData.registry.entities("items", items);
 })();

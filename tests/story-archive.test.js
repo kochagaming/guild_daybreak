@@ -26,6 +26,7 @@ async function run() {
   for (const chapter of game.GameData.storyChapters) assert(!html().includes(game.Story.scene(chapter.clearStoryId).text), "Unfinished endings must not be revealed");
   require("./helpers").createCharacter(game, "語り部", "warrior");
   game.Story.recordDeparture("meadow");
+  while (game.Story.pendingEpisode()) game.Story.readPending();
   game.UI.render();
   const first = game.GameData.storyChapters[0];
   assert(html().includes('data-detail="story-' + first.id + '"'));
@@ -38,6 +39,7 @@ async function run() {
   const mainRoutes = game.Story.mainChapters().slice(1).flatMap(chapter => game.Story.chapterDungeons(chapter.id).filter(dungeon => dungeon.requiredForStory).map(dungeon => dungeon.id));
   for (const dungeonId of mainRoutes) {
     game.Story.recordResult({ dungeonId, success: true });
+    while (game.Story.pendingEpisode()) game.Story.readPending();
     game.UI.render();
     for (const chapter of game.GameData.storyChapters) {
       const completed = game.Story.ensure().completed.includes(chapter.id);

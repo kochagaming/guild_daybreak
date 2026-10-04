@@ -2,7 +2,7 @@
   "use strict";
   window.GameData = window.GameData || {};
   const data = window.GameData;
-  data.shop = {
+  const shop = {
     standardTiers: [],
     daily: {
       version: 1,
@@ -43,19 +43,21 @@
     const itemIds = [];
     Object.entries(definitions).forEach(([typeId, definition]) => {
       const id = existing[tier]?.[typeId] || `standard_t${tier}_${typeId}`;
+      const generated = !data.items[id];
       if (!data.items[id]) {
         const typeKey = definition.type === "weapon" ? "weaponType" : "armorType";
-        data.items[id] = {
+        data.registry.entities("items", { [id]: {
           id, name: `${series[tier - 1]}の${definition.label}`, type: definition.type, [typeKey]: typeId,
           tier, price: Math.ceil((45 + tier * tier * 55) / 10) * 10, icon: definition.icon,
           attack: 0, defense: 0, hp: 0, weight: 0, ...definition.stats(tier),
           ...(definition.range ? { range: definition.range } : {}),
-          skillIds: definition.skills(tier),
           salvage: { itemId: tier >= 3 ? "iron_ore" : "craft_material", quantity: Math.max(1, Math.ceil(tier / 3)) }
-        };
+        } });
       }
+      if (generated) data.registry.relations("itemSkillGrants", { [id]: definition.skills(tier) });
       itemIds.push(id);
     });
-    data.shop.standardTiers.push({ tier, unlockAfter: unlocks[tier - 1], itemIds });
+    shop.standardTiers.push({ tier, unlockAfter: unlocks[tier - 1], itemIds });
   }
+  data.registry.config("shop", shop);
 })();

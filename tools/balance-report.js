@@ -32,7 +32,7 @@ const profileDefinitions = {
   },
   physical: {
     name: "物理型",
-    roles: ["tank", "physical", "physical", "healer", "ranged", "fast"]
+    roles: ["tank", "physical", "healer", "physical", "fast", "ranged"]
   },
   magic: {
     name: "魔法型",
@@ -43,6 +43,39 @@ const profileDefinitions = {
     roles: ["tank", "physical", "fast", "magic", "ranged", "physical"]
   }
 };
+
+const profileRolesBySize = {
+  balanced: {
+    3: ["tank", "physical", "healer"],
+    4: ["tank", "physical", "healer", "magic"],
+    5: ["tank", "physical", "healer", "magic", "ranged"],
+    6: profileDefinitions.balanced.roles
+  },
+  physical: {
+    3: ["tank", "physical", "healer"],
+    4: ["tank", "physical", "healer", "physical"],
+    5: ["tank", "physical", "healer", "physical", "ranged"],
+    6: profileDefinitions.physical.roles
+  },
+  magic: {
+    3: ["tank", "healer", "magic"],
+    4: ["tank", "healer", "magic", "magic"],
+    5: ["tank", "healer", "support", "magic", "magic"],
+    6: profileDefinitions.magic.roles
+  },
+  no_healer: {
+    3: ["tank", "physical", "fast"],
+    4: ["tank", "physical", "fast", "magic"],
+    5: ["tank", "physical", "fast", "ranged", "magic"],
+    6: ["tank", "physical", "physical", "fast", "ranged", "magic"]
+  }
+};
+
+function rolesForProfile(profileId, size) {
+  const profile = profileDefinitions[profileId];
+  if (!profile) throw new Error(`Unknown profile: ${profileId}`);
+  return (profileRolesBySize[profileId]?.[size] || profile.roles.slice(0, size)).slice(0, size);
+}
 
 const roleDefinitions = {
   tank: { jobs: ["knight", "warrior"], weaponTypes: ["sword"], armorTypes: ["heavy", "shield", "gauntlet"], rates: { attack: 100, technique: 45, spell: 0, healing: 10 } },
@@ -79,7 +112,7 @@ function dungeonThreatProfile(game, dungeon) {
   const monsterIds = new Set((dungeon.encounters || []).flatMap(encounter => encounter.groups.flat(2)));
   const families = new Set(), statuses = new Set();
   monsterIds.forEach(id => {
-    (game.GameData.monsterFamilies[id] || []).forEach(familyId => families.add(familyId));
+    game.CreatureFamilies.familyIdsForMonster(id).forEach(familyId => families.add(familyId));
     const statusId = game.GameData.monsters[id]?.statusAttack?.statusId;
     if (statusId) statuses.add(statusId);
   });
@@ -106,7 +139,7 @@ function equipmentScore(game, item, role, threats) {
 }
 
 function enhancementLevel(game, order, mode = "none") {
-  const maximum = (game.GameData.upgrades?.limits || []).reduce((value, entry) => chapterOrder(game, entry.chapterId) < order ? Math.max(value, entry.maximum) : value, 0);
+  const maximum = (game.GameData.config.upgrades?.limits || []).reduce((value, entry) => chapterOrder(game, entry.chapterId) < order ? Math.max(value, entry.maximum) : value, 0);
   if (mode === "max") return maximum;
   if (mode === "half") return Math.ceil(maximum / 2);
   if (mode === "quarter") return Math.ceil(maximum / 4);
@@ -186,7 +219,7 @@ function buildParty(game, profileId, dungeon, fixtureOptions = {}) {
   const order = chapter?.order ?? 0;
   const level = dungeon.recommendedLevel || chapter?.recommendedLevelRange?.[1] || 1;
   const size = memberLimit(game, order);
-  return profileDefinitions[profileId].roles.slice(0, size).map((role, position) => buildMember(game, role, level, order, position, profileId, dungeon, fixtureOptions));
+  return rolesForProfile(profileId, size).map((role, position) => buildMember(game, role, level, order, position, profileId, dungeon, fixtureOptions));
 }
 
 function roundCount(log) {
@@ -382,4 +415,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { loadGame, buildParty, simulate, warningsFor, generate, textReport, progressionPreparation, profileDefinitions };
+module.exports = { loadGame, buildParty, simulate, warningsFor, generate, textReport, progressionPreparation, profileDefinitions, rolesForProfile };

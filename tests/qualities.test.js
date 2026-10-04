@@ -16,7 +16,7 @@ assert(Object.values(qualities).every(quality => Number.isInteger(quality.weight
 assert(Object.values(qualities).every(quality => quality.valueMultiplier === quality.statMultiplier), "Quality value follows the same 0.5-step ladder as performance");
 const ranks = Object.values(qualities).map(entry => entry.rank);
 assert(ranks.every(Number.isFinite) && new Set(ranks).size === ranks.length, "Every quality has a stable unique sort rank");
-for (const [source, table] of Object.entries(game.GameData.qualityTables)) {
+for (const [source, table] of Object.entries(game.GameData.config.qualityTables)) {
   assert.strictEqual(table.reduce((sum, [, weight]) => sum + weight, 0), 100, `${source} quality weights total 100`);
   assert(table.every(([id, weight]) => qualities[id] && weight > 0), `${source} references only valid positive qualities`);
 }

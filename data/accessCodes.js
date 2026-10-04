@@ -1,6 +1,7 @@
 (function () {
   "use strict";
-  window.GameData.accessCodes = {
+  const data = window.GameData = window.GameData || {};
+  const accessCodes = {
     party_expansion_trial: {
       id: "party_expansion_trial", code: "0000", inputArea: "partyExpansion",
       name: "追加パーティ増設権", description: "章進行で得られる最大7枠とは別に、パーティをもう1枠増設可能にします。増設費用は別途必要です。",
@@ -32,4 +33,5 @@
       effects: [{ type: "acquisitionModifier", metric: "itemRate", scope: "party", operation: "multiplier", value: 2 }]
     }
   };
+  data.registry.entities("accessCodes", accessCodes);
 })();

@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData = window.GameData || {};
 
-  data.monsterSkills = {
+  const monsterSkills = {
     viscous_wave: {
       id: "viscous_wave", name: "粘液波", period: 3, target: "all", damageType: "physical", multiplier: .72,
       description: "3ターンごとに隊列全体へ粘液を浴びせる。"
@@ -118,36 +118,20 @@
     }
   };
 
-  const assign = (monsterId, difficultyId, skillId) => {
-    const profile = data.monsterDifficultyProfiles?.[monsterId]?.[difficultyId];
-    if (profile && !profile.skillIds.includes(skillId)) profile.skillIds.push(skillId);
-  };
-  assign("slime", "abyss", "viscous_wave");
-  assign("slime", "divine", "divine_mitosis");
-  assign("blackmoon_priest", "abyss", "memory_seal");
-  assign("blackmoon_priest", "divine", "blackmoon_liturgy");
-  [
-    ["moonfang_alpha", "moonfang_howl"],
-    ["earth_oracle", "earthpulse_overload"],
-    ["astral_archon", "orbit_execution"],
-    ["cinder_sovereign", "cinder_coronation"],
-    ["mirror_queen", "mirror_refraction"],
-    ["time_queen", "stolen_hour"],
-    ["nightbloom_oracle", "nightbloom_spores"],
-    ["aurora_warden", "aurora_prism"],
-    ["eclipse_regent", "eclipse_decree"],
-    ["blackmoon_heart", "memory_eclipse"]
-  ].forEach(([monsterId, skillId]) => assign(monsterId, "abyss", skillId));
-  [
-    ["moonfang_alpha", "divine_pack_eclipse"],
-    ["earth_oracle", "divine_fault"],
-    ["astral_archon", "celestial_verdict"],
-    ["cinder_sovereign", "divine_ashfall"],
-    ["mirror_queen", "divine_tidal_mirror"],
-    ["time_queen", "divine_time_sentence"],
-    ["nightbloom_oracle", "divine_nightbloom"],
-    ["aurora_warden", "divine_whiteout"],
-    ["eclipse_regent", "divine_eclipse"],
-    ["blackmoon_heart", "divine_blackmoon_memory"]
-  ].forEach(([monsterId, skillId]) => assign(monsterId, "divine", skillId));
+  data.registry.entities("monsterSkills", monsterSkills);
+
+  data.registry.relations("monsterDifficultySkillGrants", {
+    slime: { abyss: ["viscous_wave"], divine: ["divine_mitosis"] },
+    blackmoon_priest: { abyss: ["memory_seal"], divine: ["blackmoon_liturgy"] },
+    moonfang_alpha: { abyss: ["moonfang_howl"], divine: ["divine_pack_eclipse"] },
+    earth_oracle: { abyss: ["earthpulse_overload"], divine: ["divine_fault"] },
+    astral_archon: { abyss: ["orbit_execution"], divine: ["celestial_verdict"] },
+    cinder_sovereign: { abyss: ["cinder_coronation"], divine: ["divine_ashfall"] },
+    mirror_queen: { abyss: ["mirror_refraction"], divine: ["divine_tidal_mirror"] },
+    time_queen: { abyss: ["stolen_hour"], divine: ["divine_time_sentence"] },
+    nightbloom_oracle: { abyss: ["nightbloom_spores"], divine: ["divine_nightbloom"] },
+    aurora_warden: { abyss: ["aurora_prism"], divine: ["divine_whiteout"] },
+    eclipse_regent: { abyss: ["eclipse_decree"], divine: ["divine_eclipse"] },
+    blackmoon_heart: { abyss: ["memory_eclipse"], divine: ["divine_blackmoon_memory"] }
+  });
 })();

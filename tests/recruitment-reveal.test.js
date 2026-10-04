@@ -24,7 +24,7 @@ async function click(action, data = {}) {
   await listeners.click({ target: { closest: selector => selector === "[data-action]" ? button : null } });
 }
 async function post() {
-  for (const field of game.GameData.recruitment.fields) node("recruit-" + field.id).value = field.id === "jobId" ? "warrior" : "any";
+  for (const field of game.GameData.config.recruitment.fields) node("recruit-" + field.id).value = field.id === "jobId" ? "warrior" : "any";
   const button = { disabled: false };
   await listeners.submit({ target: { id: "recruitment-form", querySelector: () => button }, preventDefault() {} });
   assert(!button.disabled);

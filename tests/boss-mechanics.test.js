@@ -3,7 +3,7 @@ const root = path.resolve(__dirname, ".."), storage = new Map();
 let now = 1700000000000;
 function load() {
   const context = vm.createContext({ window: {}, Date, Math, Blob, console });
-  const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["js/ui.js", "js/main.js"].includes(file));
+  const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file));
   for (const file of scripts) {
     vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
     if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => now, random: () => .5 });
@@ -43,6 +43,11 @@ assert(!balanced.battleLog.some(entry => entry.kind === "enemy" && entry.round =
 const damage = entry => Number(entry.text.match(/に(\d+)ダメージ/)[1]);
 const firstBlast = result => result.battleLog.find(entry => entry.kind === "enemy" && entry.text.includes("天雷崩落"));
 assert.strictEqual(damage(firstBlast(balanced)), Math.round(damage(firstBlast(aggressive)) * .5));
+const reinforcedExpedition = expedition("balanced");
+reinforcedExpedition.partySnapshot[0].skillIds = ["companion_garm_crownless_guard"];
+const reinforced = game.Battle.resolve(reinforcedExpedition, dungeon);
+assert.strictEqual(damage(firstBlast(reinforced)), Math.max(1, Math.round(damage(firstBlast(aggressive)) * .3)), "guard skills must apply their own damage multiplier instead of a hard-coded half-damage rule");
+assert(reinforced.battleLog.some(entry => entry.kind === "skill" && entry.text.includes("30%に抑える")));
 const normalHit = balanced.battleLog.find(entry => entry.kind === "hero" && entry.round === 2);
 const weaknessHit = balanced.battleLog.find(entry => entry.kind === "hero" && entry.round === 3);
 assert.strictEqual(damage(weaknessHit), Math.round(damage(normalHit) * 1.5));
@@ -62,6 +67,19 @@ mixed.partySnapshot.push({ ...member("aggressive"), id: "adventurer-2", name: "�
 const mixedReport = game.Battle.resolve(mixed, dungeon);
 assert.strictEqual(mixedReport.mechanicReport.guardedHits, 3);
 assert.strictEqual(mixedReport.mechanicReport.unguardedHits, 13);
+// Bosses may define their own phase cycle without changing the battle engine.
+boss.mechanic.phases = [
+  { id: "charging_assault", warnsBurst: true, allowNormalActions: true },
+  { id: "release", unleashesBurst: true, allowNormalActions: false },
+  { id: "steady", allowNormalActions: true }
+];
+const customCycle = game.Battle.resolve(expedition("aggressive"), dungeon);
+assert(customCycle.battleLog.some(entry => entry.kind === "warning" && entry.round === 1));
+assert(customCycle.battleLog.some(entry => entry.kind === "enemy" && entry.round === 1), "A custom charge phase may retain normal actions.");
+assert(customCycle.battleLog.some(entry => entry.kind === "burst" && entry.round === 2));
+assert(!customCycle.battleLog.some(entry => entry.kind === "enemy" && entry.round === 2 && !entry.text.includes(boss.mechanic.name)), "A release phase can suppress normal actions.");
+assert(customCycle.battleLog.some(entry => entry.kind === "enemy" && entry.round === 3));
+delete boss.mechanic.phases;
 // Kill during the response window: cancel the queued blast, no phantom hit.
 boss.hp = 1;
 const cancelled = game.Battle.resolve(expedition("balanced"), dungeon);

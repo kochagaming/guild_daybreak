@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  const config = () => window.GameData.shop?.daily || {
+  const config = () => window.GameData.config.shop?.daily || {
     version: 1, offerCount: 10, resetHour: 4, priceRoundTo: 10,
     baseMarkup: 1.25, modifierWeights: {}, skillMarkup: .08
   };
@@ -13,14 +13,14 @@
   }
 
   function standardTier(tier) {
-    const tiers = window.GameData.shop?.standardTiers;
+    const tiers = window.GameData.config.shop?.standardTiers;
     if (!tiers?.length) return Object.values(window.GameData.items).filter(item => ["weapon", "armor"].includes(item.type) && !item.unique && !item.craftOnly && !item.dropOnly && (item.tier || 1) === tier);
     const entry = tiers.find(candidate => candidate.tier === tier);
     return entry ? entry.itemIds.map(id => window.GameData.items[id]).filter(Boolean) : [];
   }
 
   function standardStock(state = window.GameState.data) {
-    const tiers = window.GameData.shop?.standardTiers;
+    const tiers = window.GameData.config.shop?.standardTiers;
     if (!tiers?.length) return Object.values(window.GameData.items).filter(item => ["weapon", "armor"].includes(item.type) && !item.unique && !item.craftOnly && !item.dropOnly);
     return tiers
       .filter(entry => standardTierUnlocked(entry, state))

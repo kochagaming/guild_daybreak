@@ -29,7 +29,7 @@ async function run() {
   assert(game.Blacksmith.query({ material: "magic_stone" }).every(recipe => recipe.materials.magic_stone));
   assert.strictEqual(game.Blacksmith.status(swordRecipe), "locked");
 
-  game.GameState.data.story.completed.push("roadside");
+  game.GameState.data.story.completed.push("prologue", "roadside");
   game.GameState.data.gold = 9999;
   game.Items.add("iron_ore", 3, { source: "test" });
   assert.strictEqual(game.Blacksmith.status(swordRecipe), "ready");
@@ -63,6 +63,7 @@ async function run() {
   const firstPageTypes = Array.from(html.matchAll(/data-equipment-type="([^"]+)"/g), match => match[1]);
   assert.strictEqual(new Set(firstPageTypes).size, firstPageTypes.length, "An equipment type appears in only one group on a page");
   assert(html.includes('data-detail="blacksmith-craft-equipment-type-') && html.includes('data-detail="forge-recipe-'), "Recipe groups and open recipes have stable identities across background refreshes");
+  assert(html.includes('class="recipe-set-mark"') && html.includes('class="recipe-set-preview') && html.includes("未記録の組合せ") && html.includes("0/3"), "Set recipes expose a compact, spoiler-safe collection preview");
   assert(html.includes("この装備の固有スキル") && html.includes("装備種別ごとに次に解放される1件") && !html.includes("比較する冒険者") && !html.includes("標準品質・追加性能なし"));
   assert(!html.includes("blacksmith-inspector") && !html.includes("data-blacksmith-compare"), "Character comparison and the separate inspector should be removed");
   await listeners.change({ target: { value: "armor:leather", dataset: { blacksmithFilter: "category" }, hasAttribute: key => key === "data-blacksmith-filter" } });
@@ -105,6 +106,15 @@ async function run() {
   html = node("app").innerHTML;
   assert.strictEqual(game.Items.count("iron_sword"), ironSwordBefore + 1);
   assert.strictEqual(node(".main-area").scrollTop, 520, "Crafting should preserve the current recipe-list position");
+  game.GameState.data.encyclopedia.items.greenwood_staff = 1;
+  game.UI.render(); html = node("app").innerHTML;
+  assert(html.includes("風渡りの旅装") && html.includes("1/3") && html.includes("あと1種類の異なる装備"), "Known set pieces reveal the set name and next threshold without exposing unknown members");
+  game.Items.add("beast_hide", 2, { source: "test" });
+  game.Items.add("beast_sinew", 1, { source: "test" });
+  game.Items.add("wind_grass", 1, { source: "test" });
+  await click("craft", { recipe: "forge_windrunner_vest" });
+  html = node("app").innerHTML;
+  assert(html.includes('class="crafted-set-progress"') && html.includes("風渡りの旅装") && html.includes("1 → 2 / 3") && html.includes("新効果：風渡りの足並み"), "Crafting a threshold piece celebrates the newly discovered equipment-set effect");
   assert(html.includes("CRAFT COMPLETE") && html.includes("crafted-equipment-notice") && html.includes("所持品で確認") && html.includes("固有スキル："), "The crafted instance remains visible with its rolled quality, stats and skills");
   const craftedInstanceId = (html.match(/data-action="open-crafted-inventory" data-instance="([^"]+)"/) || [])[1];
   assert(craftedInstanceId && game.Items.getInstance(craftedInstanceId));

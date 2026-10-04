@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData = window.GameData || {};
 
-  data.creatureFamilies = {
+  const creatureFamilies = {
     humanoid: { id: "humanoid", name: "人型", weaponTypes: ["sword", "rapier", "katana", "bow", "staff"], armorTypes: ["cloth", "leather", "heavy", "shield", "gauntlet"] },
     beast: { id: "beast", name: "獣", weaponTypes: ["bow", "katana"], armorTypes: ["leather", "gauntlet"] },
     dragon: { id: "dragon", name: "竜", weaponTypes: ["sword", "katana", "staff"], armorTypes: ["heavy", "shield"] },
@@ -18,14 +18,14 @@
     giant: { id: "giant", name: "巨人", weaponTypes: ["sword", "katana"], armorTypes: ["heavy", "shield", "gauntlet"] }
   };
 
-  data.adventurerFamilies = {
+  const adventurerFamilies = {
     human: ["humanoid"], elf: ["humanoid"], dwarf: ["humanoid"], beastkin: ["humanoid", "beast"],
     halfling: ["humanoid"], gnome: ["humanoid"], orc: ["humanoid"], goblin: ["humanoid"],
     dragonewt: ["humanoid", "dragon"], fairy: ["spirit"], automaton: ["construct"], giantkin: ["humanoid", "giant"],
     demonkin: ["humanoid", "demon"], celestial: ["celestial"], undead: ["undead"]
   };
 
-  data.monsterFamilies = {
+  const monsterFamilies = {
     slime: ["amorphous"], horn_rabbit: ["beast"], grass_wolf: ["beast"], alpha_wolf: ["beast"],
     cave_bat: ["beast"], goblin: ["humanoid"], cave_spider: ["insect"], stone_golem: ["construct"],
     skeleton: ["undead"], wraith: ["undead", "spirit"], rune_guardian: ["construct"], ancient_sentinel: ["construct"],
@@ -104,5 +104,8 @@
     afterstar_abomination: ["amorphous", "demon", "giant"]
   };
 
-  data.monsterLoot = { normalChance: .1, bossChance: .2, weaponWeight: .62 };
+  data.registry.entities("creatureFamilies", creatureFamilies);
+  data.registry.relations("adventurerFamilies", adventurerFamilies);
+  data.registry.relations("monsterFamilies", monsterFamilies);
+  data.registry.config("monsterLoot", { normalChance: .1, bossChance: .2, weaponWeight: .62 });
 })();

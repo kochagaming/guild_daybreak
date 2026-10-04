@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const data = window.GameData = window.GameData || {};
-  data.equipmentTypes = {
+  const equipmentTypes = {
     rapier: { id: "rapier", name: "細剣", category: "weapon", summary: "命中・攻撃回数・速度" },
     sword: { id: "sword", name: "剣", category: "weapon", summary: "攻撃力・防御力" },
     katana: { id: "katana", name: "刀", category: "weapon", summary: "高い攻撃力・少ない攻撃回数" },
@@ -13,9 +13,9 @@
     shield: { id: "shield", name: "盾", category: "armor", summary: "防御力・HP" },
     gauntlet: { id: "gauntlet", name: "小手", category: "armor", summary: "命中・攻撃補助" }
   };
-  data.weaponTypes = Object.fromEntries(Object.values(data.equipmentTypes).filter(entry => entry.category === "weapon").map(entry => [entry.id, entry.name]));
-  data.armorTypes = Object.fromEntries(Object.values(data.equipmentTypes).filter(entry => entry.category === "armor").map(entry => [entry.id, entry.name]));
-  data.equipmentAffinities = {
+  const weaponTypes = Object.fromEntries(Object.values(equipmentTypes).filter(entry => entry.category === "weapon").map(entry => [entry.id, entry.name]));
+  const armorTypes = Object.fromEntries(Object.values(equipmentTypes).filter(entry => entry.category === "armor").map(entry => [entry.id, entry.name]));
+  const equipmentAffinities = {
     job: {
       warrior: { sword: 1.15, katana: 1.1, heavy: 1.2, shield: 1.15 }, thief: { rapier: 1.15, sword: 1.05, bow: 1.1, leather: 1.15, gauntlet: 1.15 },
       mage: { staff: 1.2, cloth: 1.15, heavy: .8 }, cleric: { staff: 1.1, cloth: 1.1, shield: 1.1 },
@@ -42,4 +42,8 @@
       alchemist: { staff: 1.12, cloth: 1.08, gauntlet: 1.12 }, dragon_ward: { katana: 1.1, bow: 1.08, heavy: 1.1, shield: 1.08 }
     }
   };
+  data.registry.entities("equipmentTypes", equipmentTypes);
+  data.registry.relations("equipmentAffinities", equipmentAffinities);
+  data.registry.derived("weaponTypes", weaponTypes);
+  data.registry.derived("armorTypes", armorTypes);
 })();

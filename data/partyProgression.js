@@ -1,6 +1,7 @@
 (function () {
   "use strict";
-  window.GameData.partyProgression = {
+  const data = window.GameData = window.GameData || {};
+  const partyProgression = {
     memberLimit: {
       initial: 3, maximum: 6,
       unlocks: [{ chapterId: "roadside", size: 4 }, { chapterId: "seal", size: 5 }, { chapterId: "starfall", size: 6 }]
@@ -18,13 +19,10 @@
       ]
     }
   };
-  const chapters = window.GameData.storyChapters || [];
-  window.GameData.partyProgression.memberLimit.unlocks.forEach(entry => {
-    const chapter = chapters.find(chapter => chapter.id === entry.chapterId);
-    if (chapter) chapter.unlockText += `、パーティ人数${entry.size}人まで`;
-  });
-  window.GameData.partyProgression.partySlots.unlocks.filter(entry => !entry.codeOnly).forEach(entry => {
-    const chapter = chapters.find(chapter => chapter.number === entry.chapterNumber);
-    if (chapter) chapter.unlockText += `、第${entry.slot}パーティの増設権`;
-  });
+  data.registry.config("partyProgression", partyProgression);
+  const chapterIdByNumber = Object.fromEntries((data.storyChapters || []).map(chapter => [chapter.number, chapter.id]));
+  data.registry.relationList("chapterUnlockAdditions", [
+    ...partyProgression.memberLimit.unlocks.map(entry => ({ id: `party-members-${entry.chapterId}`, chapterId: entry.chapterId, text: `パーティ人数${entry.size}人まで` })),
+    ...partyProgression.partySlots.unlocks.filter(entry => !entry.codeOnly).map(entry => ({ id: `party-slot-${entry.slot}`, chapterId: chapterIdByNumber[entry.chapterNumber], text: `第${entry.slot}パーティの増設権` }))
+  ]);
 })();

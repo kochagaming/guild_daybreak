@@ -9,10 +9,10 @@ for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").ma
   if (file === "js/storage.js") context.window.SaveStorage.use({ get: key => storage.get(key) || null, set: (key, value) => { if (failSave) throw Error("full"); storage.set(key, value); }, remove: key => storage.delete(key) });
 }
 const game = context.window, daily = () => game.RecurringMissions.state().groups.daily, weekly = () => game.RecurringMissions.state().groups.weekly;
-assert.strictEqual(game.GameData.recurringMissions.groups[0].missions.length, 6);
-assert.strictEqual(game.GameData.recurringMissions.groups[1].missions.length, 4);
-assert.strictEqual(new Set(game.GameData.recurringMissions.groups.map(group => group.id)).size, game.GameData.recurringMissions.groups.length);
-game.GameData.recurringMissions.groups.forEach(group => {
+assert.strictEqual(game.GameData.config.recurringMissions.groups[0].missions.length, 6);
+assert.strictEqual(game.GameData.config.recurringMissions.groups[1].missions.length, 4);
+assert.strictEqual(new Set(game.GameData.config.recurringMissions.groups.map(group => group.id)).size, game.GameData.config.recurringMissions.groups.length);
+game.GameData.config.recurringMissions.groups.forEach(group => {
   assert(["daily", "weekly"].includes(group.schedule.type));
   assert(Number.isInteger(group.selection.count) && group.selection.count > 0 && group.selection.count <= group.missions.length);
   assert.strictEqual(new Set(group.missions.map(mission => mission.id)).size, group.missions.length);

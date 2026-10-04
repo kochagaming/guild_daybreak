@@ -8,18 +8,19 @@ function load() {
   const context = vm.createContext({ window: {}, Date, Math, localStorage: {
     getItem: () => saved, setItem: (key, value) => { saved = value; }, removeItem: () => {}
   } });
-  ["data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/ui/portraitViews.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context));
+  ["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/ui/portraitViews.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context));
   return context.window;
 }
 let game = load();
-assert.strictEqual(Object.keys(game.GameData.portraits).length, 143);
+assert.strictEqual(Object.keys(game.GameData.portraits).length, 151);
 assert.strictEqual(Object.values(game.GameData.portraits).filter(portrait => portrait.sourceType === "job").length, 45);
 assert.strictEqual(Object.values(game.GameData.portraits).filter(portrait => portrait.sourceType === "race").length, 45);
 assert.strictEqual(Object.values(game.GameData.portraits).filter(portrait => portrait.sourceType === "birth").length, 45);
 const generatedImages = Object.values(game.GameData.portraits).filter(portrait => !portrait.legacy).map(portrait => portrait.image);
-assert.strictEqual(new Set(generatedImages).size, 135);
+assert.strictEqual(new Set(generatedImages).size, 143);
+assert.strictEqual(Object.values(game.GameData.portraits).filter(portrait => portrait.companionId).length, 8);
 const allImages = Object.values(game.GameData.portraits).map(portrait => portrait.image);
-assert.strictEqual(new Set(allImages).size, 143);
+assert.strictEqual(new Set(allImages).size, 151);
 allImages.forEach(file => {
   assert(file, "generated portrait should reference an individual image");
   const image = fs.readFileSync(path.join(root, file));
@@ -46,7 +47,7 @@ ids.forEach((id, index) => assert.strictEqual(game.Characters.portraitId(game.Ch
 assert.strictEqual(game.Characters.portraitId({ jobId: "cleric", raceId: "human", birthId: "common" }), "job-cleric-1");
 assert.strictEqual(game.Characters.portraitId({ jobId: "thief", raceId: "human", birthId: "common", portraitId: "missing" }), "job-thief-1");
 assert.strictEqual(game.Characters.matchingPortraits({ jobId: "mage", raceId: "elf", birthId: "sacred" }).length, 9);
-assert.strictEqual(game.Characters.portraitChoices({ jobId: "mage", raceId: "elf", birthId: "sacred" }).length, 143);
+assert.strictEqual(game.Characters.portraitChoices({ jobId: "mage", raceId: "elf", birthId: "sacred" }).length, 151);
 const portraitChoices = game.Characters.portraitChoices({ jobId: "mage", raceId: "elf", birthId: "sacred" });
 const firstJobPage = game.GameUIViews.portraits.catalog(portraitChoices, { type: "job", page: 0, pageSize: 15 });
 assert.strictEqual(firstJobPage.total, 45);
@@ -64,5 +65,5 @@ assert(mobilePreview.includes('title="390px preview"') && mobilePreview.includes
 assert(mobilePreview.includes('src="../index.html"'), "mobile preview should load the real game UI");
 const invalid = require("./helpers").createCharacter(game, "不正値", "mage", "human", "common", "../../bad");
 assert.strictEqual(game.Characters.get(invalid.id).portraitId, "job-mage-1");
-console.log("Portrait test passed: 135 trait portraits plus 8 legacy selections, all 143 manual choices, nine matching recruitment choices, persistence and cosmetic-only effects");
+console.log("Portrait test passed: 135 trait portraits, 8 story companions and 8 legacy selections, all 151 manual choices, nine matching recruitment choices, persistence and cosmetic-only effects");
 

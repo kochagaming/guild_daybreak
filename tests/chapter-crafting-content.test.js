@@ -24,7 +24,7 @@ for (const phase of phases) {
   phase.materials.forEach(materialId => {
     const material = game.GameData.items[materialId];
     assert(material && material.type === "material", `${materialId} must be a material master record`);
-    const carriers = Object.values(game.GameData.monsters).filter(monster => (monster.materialDrops || []).some(drop => drop.itemId === materialId));
+    const carriers = Object.values(game.GameData.monsters).filter(monster => (game.GameData.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === materialId));
     assert(carriers.length && carriers.every(monster => residents.has(monster.id)), `${materialId} must only drop in ${phase.dungeon}`);
     assert.deepStrictEqual(Array.from(game.Blacksmith.materialSources(materialId)), [game.GameData.dungeons[phase.dungeon].shortName]);
   });

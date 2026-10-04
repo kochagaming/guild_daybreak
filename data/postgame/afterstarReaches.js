@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData;
 
-  Object.assign(data.items, {
+  data.registry.entities("items", {
     gray_tide_salt: { id: "gray_tide_salt", name: "灰潮塩", type: "material", price: 0, icon: "◇" },
     ember_pearl: { id: "ember_pearl", name: "燼火真珠", type: "material", price: 0, icon: "●" },
     aftersea_heart: { id: "aftersea_heart", name: "星後海の心核", type: "material", price: 0, icon: "◆" },
@@ -11,18 +11,31 @@
     silent_iron: { id: "silent_iron", name: "無響鉄", type: "material", price: 0, icon: "■" },
     watcher_lens: { id: "watcher_lens", name: "遠見眼晶", type: "material", price: 0, icon: "◉" },
     boundary_fragment: { id: "boundary_fragment", name: "境界片", type: "material", price: 0, icon: "✦" },
-    ashwake_sabre: { id: "ashwake_sabre", name: "灰波の曲刀", type: "weapon", weaponType: "katana", range: "melee", tier: 17, price: 33800, attack: 212, hitRate: .18, criticalRate: .2, speed: 18, weight: 11, icon: "⚔", dropOnly: true, salvage: { itemId: "gray_tide_salt", quantity: 3 }, skillIds: ["attack_105", "physical_power_3", "critical_4", "speed_2"] },
-    cinderveil_cloak: { id: "cinderveil_cloak", name: "燼霞の外套", type: "armor", armorType: "cloth", tier: 17, price: 34200, defense: 78, magicDefense: 142, magicAttack: 72, magicHealing: 88, hp: 340, evasionRate: .12, speed: 14, weight: 6, icon: "♜", dropOnly: true, salvage: { itemId: "ember_pearl", quantity: 3 }, skillIds: ["magic_defense_105", "magic_attack_105", "evasion_4", "burn_resistance_35"] },
-    graytide_aegis: { id: "graytide_aegis", name: "灰潮の大盾", type: "armor", armorType: "shield", tier: 17, price: 36500, defense: 188, magicDefense: 126, hp: 720, evasionRate: -.08, weight: 23, icon: "⬟", dropOnly: true, salvage: { itemId: "aftersea_heart", quantity: 3 }, skillIds: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2"] },
-    aftersea_staff: { id: "aftersea_staff", name: "星後海の導杖", type: "weapon", weaponType: "staff", range: "ranged", tier: 17, price: 38200, attack: 9, magicAttack: 196, magicHealing: 162, magicDefense: 86, hitRate: .24, hp: 320, weight: 10, icon: "⚕", craftOnly: true, salvage: { itemId: "aftersea_heart", quantity: 3 }, skillIds: ["magic_power_3", "magic_attack_105", "magic_healing_105", "spirit_slayer_15"] },
-    horizon_rapier: { id: "horizon_rapier", name: "界渡りの細剣", type: "weapon", weaponType: "rapier", range: "melee", tier: 18, price: 41800, attack: 164, attackCount: 4, hitRate: .32, criticalRate: .2, speed: 24, weight: 8, icon: "†", craftOnly: true, salvage: { itemId: "void_glass", quantity: 3 }, skillIds: ["accuracy_4", "attack_count_1", "critical_4", "speed_2", "demon_slayer_15"] },
-    watcher_robe: { id: "watcher_robe", name: "遠見の星衣", type: "armor", armorType: "cloth", tier: 18, price: 42200, defense: 84, magicDefense: 168, magicAttack: 94, magicHealing: 124, hp: 420, evasionRate: .14, weight: 6, icon: "♜", craftOnly: true, salvage: { itemId: "watcher_lens", quantity: 3 }, skillIds: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "evasion_4", "spirit_slayer_15"] },
-    ashsea_crown: { id: "ashsea_crown", name: "灰海王の冠鎧", type: "armor", armorType: "heavy", tier: 18, price: 44800, defense: 226, magicDefense: 156, hp: 920, attack: 34, weight: 27, icon: "♜", unique: true, salvage: { itemId: "aftersea_heart", quantity: 5 }, specialEffects: [{ kind: "weight_defense", multiplier: 2.4, name: "灰海王装" }], effectDescription: "実重量1につき防御力が2.4上昇する。", skillIds: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "demon_slayer_15"] },
-    distant_eye_bow: { id: "distant_eye_bow", name: "遠界眼の長弓", type: "weapon", weaponType: "bow", range: "ranged", tier: 19, price: 51200, attack: 236, attackCount: 3, hitRate: .38, criticalRate: .22, evasionRate: -.04, speed: 20, weight: 13, icon: "➳", unique: true, salvage: { itemId: "watcher_lens", quantity: 5 }, skillIds: ["physical_power_3", "accuracy_4", "attack_count_1", "critical_4", "celestial_slayer_15"] },
-    boundary_plate: { id: "boundary_plate", name: "境界喰らいの重鎧", type: "armor", armorType: "heavy", tier: 19, price: 56800, defense: 274, magicDefense: 188, hp: 1180, weight: 30, icon: "♜", unique: true, salvage: { itemId: "boundary_fragment", quantity: 5 }, specialEffects: [{ kind: "weight_defense", multiplier: 2.6, name: "界壁装甲" }], effectDescription: "実重量1につき防御力が2.6上昇する。", skillIds: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "dragon_slayer_15"] }
+    ashwake_sabre: { id: "ashwake_sabre", name: "灰波の曲刀", type: "weapon", weaponType: "katana", range: "melee", tier: 17, price: 33800, attack: 212, hitRate: .18, criticalRate: .2, speed: 18, weight: 11, icon: "⚔", dropOnly: true, salvage: { itemId: "gray_tide_salt", quantity: 3 } },
+    cinderveil_cloak: { id: "cinderveil_cloak", name: "燼霞の外套", type: "armor", armorType: "cloth", tier: 17, price: 34200, defense: 78, magicDefense: 142, magicAttack: 72, magicHealing: 88, hp: 340, evasionRate: .12, speed: 14, weight: 6, icon: "♜", dropOnly: true, salvage: { itemId: "ember_pearl", quantity: 3 } },
+    graytide_aegis: { id: "graytide_aegis", name: "灰潮の大盾", type: "armor", armorType: "shield", tier: 17, price: 36500, defense: 188, magicDefense: 126, hp: 720, evasionRate: -.08, weight: 23, icon: "⬟", dropOnly: true, salvage: { itemId: "aftersea_heart", quantity: 3 } },
+    aftersea_staff: { id: "aftersea_staff", name: "星後海の導杖", type: "weapon", weaponType: "staff", range: "ranged", tier: 17, price: 38200, attack: 9, magicAttack: 196, magicHealing: 162, magicDefense: 86, hitRate: .24, hp: 320, weight: 10, icon: "⚕", craftOnly: true, salvage: { itemId: "aftersea_heart", quantity: 3 } },
+    horizon_rapier: { id: "horizon_rapier", name: "界渡りの細剣", type: "weapon", weaponType: "rapier", range: "melee", tier: 18, price: 41800, attack: 164, attackCount: 4, hitRate: .32, criticalRate: .2, speed: 24, weight: 8, icon: "†", craftOnly: true, salvage: { itemId: "void_glass", quantity: 3 } },
+    watcher_robe: { id: "watcher_robe", name: "遠見の星衣", type: "armor", armorType: "cloth", tier: 18, price: 42200, defense: 84, magicDefense: 168, magicAttack: 94, magicHealing: 124, hp: 420, evasionRate: .14, weight: 6, icon: "♜", craftOnly: true, salvage: { itemId: "watcher_lens", quantity: 3 } },
+    ashsea_crown: { id: "ashsea_crown", name: "灰海王の冠鎧", type: "armor", armorType: "heavy", tier: 18, price: 44800, defense: 226, magicDefense: 156, hp: 920, attack: 34, weight: 27, icon: "♜", unique: true, salvage: { itemId: "aftersea_heart", quantity: 5 }, specialEffects: [{ kind: "weight_defense", multiplier: 2.4, name: "灰海王装" }], effectDescription: "実重量1につき防御力が2.4上昇する。" },
+    distant_eye_bow: { id: "distant_eye_bow", name: "遠界眼の長弓", type: "weapon", weaponType: "bow", range: "ranged", tier: 19, price: 51200, attack: 236, attackCount: 3, hitRate: .38, criticalRate: .22, evasionRate: -.04, speed: 20, weight: 13, icon: "➳", unique: true, salvage: { itemId: "watcher_lens", quantity: 5 } },
+    boundary_plate: { id: "boundary_plate", name: "境界喰らいの重鎧", type: "armor", armorType: "heavy", tier: 19, price: 56800, defense: 274, magicDefense: 188, hp: 1180, weight: 30, icon: "♜", unique: true, salvage: { itemId: "boundary_fragment", quantity: 5 }, specialEffects: [{ kind: "weight_defense", multiplier: 2.6, name: "界壁装甲" }], effectDescription: "実重量1につき防御力が2.6上昇する。" }
   });
 
-  Object.assign(data.monsters, {
+  data.registry.relations("itemSkillGrants", {
+    ashwake_sabre: ["attack_105", "physical_power_3", "critical_4", "speed_2"],
+    cinderveil_cloak: ["magic_defense_105", "magic_attack_105", "evasion_4", "burn_resistance_35"],
+    graytide_aegis: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2"],
+    aftersea_staff: ["magic_power_3", "magic_attack_105", "magic_healing_105", "spirit_slayer_15"],
+    horizon_rapier: ["accuracy_4", "attack_count_1", "critical_4", "speed_2", "demon_slayer_15"],
+    watcher_robe: ["magic_defense_105", "magic_attack_105", "magic_healing_105", "evasion_4", "spirit_slayer_15"],
+    ashsea_crown: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "demon_slayer_15"],
+    distant_eye_bow: ["physical_power_3", "accuracy_4", "attack_count_1", "critical_4", "celestial_slayer_15"],
+    boundary_plate: ["defense_105", "magic_defense_105", "hp_105", "defense_to_hp_2", "dragon_slayer_15"]
+  });
+
+  const drop = (itemId, chance, quantity = [1, 1]) => ({ itemId, chance, quantity });
+  const monsters = {
     ashfin_raider: { id: "ashfin_raider", name: "灰鰭の略奪者", hp: 22600, attack: 1720, attackCount: 2, defense: 920, magicDefense: 810, speed: 118, icon: "⚔", element: "dark", actions: 3, targetRule: "rear_weighted" },
     cinder_jelly: { id: "cinder_jelly", name: "燼火クラゲ", hp: 20800, attack: 1210, magicAttack: 1690, defense: 770, magicDefense: 980, speed: 112, icon: "✦", damageType: "magic", element: "fire", actions: 3, statusAttack: { statusId: "burn", chance: .32, duration: 3 } },
     ashsea_leviathan: { id: "ashsea_leviathan", name: "灰海王リヴァイアサン", hp: 468000, attack: 1810, magicAttack: 1740, defense: 1160, magicDefense: 1110, speed: 108, icon: "♛", boss: true, actions: 8, element: "dark", targetRule: "rear_weighted", statusAttack: { statusId: "burn", chance: .38, duration: 3 }, elementModifiers: { dark: .05, ice: 1.45 }, statusResistances: { poison: 1, burn: 1, chill: .9, paralysis: .98 }, bossDrop: { itemId: "ashsea_crown", chance: .08 }, mechanic: { kind: "telegraphed_burst", name: "灰潮呑星", period: 4, multiplier: 2.45, exposedMultiplier: 1.8, description: "消えた星の灰を大波へ変え、次ターン終了時に全隊列を呑み込む。" } },
@@ -39,15 +52,13 @@
     horizon_scribe: { id: "horizon_scribe", name: "地平の記述者", hp: 27200, attack: 2020, defense: 1040, magicDefense: 1080, speed: 120, icon: "▤", element: "dark", actions: 3 },
     distant_observer: { id: "distant_observer", name: "遠界の観測者", hp: 592000, attack: 1960, magicAttack: 2070, defense: 1360, magicDefense: 1390, speed: 118, icon: "♛", boss: true, actions: 9, damageType: "magic", element: "arcane", targetRule: "rear_weighted", statusAttack: { statusId: "chill", chance: .4, duration: 2 }, elementModifiers: { arcane: .02, dark: 1.5 }, statusResistances: { poison: 1, burn: .98, chill: 1, paralysis: 1 }, bossDrop: { itemId: "distant_eye_bow", chance: .08 }, mechanic: { kind: "telegraphed_burst", name: "遠界測定", period: 4, multiplier: 2.6, exposedMultiplier: 1.85, description: "遠征隊の存在値を測り終え、次ターン終了時に全隊列を観測光で貫く。" } },
     reach_devourer: { id: "reach_devourer", name: "五界喰らい", hp: 724000, attack: 2240, magicAttack: 2160, defense: 1540, magicDefense: 1490, speed: 122, icon: "♛", boss: true, actions: 9, element: "dark", targetRule: "rear_weighted", elementModifiers: { dark: .02, fire: 1.5 }, statusResistances: { poison: 1, burn: 1, chill: .98, paralysis: 1 }, bossDrop: { itemId: "boundary_plate", chance: .1 }, mechanic: { kind: "telegraphed_burst", name: "五界圧壊", period: 4, multiplier: 2.75, exposedMultiplier: 1.9, description: "五つの領域境界を一つに重ね、次ターン終了時に全隊列を押し潰す。" } }
-  });
+  };
 
-  const drop = (itemId, chance, quantity = [1, 1]) => ({ itemId, chance, quantity });
-  data.monsters.ashfin_raider.materialDrops = [drop("gray_tide_salt", .65, [1, 2])];
-  data.monsters.cinder_jelly.materialDrops = [drop("ember_pearl", .6, [1, 2])];
-  data.monsters.ashsea_leviathan.materialDrops = [drop("aftersea_heart", 1, [2, 4]), drop("ember_pearl", 1, [2, 4])];
-  data.monsters.ashfin_raider.signatureDrops = { materials: [drop("gray_tide_salt", .08)], equipment: drop("ashwake_sabre", .03) };
-  data.monsters.cinder_jelly.signatureDrops = { materials: [drop("ember_pearl", .08)], equipment: drop("cinderveil_cloak", .03) };
-  data.monsters.ashsea_leviathan.signatureDrops = { materials: [drop("aftersea_heart", .12)], equipment: drop("graytide_aegis", .06) };
+  const signatureDrops = {
+    ashfin_raider: { materials: [drop("gray_tide_salt", .08)], equipment: drop("ashwake_sabre", .03) },
+    cinder_jelly: { materials: [drop("ember_pearl", .08)], equipment: drop("cinderveil_cloak", .03) },
+    ashsea_leviathan: { materials: [drop("aftersea_heart", .12)], equipment: drop("graytide_aegis", .06) }
+  };
   const laterDrops = {
     glasswing_scout: ["void_glass", "ashwake_sabre"], inverted_gale: ["void_glass", "cinderveil_cloak"], mirrorstorm_sovereign: ["void_glass", "graytide_aegis"],
     skinroot_stalker: ["worldskin_moss", "ashwake_sabre"], dream_sporeling: ["worldskin_moss", "cinderveil_cloak"], worldskin_gardener: ["worldskin_moss", "graytide_aegis"],
@@ -55,13 +66,21 @@
     boundary_eye: ["watcher_lens", "cinderveil_cloak"], horizon_scribe: ["watcher_lens", "ashwake_sabre"], distant_observer: ["watcher_lens", "graytide_aegis"],
     reach_devourer: ["boundary_fragment", "graytide_aegis"]
   };
+  const materialDrops = {
+    ashfin_raider: [drop("gray_tide_salt", .65, [1, 2])],
+    cinder_jelly: [drop("ember_pearl", .6, [1, 2])],
+    ashsea_leviathan: [drop("aftersea_heart", 1, [2, 4]), drop("ember_pearl", 1, [2, 4])]
+  };
   Object.entries(laterDrops).forEach(([id, [materialId, equipmentId]]) => {
-    const boss = Boolean(data.monsters[id].boss);
-    data.monsters[id].materialDrops = [drop(materialId, boss ? 1 : .62, boss ? [2, 4] : [1, 2])];
-    data.monsters[id].signatureDrops = { materials: [drop(materialId, boss ? .12 : .08)], equipment: drop(equipmentId, boss ? .06 : .03) };
+    const boss = Boolean(monsters[id].boss);
+    materialDrops[id] = [drop(materialId, boss ? 1 : .62, boss ? [2, 4] : [1, 2])];
+    signatureDrops[id] = { materials: [drop(materialId, boss ? .12 : .08)], equipment: drop(equipmentId, boss ? .06 : .03) };
   });
+  data.registry.relations("monsterSignatureDrops", signatureDrops);
+  data.registry.relations("monsterMaterialDrops", materialDrops);
+  data.registry.entities("monsters", monsters);
 
-  Object.assign(data.monsterFamilies, {
+  data.registry.relations("monsterFamilies", {
     ashfin_raider: ["humanoid", "aquatic"],
     cinder_jelly: ["amorphous", "aquatic", "spirit"],
     ashsea_leviathan: ["dragon", "aquatic", "giant", "demon"],
@@ -72,7 +91,7 @@
     reach_devourer: ["dragon", "demon", "giant"]
   });
 
-  data.dungeons.gray_ash_sea = {
+  const grayAshSea = {
     id: "gray_ash_sea", name: "灰の海", shortName: "灰の海", recommendedLevel: 110, duration: 4320, difficulty: 192000, color: "purple",
     chapterId: "afterstar_reaches_1", orderInChapter: 1, requiredForStory: true,
     unlockRequirements: [{ type: "dungeonClear", dungeonId: "afterstar_sanctum" }],
@@ -84,7 +103,7 @@
     ],
     rewards: { gold: [352000, 419000], exp: [340000, 405000] },
     drops: [drop("gray_tide_salt", .5, [1, 3]), drop("ember_pearl", .42, [1, 2])],
-    openingStoryId: "gray_ash_sea_opening", discoveryStoryId: "gray_ash_sea_discovery", clearStoryId: "gray_ash_sea_clear"
+    clearStoryId: "gray_ash_sea_clear"
   };
 
   const reach = (id, name, shortName, level, duration, difficulty, order, previousId, description, feature, encounters, materialId, rewards, extra = {}) => ({
@@ -93,9 +112,10 @@
     unlockRequirements: [{ type: "dungeonClear", dungeonId: previousId }], description,
     strategy: { label: `${shortName}へ進む`, feature, advice: "異界の住民が動きを止める瞬間には、必ず景色のどこかが先に歪む。", preparation: [] },
     encounters, rewards, drops: [drop(materialId, .48, [1, 3])],
-    openingStoryId: `${id}_opening`, discoveryStoryId: `${id}_discovery`, clearStoryId: `${id}_clear`, ...extra
+    clearStoryId: `${id}_clear`, ...extra
   });
-  Object.assign(data.dungeons, {
+  data.registry.entities("dungeons", {
+    gray_ash_sea: grayAshSea,
     inverted_glass_canyon: reach("inverted_glass_canyon", "逆さ風の玻璃峡谷", "玻璃峡谷", 111, 4440, 202000, 2, "gray_ash_sea", "空へ落ちる玻璃の峡谷。上下を失った風が遠征隊を鏡嵐の中心へ運ぶ。", "後列を狙う玻璃翼と、行動を鈍らせる虚風が峡谷を巡る。", [
       { name: "落空の尾根", groups: [["glasswing_scout", "inverted_gale", "glasswing_scout"], ["inverted_gale", "inverted_gale"]] },
       { name: "鏡嵐眼", groups: [["glasswing_scout", "mirrorstorm_sovereign"]] }
@@ -122,14 +142,17 @@
       optionalStoryId: "five_reaches_nest_clear"
     })
   });
+  data.registry.relations("dungeonStoryLinks", Object.fromEntries([
+    "gray_ash_sea", "inverted_glass_canyon", "worldskin_garden", "silent_iron_city", "distant_observatory", "five_reaches_nest"
+  ].map(id => [id, { openingStoryId: `${id}_opening`, discoveryStoryId: `${id}_discovery` }])));
 
-  data.recipes.push(
+  data.registry.entityList("recipes", [
     { id: "forge_aftersea_staff", resultId: "aftersea_staff", gold: 16800, materials: { aftersea_heart: 6, ember_pearl: 8, gray_tide_salt: 10 }, unlockAfter: "gray_ash_sea" },
     { id: "forge_horizon_rapier", resultId: "horizon_rapier", gold: 18200, materials: { void_glass: 8, gray_tide_salt: 6, ember_pearl: 3 }, unlockAfter: "inverted_glass_canyon" },
     { id: "forge_watcher_robe", resultId: "watcher_robe", gold: 18600, materials: { worldskin_moss: 8, void_glass: 6, ember_pearl: 3 }, unlockAfter: "worldskin_garden" }
-  );
+  ]);
 
-  Object.assign(data.storyScenes, {
+  data.registry.entities("storyScenes", {
     afterstar_reaches_1_opening: { id: "afterstar_reaches_1_opening", name: "五つの座標", text: "異形神の残した座標の一つが、宿の古地図に灰色の海を描いた。空の主の循環から外れた世界へ、ギルドは初めて自らの意志で遠征隊を送る。" },
     gray_ash_sea_opening: { id: "gray_ash_sea_opening", name: "灰色の渡航路", text: "星後の神域に生まれた裂け目を越えると、海も空も灰で満ちていた。遠くの波間で、山ほどの影がゆっくりと向きを変える。" },
     gray_ash_sea_discovery: { id: "gray_ash_sea_discovery", name: "燃える潮目", text: "灰の海は死んでいない。沈んだ星の熱を食べる生き物たちが、燼火の潮目を渡って別の領域へ移動している。" },
@@ -151,12 +174,12 @@
     five_reaches_nest_clear: { id: "five_reaches_nest_clear", name: "五界を分かつ楔", text: "巣を断つと五領域は再び離れ、境界片が楔となって残った。その表面には、次の領域へ渡った何者かの手形が焼き付いている。" }
   });
 
-  data.storyChapters.push({
+  data.registry.entityList("storyChapters", [{
     id: "afterstar_reaches_1", order: 16, number: 16, kind: "postgame", title: "星後領域 I：五界の標", recommendedLevelRange: [108, 115],
     openingStoryId: "afterstar_reaches_1_opening", clearStoryId: "distant_observatory_clear",
     objective: "五つの異界を踏破し、遠界観測座に残された星後の地図を確保する",
     entryRequirements: [{ type: "dungeonClear", dungeonId: "afterstar_sanctum" }],
     unlockText: "五界喰らいの巣、星後海の導杖・界渡りの細剣・遠見の星衣のレシピ、15,000G、遠見眼晶×2",
     rewards: { gold: 15000, materials: { watcher_lens: 2, guild_seal: 5 } }
-  });
+  }]);
 })();

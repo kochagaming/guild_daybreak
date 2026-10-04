@@ -2,7 +2,7 @@ const fs = require("fs"), path = require("path"), vm = require("vm"), assert = r
 const root = path.resolve(__dirname, "..");
 const context = vm.createContext({ window: {}, Date, Math, Blob, console });
 for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g)) {
-  if (["js/ui.js", "js/main.js"].includes(file)) continue;
+  if (["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file)) continue;
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
 }
 const game = context.window;
@@ -13,6 +13,14 @@ const result = game.Battle.resolve({ seed: 4, partyIds: [], partySnapshot: [memb
 assert(result.battleLog.some(entry => entry.kind === "encounter" && entry.text.includes("隊列を組んで")));
 assert.strictEqual(result.battleLog.filter(entry => entry.kind === "formation").length, 4);
 assert(game.SkillCombat.combatBonus({ currentHp: 1, skillIds: ["job_ranger_eagle_eye"] }, "rearTargeting") > 0);
+const rows = [0, 1, 2].map(position => ({ position, hp: 100, currentHp: 100 }));
+const ordinaryWeights = game.Battle.targetWeights(rows, game.Battle.heroTargetProfile(member([])));
+const eagleEyeWeights = game.Battle.targetWeights(rows, game.Battle.heroTargetProfile(member(["job_ranger_eagle_eye"])));
+assert(ordinaryWeights[0] > ordinaryWeights[2], "adventurers without a targeting trait should still prefer the front row");
+assert(eagleEyeWeights[2] > eagleEyeWeights[0], "a strong rear-targeting trait should be able to favor the rear row, not merely weaken front bias");
+assert.strictEqual(game.Battle.chooseTarget(() => .9, rows, "lowest_hp").position, 0);
+rows[2].currentHp = 20;
+assert.strictEqual(game.Battle.chooseTarget(() => .1, rows, "lowest_hp").position, 2, "the shared targeting profiles should support wounded-target priorities for future skills");
 assert(game.Battle.formationMultiplier({ weaponRange: "melee", position: 2, formationSize: 3 }) < 1);
 assert(game.Battle.formationMultiplier({ weaponRange: "ranged", position: 0, formationSize: 3 }) < 1);
 const frontSamples = Array.from({ length: 240 }, (_, seed) => game.Battle.resolve({ seed: seed + 1, partyIds: [], partySnapshot: [member([]), Object.assign({}, member([]), { id: "rear", name: "後列", position: 2 })] }, dungeon));

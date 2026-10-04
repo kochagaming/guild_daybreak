@@ -10,11 +10,11 @@ const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8"
 scripts.forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file }));
 const game = context.window;
 
-assert.deepStrictEqual(Object.keys(game.GameData.weaponTypes), ["rapier", "sword", "katana", "bow", "staff"]);
-assert.deepStrictEqual(Object.keys(game.GameData.armorTypes), ["cloth", "leather", "heavy", "shield", "gauntlet"]);
-for (const type of [...Object.keys(game.GameData.weaponTypes), ...Object.keys(game.GameData.armorTypes)]) {
-  assert(game.GameData.affixes.profiles[type], `${type}の追加性能傾向が必要です`);
-  assert(game.GameData.upgradeSkillProgression[type]?.length, `${type}の固定強化スキルが必要です`);
+assert.deepStrictEqual(Object.keys(game.GameData.derived.weaponTypes), ["rapier", "sword", "katana", "bow", "staff"]);
+assert.deepStrictEqual(Object.keys(game.GameData.derived.armorTypes), ["cloth", "leather", "heavy", "shield", "gauntlet"]);
+for (const type of [...Object.keys(game.GameData.derived.weaponTypes), ...Object.keys(game.GameData.derived.armorTypes)]) {
+  assert(game.GameData.config.affixes.profiles[type], `${type}の追加性能傾向が必要です`);
+  assert(game.GameData.relations.upgradeSkillProgression[type]?.length, `${type}の固定強化スキルが必要です`);
 }
 
 const ids = ["bronze_rapier", "silver_rapier", "moon_rapier", "iron_katana", "steel_katana", "dragon_nodachi", "wooden_shield", "iron_shield", "tower_shield", "leather_gloves", "iron_gauntlets", "rune_gauntlets"];

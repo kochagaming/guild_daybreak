@@ -1,7 +1,48 @@
 (function () {
   "use strict";
   const data = window.GameData = window.GameData || {};
-  data.combatRules = {
+  const combatRules = {
+    maxTurnsPerEncounter: 30,
+    betweenEncounterRecovery: .12,
+    minimumHitChance: .1,
+    maximumHitChance: .99,
+    criticalChanceCap: .95,
+    defaultGuardDamageMultiplier: .5,
+    damageFormula: {
+      defenseCoefficient: .52,
+      criticalMultiplier: 1.65,
+      varianceMinimum: .9,
+      varianceMaximum: 1.1,
+      minimumDamage: 1,
+      additionalHitAccuracy: .6,
+      additionalHitAccuracyDecay: .9,
+      additionalHitDamageDecay: .9,
+      fullPowerHitCount: 2
+    },
+    attackCountProgression: {
+      minimum: 1,
+      maximum: 8,
+      speedBaseline: 8,
+      speedPerAdditionalAttack: 8,
+      speedWeights: { job: 1, level: 1, profile: 1, equipment: 1, equipmentSkills: 1 },
+      jobBonuses: {}
+    },
+    targeting: {
+      hero: {
+        basePositionStep: .56,
+        rearTargetingScale: 1.5,
+        minimumPositionStep: .2,
+        maximumPositionStep: 1.8
+      },
+      profiles: {
+        random: { mode: "uniform" },
+        front: { mode: "front" },
+        front_weighted: { mode: "positionStep", step: .68 },
+        rear: { mode: "rear" },
+        rear_weighted: { mode: "reversePositionStep", step: .68 },
+        lowest_hp: { mode: "lowestHp" }
+      }
+    },
     actionPriority: ["healing", "spell", "technique", "attack"],
     defaultActionRates: { attack: 100, technique: 100, spell: 100, healing: 100 },
     actionPresets: [
@@ -11,6 +52,7 @@
       { id: "healing", name: "回復重視", rates: { attack: 30, technique: 0, spell: 30, healing: 100 } }
     ]
   };
+  data.registry.config("combatRules", combatRules);
 
   const activeCooldownTurns = Object.freeze({
     power_strike: 10, iron_guard: 10, vital_strike: 9, twin_strike: 16,
@@ -23,7 +65,11 @@
     stone_guard: 10, feral_pounce: 16, rune_spark: 16, brutal_charge: 16,
     dirty_trick: 14, dragon_breath: 20, fairy_blessing: 16, earth_shaker: 20,
     abyss_bolt: 16, celestial_prayer: 20, venom_edge: 16, blizzard: 24,
-    purifying_light: 24, master_arcane_burst: 30, master_prayer: 30
+    purifying_light: 24, master_arcane_burst: 30, master_prayer: 30,
+    companion_mina_tunnel_breaker: 12, companion_mina_liberation_hammer: 16, companion_elena_star_projection: 18, companion_elena_void_projection: 20,
+    companion_garm_ash_guard: 10, companion_garm_crownless_guard: 14, companion_shia_homecoming_song: 16, companion_shia_starsea_hymn: 18,
+    companion_tio_second_hand: 14, companion_tio_epoch_break: 13, companion_rize_nightbloom_dew: 16,
+    companion_rize_story_dreamlight: 18, companion_kai_skyhunt: 15, companion_kai_whitewing_hunt: 18, companion_noah_awakened_pulse: 14
   });
   const active = (id, name, category, scope, effect, description) => ({
     id, name, category, description,
@@ -45,10 +91,16 @@
     id, name, category: "reaction", description,
     activation: { type: "reaction", trigger: "hpBelow", threshold, limitPerEncounter: 1 },
     targeting: { scope: "self" },
-    effects: [{ type: "heal", target: "self", scalingStat: "maxHp", multiplier }]
+    effects: [{ type: "heal", target: "self", scalingStat: "maxHp", multiplier, flatBonus: 0, useHealingModifiers: false }]
+  });
+  const statusReaction = (id, name, statusIds, description) => ({
+    id, name, category: "reaction", description,
+    activation: { type: "reaction", trigger: "statusApplied", statusIds: statusIds.slice(), limitPerEncounter: 1 },
+    targeting: { scope: "self" },
+    effects: [{ type: "cleanse", count: 1, statusIds: statusIds.slice() }]
   });
 
-  data.skills = {
+  const skills = {
     power_strike: active("power_strike", "強撃", "technique", "singleEnemy", damage(1.5), "威力150%の近接攻撃"),
     iron_guard: active("iron_guard", "鉄壁の構え", "technique", "self", guard, "次に受けるダメージを半減。大技予告へ反応した場合は、その大技まで構えを保持"),
     vital_strike: active("vital_strike", "急所突き", "technique", "singleEnemy", damage(1.1, { criticalBonus: .45 }), "会心率の高い攻撃"),
@@ -97,7 +149,8 @@
     rear_protection: passive("rear_protection", "後方守護", { type: "rearProtection", multiplier: 2 / 3, stacking: "strongest" }, "生存中、自分より後ろの味方の被ダメージを2/3倍。同効果は重複しない"),
     battle_command: passive("battle_command", "戦陣の号令", { type: "statMultiplier", target: "party", stat: "attack", multiplier: 1.2, stacking: "highest" }, "生存中、パーティ全員の物理攻撃力を1.2倍。同効果は重複しない"),
     counter_stance: passive("counter_stance", "反撃の心得", { type: "counter", chance: .3, multiplier: 1 }, "ダメージを受けて生存すると30%で即座に物理反撃。反撃からの連鎖なし"),
-    emergency_heal: reaction("emergency_heal", "生命の灯", .5, .2, "被弾でHPが半分未満になると即座に最大HPの20%回復。1戦闘1回、戦闘不能時は発動しない"),
+    emergency_heal: reaction("emergency_heal", "生命の灯", .5, .2, "ダメージでHPが半分未満になると即座に最大HPの20%回復。毒・火傷でも発動し、1戦闘1回、戦闘不能時は発動しない"),
+    instant_detox: statusReaction("instant_detox", "即時調薬", ["poison"], "毒を受けると即座に薬を調合して解除する。1戦闘1回"),
     venom_edge: active("venom_edge", "毒刃", "technique", "singleEnemy", damage(1.2, { criticalBonus: .1 }), "毒を塗った刃で攻撃し、敵を毒状態にする"),
     blizzard: active("blizzard", "吹雪", "spell", "allEnemies", damage(.7, { damageType: "magic", defensePenetration: .4 }), "敵全体への氷属性魔法。低確率で麻痺させる"),
     purifying_light: active("purifying_light", "浄化の光", "healing", "allAllies", heal(.82, "allAllies"), "仲間全員を回復し、状態異常を2つ解除"),
@@ -108,7 +161,44 @@
   };
 
   const trait = (id, name, modifiers, description) => passive(id, name, { type: "combatModifier", modifiers }, description);
-  Object.assign(data.skills, {
+  Object.assign(skills, {
+    companion_mina_earth_listener: trait("companion_mina_earth_listener", "地脈聴き", { incomingPhysical: .9, hitBonus: .04 }, "物理攻撃から受けるダメージを10%軽減し、命中率を4pt上げるミナ固有の技量"),
+    companion_mina_tunnel_breaker: active("companion_mina_tunnel_breaker", "坑道崩し", "technique", "singleEnemy", damage(1.45, { defensePenetration: .3 }), "防御を30%無視する威力145%のミナ固有技"),
+    companion_mina_liberation_hammer: active("companion_mina_liberation_hammer", "解縛の鍛槌", "technique", "singleEnemy", damage(1.72, { defensePenetration: .45 }), "防御を45%無視する威力172%の一撃。命令に縛られた機巧を解放した経験から生まれたミナの強化技"),
+    companion_mina_machinist_oath: trait("companion_mina_machinist_oath", "機巧師の誓い", { outgoingPhysical: 1.08, incomingPhysical: .94 }, "物理攻撃の威力を1.08倍にし、物理から受けるダメージを6%軽減するミナの成長スキル"),
+    companion_elena_lost_astrolabe: trait("companion_elena_lost_astrolabe", "欠け星の天球儀", { outgoingMagic: 1.12, hitBonus: .04 }, "魔法攻撃の威力を1.12倍にし、命中率を4pt上げるエレナ固有の星読み"),
+    companion_elena_star_projection: active("companion_elena_star_projection", "星図投射", "spell", "allEnemies", damage(.72, { damageType: "magic", defensePenetration: .45, element: "arcane" }), "敵全体へ魔法防御を45%無視するエレナ固有の魔力攻撃"),
+    companion_elena_void_projection: active("companion_elena_void_projection", "虚星図投射", "spell", "allEnemies", damage(.88, { damageType: "magic", defensePenetration: .58, element: "arcane" }), "消された星図を再構成し、敵全体へ魔法防御を58%無視するエレナの強化呪文"),
+    companion_elena_living_history: trait("companion_elena_living_history", "生きた星史", { outgoingMagic: 1.1, hitBonus: .05 }, "自ら歩いた歴史を術式へ変え、魔法攻撃の威力を1.10倍、命中率を5pt上げるエレナの成長スキル"),
+    companion_garm_last_bulwark: passive("companion_garm_last_bulwark", "最後の城壁", { type: "rearProtection", multiplier: .7, stacking: "strongest" }, "生存中、自分より後ろの味方が受けるダメージを70%にするガルム固有の守り"),
+    companion_garm_ash_guard: active("companion_garm_ash_guard", "灰冠の守勢", "technique", "self", guard, "次に受けるダメージを半減するガルム固有技"),
+    companion_garm_crownless_guard: active("companion_garm_crownless_guard", "無冠の守勢", "technique", "self", { type: "guard", damageMultiplier: .3 }, "王命ではなく仲間のために構え、次に受けるダメージを30%まで軽減するガルムの強化技"),
+    companion_garm_living_bulwark: trait("companion_garm_living_bulwark", "今を守る城壁", { incomingPhysical: .9, incomingMagic: .94 }, "物理から受けるダメージを10%、魔法から受けるダメージを6%軽減するガルムの成長スキル"),
+    companion_shia_tide_memory: trait("companion_shia_tide_memory", "潮の記憶", { healing: 1.14, incomingMagic: .94 }, "回復の効果を1.14倍にし、魔法から受けるダメージを6%軽減するシア固有の歌"),
+    companion_shia_homecoming_song: active("companion_shia_homecoming_song", "帰港の歌", "healing", "allAllies", heal(.66, "allAllies"), "仲間全員を回復するシア固有の歌"),
+    companion_shia_starsea_hymn: active("companion_shia_starsea_hymn", "星海帰名歌", "healing", "allAllies", heal(.82, "allAllies"), "仲間全員を回復し、状態異常を1つ解除するシアの強化歌"),
+    companion_shia_true_name_chorus: trait("companion_shia_true_name_chorus", "真名の斉唱", { healing: 1.12, incomingMagic: .9 }, "回復の効果を1.12倍にし、魔法から受けるダメージを10%軽減するシアの成長スキル"),
+    companion_tio_tomorrow_clock: trait("companion_tio_tomorrow_clock", "明日の時計", { criticalBonus: .04, evasionBonus: .05 }, "会心率を4pt、回避率を5pt上げるティオ固有の機構"),
+    companion_tio_second_hand: active("companion_tio_second_hand", "秒針連撃", "technique", "singleEnemy", damage(.78, { hits: 2, criticalBonus: .12 }), "威力78%で2回攻撃するティオ固有技"),
+    companion_tio_epoch_break: active("companion_tio_epoch_break", "刻環破り", "technique", "singleEnemy", damage(.72, { hits: 3, criticalBonus: .16, defensePenetration: .2 }), "威力72%で3回攻撃し、防御を20%無視するティオの強化技"),
+    companion_tio_free_clock: trait("companion_tio_free_clock", "自由時の機構", { criticalBonus: .06, evasionBonus: .07, rearTargeting: .18 }, "会心率を6pt、回避率を7pt上げ、後列を狙いやすくするティオの成長スキル"),
+    companion_rize_dream_keeper: trait("companion_rize_dream_keeper", "夢守の翅", { healing: 1.12, incomingMagic: .92 }, "回復の効果を1.12倍にし、魔法から受けるダメージを8%軽減するリゼ固有の加護"),
+    companion_rize_nightbloom_dew: active("companion_rize_nightbloom_dew", "夜花の雫", "healing", "allAllies", heal(.7, "allAllies"), "夜花の雫で仲間全員を回復するリゼ固有の術"),
+    companion_rize_story_dreamlight: active("companion_rize_story_dreamlight", "物語の夢灯", "healing", "allAllies", heal(.84, "allAllies"), "自分の物語を灯に変え、仲間全員を回復して状態異常を1つ解除するリゼの強化術"),
+    companion_rize_own_tale: trait("companion_rize_own_tale", "夢守自身の物語", { healing: 1.1, outgoingMagic: 1.08 }, "回復の効果を1.10倍、魔法攻撃の威力を1.08倍にするリゼの成長スキル"),
+    companion_kai_aurora_eye: trait("companion_kai_aurora_eye", "極光眼", { hitBonus: .08, rearTargeting: .35 }, "命中率を8pt上げ、後列を狙いやすくするカイ固有の眼力"),
+    companion_kai_skyhunt: active("companion_kai_skyhunt", "天猟", "technique", "singleEnemy", damage(1.5, { defensePenetration: .25, criticalBonus: .18 }), "防御を25%無視する会心率の高いカイ固有技"),
+    companion_kai_whitewing_hunt: active("companion_kai_whitewing_hunt", "白界穿ち", "technique", "singleEnemy", damage(1.75, { defensePenetration: .35, criticalBonus: .25 }), "白竜と見た地上を守るため、防御を35%無視する威力175%のカイの強化技"),
+    companion_kai_earthward_eye: trait("companion_kai_earthward_eye", "地上を映す極光眼", { outgoingPhysical: 1.08, hitBonus: .06, rearTargeting: .2 }, "物理攻撃の威力を1.08倍、命中率を6pt上げ、後列をさらに狙いやすくするカイの成長スキル"),
+    companion_noah_star_vessel: trait("companion_noah_star_vessel", "拒星の器", { outgoingMagic: 1.1, incomingMagic: .9 }, "魔法攻撃の威力を1.10倍にし、魔法から受けるダメージを10%軽減するノア固有の力"),
+    companion_noah_northstar_pulse: {
+      id: "companion_noah_northstar_pulse", name: "北辰の脈動", category: "spell",
+      description: "星核の残響を解き放ち、敵全体へ魔法防御を55%無視する魔力属性攻撃を行うノア固有の呪文",
+      activation: { type: "active", cooldownTurns: 16 }, targeting: { scope: "allEnemies" },
+      effects: [{ type: "damage", damageType: "magic", multiplier: .92, hits: 1, defensePenetration: .55, criticalBonus: 0, element: "arcane" }]
+    },
+    companion_noah_awakened_pulse: active("companion_noah_awakened_pulse", "北辰星核の脈動", "spell", "allEnemies", damage(1.05, { damageType: "magic", defensePenetration: .65, element: "arcane" }), "取り戻した星核を解放し、敵全体へ魔法防御を65%無視するノア固有の強化呪文"),
+    companion_noah_star_resolve: trait("companion_noah_star_resolve", "人としての星願", { outgoingMagic: 1.12, criticalBonus: .05 }, "魔法攻撃の威力を1.12倍にし、会心率を5pt上げるノアの成長スキル"),
     job_warrior_discipline: trait("job_warrior_discipline", "前衛の鍛錬", { incomingPhysical: .92 }, "物理攻撃から受けるダメージを8%軽減"),
     job_thief_opening: trait("job_thief_opening", "急所の見切り", { criticalBonus: .07, rearTargeting: .12 }, "会心率+7pt、後列への狙いやすさ上昇"),
     job_mage_focus: trait("job_mage_focus", "魔力収束", { outgoingMagic: 1.12 }, "魔法攻撃の威力を1.12倍"),
@@ -158,16 +248,16 @@
     birth_dragon_warding: trait("birth_dragon_warding", "竜災の備え", { incomingMagic: .93 }, "魔法攻撃から受けるダメージを7%軽減")
   });
 
-  const element = (skillId, elementId) => { data.skills[skillId].effects.find(entry => entry.type === "damage").element = elementId; };
+  const element = (skillId, elementId) => { skills[skillId].effects.find(entry => entry.type === "damage").element = elementId; };
   const status = (skillId, statusId, chance, duration, potency) => {
-    data.skills[skillId].effects.push({ type: "applyStatus", statusId, chance, duration, ...(potency == null ? {} : { potency }) });
+    skills[skillId].effects.push({ type: "applyStatus", statusId, chance, duration, ...(potency == null ? {} : { potency }) });
   };
   const cleanse = (skillId, count, statusIds) => {
-    data.skills[skillId].effects.push({ type: "cleanse", count, statusIds: statusIds || "all" });
+    skills[skillId].effects.push({ type: "cleanse", count, statusIds: statusIds || "all" });
   };
 
   const acquisition = (skillId, metric, operation, value, scope = "party") => {
-    data.skills[skillId].effects.push({ type: "acquisitionModifier", metric, operation, value, scope, stacking: scope === "party" ? "uniqueSkill" : "personal" });
+    skills[skillId].effects.push({ type: "acquisitionModifier", metric, operation, value, scope, stacking: scope === "party" ? "uniqueSkill" : "personal" });
   };
   acquisition("birth_merchant_foresight", "gold", "multiplier", 1.08);
   acquisition("birth_merchant_foresight", "gold", "flat", 5);
@@ -176,12 +266,12 @@
   acquisition("race_halfling_luck", "qualityRate", "multiplier", 1.5);
   acquisition("job_ranger_eagle_eye", "itemRate", "multiplier", 1.12);
   acquisition("birth_frontier_grit", "explorationTime", "multiplier", .9);
-  data.skills.birth_merchant_foresight.description += "。探索で得る金額をパーティ全体で1.08倍し、さらに5G加算";
-  data.skills.birth_scholar_theory.description += "。自身の取得経験値を1.12倍";
-  data.skills.job_bard_resonance.description += "。パーティ全員の取得経験値を1.06倍";
-  data.skills.race_halfling_luck.description += "。探索で得る装備の上位品質付与率を1.50倍";
-  data.skills.job_ranger_eagle_eye.description += "。アイテム獲得率を1.12倍";
-  data.skills.birth_frontier_grit.description += "。探索時間を0.90倍";
+  skills.birth_merchant_foresight.description += "。探索で得る金額をパーティ全体で1.08倍し、さらに5G加算";
+  skills.birth_scholar_theory.description += "。自身の取得経験値を1.12倍";
+  skills.job_bard_resonance.description += "。パーティ全員の取得経験値を1.06倍";
+  skills.race_halfling_luck.description += "。探索で得る装備の上位品質付与率を1.50倍";
+  skills.job_ranger_eagle_eye.description += "。アイテム獲得率を1.12倍";
+  skills.birth_frontier_grit.description += "。探索時間を0.90倍";
 
   element("fireball", "fire"); status("fireball", "burn", .45, 3, .03);
   element("arcane_burst", "arcane");
@@ -198,20 +288,23 @@
   element("blizzard", "ice"); status("blizzard", "paralysis", .2, 1);
   cleanse("prayer", 1, "all");
   cleanse("nature_mend", 1, ["poison", "burn"]);
-  data.skills.birth_dragon_warding.effects.push({ type: "slayer", familyId: "dragon", value: 1.1 });
-  data.skills.birth_dragon_warding.description += "。竜分類への与ダメージ1.10倍";
-  data.skills.race_celestial_grace.effects.push({ type: "slayer", familyId: "undead", value: 1.2 });
-  data.skills.race_celestial_grace.description += "。不死分類への与ダメージ1.20倍";
+  skills.birth_dragon_warding.effects.push({ type: "slayer", familyId: "dragon", value: 1.1 });
+  skills.birth_dragon_warding.description += "。竜分類への与ダメージ1.10倍";
+  skills.race_celestial_grace.effects.push({ type: "slayer", familyId: "undead", value: 1.2 });
+  skills.race_celestial_grace.description += "。不死分類への与ダメージ1.20倍";
   cleanse("spirit_mend", 1, "all");
+  cleanse("companion_shia_starsea_hymn", 1, "all");
+  cleanse("companion_rize_story_dreamlight", 1, "all");
   cleanse("master_prayer", 2, "all");
   cleanse("purifying_light", 2, "all");
 
-  data.skills.fireball.description = "炎属性の魔法攻撃。45%で3ターンの火傷を付与";
-  data.skills.thorn_lance.description = "自然属性の魔法攻撃。50%で3ターンの毒を付与";
-  data.skills.rune_spark.description = "雷属性の魔法攻撃。25%で次ターン行動不能の麻痺を付与";
-  data.skills.dragon_breath.description = "敵全体への炎属性攻撃。35%で3ターンの火傷を付与";
-  data.skills.prayer.description = "仲間全員を回復し、それぞれの状態異常を1つ解除";
-  data.skills.nature_mend.description = "仲間全員を回復し、毒または火傷を1つ解除";
-  data.skills.spirit_mend.description = "仲間全員を回復し、それぞれの状態異常を1つ解除";
-  data.skills.master_prayer.description = "仲間全員を大きく回復し、それぞれの状態異常を2つ解除";
+  skills.fireball.description = "炎属性の魔法攻撃。45%で3ターンの火傷を付与";
+  skills.thorn_lance.description = "自然属性の魔法攻撃。50%で3ターンの毒を付与";
+  skills.rune_spark.description = "雷属性の魔法攻撃。25%で次ターン行動不能の麻痺を付与";
+  skills.dragon_breath.description = "敵全体への炎属性攻撃。35%で3ターンの火傷を付与";
+  skills.prayer.description = "仲間全員を回復し、それぞれの状態異常を1つ解除";
+  skills.nature_mend.description = "仲間全員を回復し、毒または火傷を1つ解除";
+  skills.spirit_mend.description = "仲間全員を回復し、それぞれの状態異常を1つ解除";
+  skills.master_prayer.description = "仲間全員を大きく回復し、それぞれの状態異常を2つ解除";
+  data.registry.entities("skills", skills);
 })();

@@ -46,10 +46,10 @@ async function run() {
   listeners.pointerdown(pointer); listeners.scroll(); advance(600); assert.strictEqual(modal(), "");
   listeners.pointerdown({ ...pointer, button: 2 }); advance(600); assert.strictEqual(modal(), "");
   listeners.pointerdown(pointer); advance(600); assert(modal().includes("portrait-form") && modal().includes("portrait-options"));
-  assert(modal().includes("職業画像") && modal().includes("種族画像") && modal().includes("生まれ画像") && modal().includes("全143種類") && (modal().match(/name="character-portrait"/g) || []).length === 143);
+  assert(modal().includes("職業画像") && modal().includes("種族画像") && modal().includes("生まれ画像") && modal().includes("物語人物") && modal().includes("全151種類") && (modal().match(/name="character-portrait"/g) || []).length === 151);
   assert(modal().includes("data-portrait-query") && modal().includes("data-portrait-type") && modal().includes('data-action="portrait-page"'));
-  assert.strictEqual((modal().match(/class="portrait-option"/g) || []).length, 143);
-  assert.strictEqual((modal().match(/class="portrait-option"[^>]*hidden/g) || []).length, 128, "Only 15 portraits should be visible on the initial page");
+  assert.strictEqual((modal().match(/class="portrait-option"/g) || []).length, 151);
+  assert.strictEqual((modal().match(/class="portrait-option"[^>]*hidden/g) || []).length, 136, "Only 15 portraits should be visible on the initial page");
   const before = JSON.stringify(game.Characters.stats(game.Characters.get(hire.id)));
   const saveButton = { disabled: false };
   const form = { id: "portrait-form", dataset: { character: hire.id }, querySelector: selector => selector.startsWith("input") ? { value: "archer" } : saveButton };

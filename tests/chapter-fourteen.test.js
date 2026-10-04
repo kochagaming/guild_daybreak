@@ -30,22 +30,25 @@ assert(game.Story.optionalStories().some(entry => entry.scene.id === "hollow_cor
 
 for (const id of ["eclipse_glass", "starblood_crystal", "royal_memory", "skykey_fragment", "throne_star_core"]) {
   assert.strictEqual(data.items[id].type, "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)));
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)));
 }
 for (const id of ["eclipse_sword", "starveil_cloth", "skykey_gauntlet"]) {
   const recipe = data.recipes.find(entry => entry.resultId === id);
   assert(data.items[id].craftOnly && data.items[id].tier === 15 && recipe.unlockAfter === chapter.id && game.Story.canCraft(recipe));
-  assert(data.items[id].skillIds.length >= 4);
+  assert(data.relations.itemSkillGrants[id].length >= 4);
 }
 assert.strictEqual(data.monsters.starbound_usurper.bossDrop.itemId, "regent_staff");
 assert.strictEqual(data.monsters.hollow_king.bossDrop.itemId, "hollow_throne_shield");
-for (const monster of Object.values(data.monsters).filter(entry => data.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
-  assert(data.monsterFamilies[monster.id].length && monster.signatureDrops?.equipment, `${monster.id} has family and signature equipment`);
+for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
+  assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }
 for (const id of ["fallen_gate_captain", "archive_sentinel", "starbound_usurper", "hollow_king"]) assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst");
-for (const dungeon of routes) assert(data.storyScenes[dungeon.openingStoryId] && data.storyScenes[dungeon.discoveryStoryId]);
+for (const dungeon of routes) {
+  const links = data.relations.dungeonStoryLinks[dungeon.id];
+  assert(data.storyScenes[links.openingStoryId] && data.storyScenes[links.discoveryStoryId]);
+}
 assert(data.commissions.some(entry => entry.dungeonId === "usurper_throne" && entry.type === "clear"));
-assert(data.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 29));
-assert(data.shop.standardTiers.some(entry => entry.tier === 15 && entry.unlockAfter === chapter.id));
+assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 29));
+assert(data.config.shop.standardTiers.some(entry => entry.tier === 15 && entry.unlockAfter === chapter.id));
 assert(game.SaveTransfer.parse(JSON.stringify(state)).ok);
 console.log("Chapter fourteen test passed: five returnless-capital routes, optional hollow coronation, stories, materials, recipes, commissions, boss gear and upgrade cap");

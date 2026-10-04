@@ -1,14 +1,14 @@
 (function () {
   "use strict";
   function limit(completed = window.GameState.data.story.completed) {
-    return window.GameData.upgrades.limits.reduce((maximum, entry) => completed.includes(entry.chapterId) ? Math.max(maximum, entry.maximum) : maximum, 0);
+    return window.GameData.config.upgrades.limits.reduce((maximum, entry) => completed.includes(entry.chapterId) ? Math.max(maximum, entry.maximum) : maximum, 0);
   }
   function quote(instanceId) {
     const item = window.Items.getInstance(instanceId);
     if (!item) return { ok: false, message: "装備が見つかりません。" };
     const level = item.upgradeLevel || 0, maximum = limit(), next = level + 1;
     const base = window.Items.template(item.templateId);
-    const gold = window.GameData.upgrades.goldPerTierAndLevel * Math.max(1, base.tier || 1) * next;
+    const gold = window.GameData.config.upgrades.goldPerTierAndLevel * Math.max(1, base.tier || 1) * next;
     const materials = { iron_ore: Math.ceil(next / 2) };
     if (next >= 4) materials.magic_stone = 1;
     if (next >= 6) materials.star_shard = 1;

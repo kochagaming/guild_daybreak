@@ -6,6 +6,7 @@
     "recruitment.dismiss": () => window.Recruitment.dismiss(),
     "character.actionRates": p => window.Characters.setActionRates(p.characterId, p.rates),
     "character.portrait": p => window.Characters.setPortrait(p.characterId, p.portraitId),
+    "character.recordTitle": p => window.Characters.setRecordTitle(p.characterId, p.milestoneId),
     "character.classChange": p => window.ClassChange.change(p.characterId, p.targetJobId),
     "commission.claim": p => window.Commissions.claim(p.commissionId),
     "recurringMission.claim": p => window.RecurringMissions.claim(p.groupId, p.missionId),
@@ -41,6 +42,7 @@
     "party.unlock": p => window.Party.unlock(p.partySlot),
     "accessCode.redeem": p => window.AccessCodes.redeem(p.featureId, p.code),
     "observation.read": p => window.ObservationJournal.markRead(p.noteId),
+    "story.readPending": p => window.Story.readPending(p.episodeId),
     "encyclopedia.read": p => p.kind === "items" ? window.Encyclopedia.markItemsRead() : p.kind === "monsters" ? window.Encyclopedia.markMonstersRead() : { ok: false, message: "図鑑の種類が不正です。" },
     "encyclopedia.trackItem": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity ?? 1),
     "encyclopedia.trackRequirement": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity, true),
@@ -54,7 +56,8 @@
       return { ok: true, result, recurringChanged, facilityChanged };
     },
     "progress.sync": () => {
-      const storyChanged = window.Story.sync().length > 0;
+      const storySync = window.Story.sync();
+      const storyChanged = storySync.length > 0 || storySync.changed;
       const recurringChanged = window.RecurringMissions.sync();
       const facilityChanged = window.Facilities.sync();
       const shopChanged = window.Shop.sync();
@@ -70,6 +73,7 @@
     "recruitment.dismiss": [],
     "character.actionRates": ["characterId", "rates"],
     "character.portrait": ["characterId", "portraitId"],
+    "character.recordTitle": ["characterId", "milestoneId?"],
     "character.classChange": ["characterId", "targetJobId"],
     "commission.claim": ["commissionId"],
     "recurringMission.claim": ["groupId", "missionId"],
@@ -94,6 +98,7 @@
     "party.move": ["characterId", "direction", "partyIndex?"], "party.actionPreset": ["presetId", "partyIndex?"], "party.unlock": ["partySlot"],
     "accessCode.redeem": ["featureId", "code"],
     "observation.read": ["noteId"],
+    "story.readPending": ["episodeId"],
     "encyclopedia.read": ["kind"],
     "encyclopedia.trackItem": ["itemId", "targetQuantity?"],
     "encyclopedia.trackRequirement": ["itemId", "targetQuantity"],
@@ -102,7 +107,7 @@
     "expedition.collect": [], "progress.sync": [], "save.reset": [], "save.import": ["state"]
   };
   function validPayload(type, payload) {
-    const fields = type === "recruitment.post" ? window.GameData.recruitment.fields.map(field => `${field.id}?`) : schemas[type];
+    const fields = type === "recruitment.post" ? window.GameData.config.recruitment.fields.map(field => `${field.id}?`) : schemas[type];
     if (!Object.keys(payload).every(key => fields.some(field => field.replace("?", "") === key))) return false;
     return fields.every(field => {
       const key = field.replace("?", ""), value = payload[key];
@@ -114,24 +119,25 @@
       if (key === "partySlot") return Number.isInteger(value) && value >= 2 && value <= window.Party.maximum();
       if (key === "featureId") return typeof value === "string" && Object.prototype.hasOwnProperty.call(window.GameData.accessCodes || {}, value);
       if (key === "noteId") return typeof value === "string" && (window.GameData.observationNotes || []).some(entry => entry.id === value);
+      if (key === "milestoneId") return typeof value === "string" && (window.GameData.adventurerMilestones || []).some(entry => entry.id === value);
       if (key === "targetQuantity") return Number.isInteger(value) && value >= 1 && value <= 999;
       if (key === "code") return typeof value === "string" && value.length > 0 && value.length <= 64;
       if (key === "timeMultiplier") return window.Exploration.valid(value);
       if (key === "difficultyId") return Object.prototype.hasOwnProperty.call(window.GameData.dungeonDifficulties || { normal: true }, value);
-      if (key === "facilityId") return Object.prototype.hasOwnProperty.call(window.GameData.facilities.definitions, value);
-      if (key === "trackId") return window.GameData.facilities.trackOrder.includes(value);
+      if (key === "facilityId") return Object.prototype.hasOwnProperty.call(window.GameData.facilities, value);
+      if (key === "trackId") return window.GameData.config.facilities.trackOrder.includes(value);
       if (key === "direction") return value === -1 || value === 1;
-      if (key === "expectedLevel") return Number.isInteger(value) && value >= 0 && value <= Math.max(...window.GameData.upgrades.limits.map(entry => entry.maximum));
+      if (key === "expectedLevel") return Number.isInteger(value) && value >= 0 && value <= Math.max(...window.GameData.config.upgrades.limits.map(entry => entry.maximum));
       if (key === "locked") return typeof value === "boolean";
       if (key === "enabled") return typeof value === "boolean";
       if (key === "stackKey") return typeof value === "string" && value.length > 0 && value.length <= 2000;
       if (key === "ruleId") return typeof value === "string" && /^auto-sell-[1-9]\d*$/.test(value);
       if (key === "offerId") return typeof value === "string" && /^daily-\d{4}-\d{2}-\d{2}-(?:10|[1-9])$/.test(value);
-      if (key === "groupId") return window.GameData.recurringMissions.groups.some(group => group.id === value);
-      if (key === "missionId") return window.GameData.recurringMissions.groups.some(group => group.missions.some(entry => entry.id === value));
+      if (key === "groupId") return window.GameData.config.recurringMissions.groups.some(group => group.id === value);
+      if (key === "missionId") return window.GameData.config.recurringMissions.groups.some(group => group.missions.some(entry => entry.id === value));
       if (key === "slot") return Number.isInteger(value) && value >= 0 && value < 6;
       const tables = { jobId: "jobs", targetJobId: "jobs", raceId: "races", birthId: "births", focus: "recruitmentTalents", portraitId: "portraits", itemId: "items", dungeonId: "dungeons" };
-      if (type === "recruitment.post") tables[key] = window.GameData.recruitment.fields.find(field => field.id === key)?.table;
+      if (type === "recruitment.post") tables[key] = window.GameData.config.recruitment.fields.find(field => field.id === key)?.table;
       return typeof value === "string" && value.length <= 200 && (!tables[key] || Object.prototype.hasOwnProperty.call(window.GameData[tables[key]], value));
     });
   }

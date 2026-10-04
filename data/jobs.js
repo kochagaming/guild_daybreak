@@ -2,7 +2,7 @@
   "use strict";
 
   window.GameData = window.GameData || {};
-  window.GameData.jobs = {
+  const jobs = {
     warrior: { id: "warrior", name: "戦士", icon: "♜", hpMultiplier: 1.25, attackMultiplier: 1, defenseMultiplier: 1.25, weightMultiplier: 1.35, speed: 8, criticalRate: .05, magicAttackMultiplier: .7, magicDefenseMultiplier: .85, magicHealingMultiplier: .6, hitRate: .96, evasionRate: .03, description: "高いHPと防御、重量上限で前列を支える。" },
     thief: { id: "thief", name: "盗賊", icon: "♞", hpMultiplier: .95, attackMultiplier: 1, defenseMultiplier: .9, weightMultiplier: 1, speed: 16, criticalRate: .18, magicAttackMultiplier: .75, magicDefenseMultiplier: .8, magicHealingMultiplier: .65, hitRate: .99, evasionRate: .12, description: "素早く行動し、高い会心率で敵を崩す。" },
     mage: { id: "mage", name: "魔術師", icon: "✦", hpMultiplier: .78, attackMultiplier: 1.35, defenseMultiplier: .72, weightMultiplier: .75, speed: 11, criticalRate: .08, magicAttackMultiplier: 1.35, magicDefenseMultiplier: 1.2, magicHealingMultiplier: .9, hitRate: .95, evasionRate: .04, description: "軽装だが、防御を貫く強力な魔法を扱う。" },
@@ -19,4 +19,5 @@
     spellblade: { id: "spellblade", name: "魔法剣士", icon: "⚔", unlockAfter: "starfall", hpMultiplier: 1.02, attackMultiplier: 1.12, defenseMultiplier: .98, weightMultiplier: 1.05, speed: 12, criticalRate: .1, magicAttackMultiplier: 1.18, magicDefenseMultiplier: 1.08, magicHealingMultiplier: .72, hitRate: .99, evasionRate: .07, description: "物理と魔法の両方を装備で伸ばせる万能攻撃役。" },
     summoner: { id: "summoner", name: "召喚士", icon: "◇", unlockAfter: "starfall", hpMultiplier: .84, attackMultiplier: .8, defenseMultiplier: .8, weightMultiplier: .78, speed: 10, criticalRate: .06, magicAttackMultiplier: 1.3, magicDefenseMultiplier: 1.14, magicHealingMultiplier: 1.08, healingPower: 1.04, hitRate: .96, evasionRate: .05, description: "召喚獣の連撃と精霊の回復を使い分ける。" }
   };
+  window.GameData.registry.entities("jobs", jobs);
 })();

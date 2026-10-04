@@ -7,17 +7,17 @@ const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8"
 scripts.forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file }));
 const game = context.window;
 
-assert.strictEqual(game.GameData.shop.standardTiers.length, 16, "Standard stock supports all fifteen main-story chapters and the post-clear tier");
-game.GameData.shop.standardTiers.forEach(entry => {
+assert.strictEqual(game.GameData.config.shop.standardTiers.length, 16, "Standard stock supports all fifteen main-story chapters and the post-clear tier");
+game.GameData.config.shop.standardTiers.forEach(entry => {
   const items = game.Shop.standardTier(entry.tier);
   assert.strictEqual(items.length, 10, `Tier ${entry.tier} should cover all five weapon and five armor types`);
   assert.strictEqual(new Set(items.map(item => item.weaponType || item.armorType)).size, 10);
   assert(items.every(item => item.tier === entry.tier && !item.unique && !item.craftOnly && !item.dropOnly));
 });
-assert.strictEqual(game.GameData.items.standard_t1_staff.skillIds.length, 1);
-assert.strictEqual(game.GameData.items.standard_t3_rapier.skillIds.length, 2);
-assert.strictEqual(game.GameData.items.standard_t7_staff.skillIds.length, 3);
-assert.deepStrictEqual(Array.from(game.GameData.items.standard_t7_staff.skillIds), ["magic_attack_105", "magic_power_3", "magic_healing_105"], "Standard equipment gains fixed type-specific skills at Tier 3 and Tier 7");
+assert.strictEqual(game.GameData.relations.itemSkillGrants.standard_t1_staff.length, 1);
+assert.strictEqual(game.GameData.relations.itemSkillGrants.standard_t3_rapier.length, 2);
+assert.strictEqual(game.GameData.relations.itemSkillGrants.standard_t7_staff.length, 3);
+assert.deepStrictEqual(Array.from(game.GameData.relations.itemSkillGrants.standard_t7_staff), ["magic_attack_105", "magic_power_3", "magic_healing_105"], "Standard equipment gains fixed type-specific skills at Tier 3 and Tier 7");
 
 assert.strictEqual(game.Shop.standardStock().length, 10);
 assert(game.Shop.standardStock().every(item => item.tier === 1), "A new guild starts with only Tier 1 standard equipment");

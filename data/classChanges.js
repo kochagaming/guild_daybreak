@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData;
 
-  data.classChanges = {
+  const classChanges = {
     warrior: { requirements: [{ stat: "hp", label: "HP", minimum: 110 }, { stat: "attack", label: "物理攻撃", minimum: 20 }, { stat: "defense", label: "防御", minimum: 18 }], masterSkillId: "master_rear_protection" },
     thief: { requirements: [{ stat: "speed", label: "速度", minimum: 17 }, { stat: "hitRate", label: "命中率", minimum: .98, percent: true }, { stat: "evasionRate", label: "回避率", minimum: .08, percent: true }], masterSkillId: "master_counter_stance" },
     mage: { requirements: [{ stat: "magicAttack", label: "魔法攻撃", minimum: 24 }, { stat: "magicDefense", label: "魔法防御", minimum: 16 }], masterSkillId: "master_arcane_burst" },
@@ -19,4 +19,5 @@
     spellblade: { requirements: [{ stat: "attack", label: "物理攻撃", minimum: 23 }, { stat: "magicAttack", label: "魔法攻撃", minimum: 23 }, { stat: "defense", label: "防御", minimum: 16 }], masterSkillId: "master_arcane_burst" },
     summoner: { requirements: [{ stat: "magicAttack", label: "魔法攻撃", minimum: 26 }, { stat: "magicHealing", label: "魔法回復", minimum: 20 }, { stat: "magicDefense", label: "魔法防御", minimum: 18 }], masterSkillId: "master_prayer" }
   };
+  data.registry.config("classChanges", classChanges);
 })();

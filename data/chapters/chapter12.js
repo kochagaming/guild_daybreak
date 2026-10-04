@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData;
 
-  Object.assign(data.items, {
+  data.registry.entities("items", {
     abyssal_salt: { id: "abyssal_salt", name: "深海塩", type: "material", price: 0, icon: "◇" },
     blue_star_sand: { id: "blue_star_sand", name: "蒼星砂", type: "material", price: 0, icon: "✦" },
     tide_memory: { id: "tide_memory", name: "潮の記憶", type: "material", price: 0, icon: "≋" },
@@ -15,7 +15,7 @@
     leviathan_aegis: { id: "leviathan_aegis", name: "星海竜の大盾", type: "armor", armorType: "shield", tier: 14, price: 25200, defense: 138, magicDefense: 92, hp: 520, evasionRate: -.08, weight: 20, icon: "⬟", unique: true, salvage: { itemId: "starsea_heart", quantity: 4 }, specialEffects: [{ kind: "weight_defense", multiplier: 1.7, name: "海圧装甲" }], effectDescription: "実重量1につき防御力が1.7上昇する。" }
   });
 
-  Object.assign(data.monsters, {
+  const monsters = {
     foam_scout: { id: "foam_scout", name: "泡影の斥候", hp: 10300, attack: 940, defense: 470, magicDefense: 450, speed: 88, icon: "◇", element: "water", actions: 2, targetRule: "rear_weighted" },
     light_jelly: { id: "light_jelly", name: "星灯クラゲ", hp: 9200, attack: 720, magicAttack: 950, defense: 410, magicDefense: 540, speed: 70, icon: "✦", damageType: "magic", element: "arcane", actions: 2 },
     tide_gatekeeper: { id: "tide_gatekeeper", name: "潮門の番竜", hp: 143000, attack: 1040, defense: 610, magicDefense: 570, speed: 70, icon: "♛", boss: true, actions: 5, element: "water", elementModifiers: { water: .25, lightning: 1.4 }, statusResistances: { chill: 1, paralysis: .85 }, mechanic: { kind: "telegraphed_burst", name: "潮門崩し", period: 5, multiplier: 1.9, exposedMultiplier: 1.55, description: "海流を門へ圧縮し、次ターン終了時に全隊列へ解き放つ。" } },
@@ -32,7 +32,7 @@
     starsea_serpent: { id: "starsea_serpent", name: "星海蛇", hp: 13200, attack: 1120, defense: 600, magicDefense: 570, speed: 79, icon: "≋", element: "water", actions: 3, targetRule: "rear_weighted" },
     starsea_core: { id: "starsea_core", name: "星海の心珠", hp: 169000, attack: 990, magicAttack: 1110, defense: 660, magicDefense: 690, speed: 77, icon: "♛", boss: true, actions: 5, damageType: "magic", element: "arcane", statusAttack: { statusId: "chill", chance: .34, duration: 2 }, elementModifiers: { arcane: .2, dark: 1.4 }, statusResistances: { chill: 1, paralysis: .9 }, mechanic: { kind: "telegraphed_burst", name: "星海脈動", period: 4, multiplier: 2, exposedMultiplier: 1.6, description: "海底を巡る星光を心珠へ集め、次ターン終了時に爆発させる。" } },
     abyssal_leviathan: { id: "abyssal_leviathan", name: "星喰いの海竜", hp: 212000, attack: 1200, magicAttack: 1120, defense: 720, magicDefense: 680, speed: 80, icon: "♛", boss: true, actions: 6, element: "water", targetRule: "rear_weighted", elementModifiers: { water: .15, lightning: 1.45 }, statusResistances: { chill: 1, poison: .95, paralysis: .95 }, bossDrop: { itemId: "leviathan_aegis", chance: .1 }, mechanic: { kind: "telegraphed_burst", name: "深淵大渦", period: 4, multiplier: 2.1, exposedMultiplier: 1.65, description: "海溝全体を渦へ変え、次ターン終了時に全隊列を深淵へ引き込む。" } }
-  });
+  };
 
   const materials = {
     foam_scout: [["abyssal_salt", .55, 1, 2]], light_jelly: [["blue_star_sand", .5, 1, 2]], tide_gatekeeper: [["abyssal_salt", 1, 2, 4]],
@@ -42,13 +42,16 @@
     void_ray: [["blue_star_sand", .65, 1, 2]], starsea_serpent: [["abyssal_salt", .65, 1, 3]], starsea_core: [["starsea_heart", 1, 2, 4]],
     abyssal_leviathan: [["starsea_heart", 1, 3, 5], ["sea_glass_core", 1, 3, 5]]
   };
-  Object.entries(materials).forEach(([id, drops]) => { data.monsters[id].materialDrops = drops.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] })); });
+  data.registry.relations("monsterMaterialDrops", Object.fromEntries(Object.entries(materials).map(([id, entries]) => [id,
+    entries.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] }))
+  ])));
+  data.registry.entities("monsters", monsters);
 
   const route = (id, name, shortName, level, duration, difficulty, order, requirements, description, encounters, rewards, drops, extra = {}) => ({
     id, name, shortName, recommendedLevel: level, duration, difficulty, color: "blue", chapterId: "starsea_corridor", orderInChapter: order, requiredForStory: true,
     unlockRequirements: requirements, description, strategy: { label: "沈んだ星路を辿る", feature: description, advice: "潮の向きが変わるたび、遠くで青い星光が瞬いている。", preparation: [] }, encounters, rewards, drops, ...extra
   });
-  Object.assign(data.dungeons, {
+  data.registry.entities("dungeons", {
     rootsea_descent: route("rootsea_descent", "根海への降路", "根海降路", 92, 2520, 69200, 1, [{ type: "chapterCompleted", chapterId: "primordial_forest" }], "始原樹の根を伝って地下の海へ降りる道。泡の向こうで古い番竜が星路を塞ぐ。", [{ name: "青泡の斜路", groups: [["foam_scout", "light_jelly"], ["foam_scout", "foam_scout"]] }, { name: "根海の潮門", groups: [["light_jelly", "tide_gatekeeper"]] }], { gold: [121500, 144800], exp: [117500, 139900] }, [{ itemId: "abyssal_salt", chance: .43, quantity: [1, 2] }], { clearStoryId: "rootsea_descent_clear" }),
     drowned_chartroom: route("drowned_chartroom", "沈んだ海図室", "沈没海図室", 92, 2580, 72400, 2, [{ type: "dungeonClear", dungeonId: "rootsea_descent" }], "星海を渡った者たちの海図が眠る沈没船。記憶を吸った貝が航路を囁く。", [{ name: "記憶貝の船倉", groups: [["drowned_sailor", "memory_shell"], ["drowned_sailor", "drowned_sailor"]] }, { name: "最後の海図卓", groups: [["memory_shell", "lost_cartographer"]] }], { gold: [126800, 151100], exp: [122600, 146100] }, [{ itemId: "tide_memory", chance: .44, quantity: [1, 2] }], { clearStoryId: "drowned_chartroom_clear" }),
     stellar_reef: route("stellar_reef", "星明かりの大礁", "星明大礁", 93, 2640, 75800, 3, [{ type: "dungeonClear", dungeonId: "drowned_chartroom" }], "海底の星光を蓄える珊瑚礁。亡霊の海流が王朝へ向かう力の流れを映す。", [{ name: "星珊瑚群", groups: [["current_wraith", "star_coral"], ["current_wraith", "current_wraith"]] }, { name: "託宣の星礁", groups: [["star_coral", "reef_oracle"]] }], { gold: [132400, 157800], exp: [128000, 152600] }, [{ itemId: "blue_star_sand", chance: .45, quantity: [1, 2] }], { clearStoryId: "stellar_reef_clear" }),
@@ -57,13 +60,13 @@
     leviathan_trench: route("leviathan_trench", "星喰い竜の海溝", "星喰海溝", 96, 3060, 98200, 6, [{ type: "chapterCompleted", chapterId: "starsea_corridor" }], "星海の底で帰還する星を待つ大海竜の巣。本編には不要だが、黒い鱗の由来へ迫れる。", [{ name: "無光海溝", groups: [["current_wraith", "void_ray", "starsea_serpent"]] }, { name: "深淵の大渦", groups: [["abyssal_leviathan", "light_jelly"]] }], { gold: [173500, 206800], exp: [167900, 200100] }, [{ itemId: "starsea_heart", chance: .35, quantity: [1, 2] }], { requiredForStory: false, optionalStoryId: "leviathan_trench_clear" })
   });
 
-  data.recipes.push(
+  data.registry.entityList("recipes", [
     { id: "forge_starsea_rapier", resultId: "starsea_rapier", gold: 9200, materials: { blue_star_sand: 8, tide_memory: 5, primordial_bark: 2 }, unlockAfter: "starsea_corridor" },
     { id: "forge_abyssal_robe", resultId: "abyssal_robe", gold: 9400, materials: { abyssal_salt: 8, sea_glass_core: 4, star_seed: 2 }, unlockAfter: "starsea_corridor" },
     { id: "forge_navigator_gauntlet", resultId: "navigator_gauntlet", gold: 9500, materials: { tide_memory: 8, blue_star_sand: 5, origin_amber: 2 }, unlockAfter: "starsea_corridor" }
-  );
+  ]);
 
-  Object.assign(data.storyScenes, {
+  data.registry.entities("storyScenes", {
     starsea_corridor_opening: { id: "starsea_corridor_opening", name: "根の下に広がる空", text: "始原樹の根門を降りた先には、天井のない青い海が広がっていた。リナは水面を流れる光を見つめる。『星は空から落ちたのではなく、この海から汲み上げられていたのかもしれません』。" },
     rootsea_descent_clear: { id: "rootsea_descent_clear", name: "海へ沈む根", text: "潮門の先で根は無数の船着き場へ分かれていた。王朝は森から星力を奪っただけでなく、地下の海を渡るための港まで築いていた。" },
     drowned_chartroom_clear: { id: "drowned_chartroom_clear", name: "帰り道のない海図", text: "海図には星海から地上へ向かう航路だけが描かれ、戻る道は塗り潰されていた。海図師の記憶は、王命によって帰路を消した夜を繰り返している。" },
@@ -72,11 +75,11 @@
     starsea_corridor_clear: { id: "starsea_corridor_clear", name: "北へ昇る黒い光", text: "心珠を鎮めると、星海の流れは一瞬だけ澄んだ。その奥で黒い光が北の山脈へ昇っていく。女王の使者は、星を宿す最後の器を追っている。" },
     leviathan_trench_clear: { id: "leviathan_trench_clear", name: "海竜が守った欠片", text: "海竜の盾の内側には、空から落ちたものではない黒い星殻が残されていた。それは北方で眠る『星の器』と同じ脈動を刻んでいる。" }
   });
-  data.storyChapters.push({
+  data.registry.entityList("storyChapters", [{
     id: "starsea_corridor", order: 12, number: 12, title: "第12章：星海回廊", recommendedLevelRange: [92, 94],
     openingStoryId: "starsea_corridor_opening", clearStoryId: "starsea_corridor_clear",
     objective: "5つの本編ダンジョンを順番に攻略し、星海の心珠を鎮める", entryRequirements: [],
     unlockText: "星喰い竜の海溝、星海の細剣・深潮の法衣・星路の篭手のレシピ、7,000G、星海心珠×2",
     rewards: { gold: 7000, materials: { starsea_heart: 2, guild_seal: 3 } }
-  });
+  }]);
 })();

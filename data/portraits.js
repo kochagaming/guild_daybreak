@@ -1,7 +1,7 @@
 (function () {
   "use strict";
   const data = window.GameData = window.GameData || {};
-  data.portraits = {
+  const portraits = {
     knight: { id: "knight", name: "盾を構える騎士", image: "assets/characters/individual/legacy-00.png", legacy: true },
     rogue: { id: "rogue", name: "双刃の盗賊", image: "assets/characters/individual/legacy-01.png", legacy: true },
     mage: { id: "mage", name: "星読みの魔術師", image: "assets/characters/individual/legacy-02.png", legacy: true },
@@ -24,11 +24,22 @@
   ];
   groups.forEach(group => Object.values(group.table).forEach((entry, index) => group.files.forEach((file, variantIndex) => {
     const variant = variantIndex + 1, id = `${group.type}-${entry.id}-${variant}`;
-    data.portraits[id] = {
+    portraits[id] = {
       id,
       name: `${entry.name}・外見${variant}`,
       image: `assets/characters/individual/${file}-${String(index).padStart(2, "0")}.png`,
       sourceType: group.type, sourceId: entry.id, sourceLabel: group.label, variant
     };
   })));
+  const companionPortraitNames = {
+    mina: "ミナ・地脈を聴く鍛冶師", elena: "エレナ・欠け星の書記",
+    garm: "ガルム・灰冠最後の盾", shia: "シア・失われた潮歌",
+    tio: "ティオ・明日を数える機巧", rize: "リゼ・夜花の夢守",
+    kai: "カイ・極光を越えた巡礼者", noah: "ノア・眠れる星の器"
+  };
+  Object.entries(companionPortraitNames).forEach(([companionId, name]) => {
+    const id = `companion-${companionId}`;
+    portraits[id] = { id, name, image: `assets/characters/individual/${id}.png`, companionId };
+  });
+  data.registry.entities("portraits", portraits);
 })();

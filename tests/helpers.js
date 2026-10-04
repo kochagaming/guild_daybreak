@@ -6,9 +6,10 @@ exports.createCharacter = function (game, name, jobId = "warrior", raceId = "hum
   state.characters.push({
     id, name, jobId, raceId, birthId, level: 1, exp: 0,
     portraitId: game.Characters.portraitId({ jobId, portraitId: selectedPortraitId }),
-    actionRates: Object.assign({}, game.GameData.combatRules.defaultActionRates),
+    actionRates: Object.assign({}, game.GameData.config.combatRules.defaultActionRates),
     base: { hp: 48 + variance * 3, attack: 9 + variance, defense: 7 + (2 - variance) },
-    equipment: [], career: null, createdAt: game.GameRuntime.now()
+    source: { type: "recruitment" },
+    equipment: [], career: null, expeditionRecord: game.Characters.emptyExpeditionRecord(), recordTitleId: null, createdAt: game.GameRuntime.now()
   });
   game.GameState.save();
   return { ok: true, id };
@@ -19,11 +20,14 @@ exports.completeChapter = function (game, chapterId) {
   if (!chapter) throw new Error(`Unknown chapter: ${chapterId}`);
   if (chapterId === "prologue") {
     game.Story.recordDeparture("meadow");
+    while (game.Story.pendingEpisode?.()) game.Story.readPending();
     return;
   }
   game.Story.chapterDungeons(chapterId).filter(dungeon => dungeon.requiredForStory).forEach(dungeon => {
+    while (game.Story.pendingEpisode?.()) game.Story.readPending();
     game.Story.recordResult({ success: true, dungeonId: dungeon.id });
   });
+  while (game.Story.pendingEpisode?.()) game.Story.readPending();
 };
 
 exports.completeThrough = function (game, chapterId) {

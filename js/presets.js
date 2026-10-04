@@ -55,7 +55,7 @@
       const character = members[index];
       const savedEquipment = [...entry.equipment].sort(), currentEquipment = [...character.equipment].sort();
       if (savedEquipment.length !== currentEquipment.length || savedEquipment.some((id, equipmentIndex) => id !== currentEquipment[equipmentIndex])) return false;
-      const savedRates = Object.assign({}, window.GameData.combatRules.defaultActionRates, entry.actionRates || {});
+      const savedRates = Object.assign({}, window.GameData.config.combatRules.defaultActionRates, entry.actionRates || {});
       const currentRates = window.Characters.actionRates(character);
       return ["healing", "spell", "technique", "attack"].every(key => savedRates[key] === currentRates[key]);
     });

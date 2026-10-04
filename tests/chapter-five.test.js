@@ -33,7 +33,7 @@ assert(game.Story.optionalStories().some(entry => entry.scene.id === "abyssal_tr
 
 for (const id of ["frost_pearl", "drowned_ink", "abyssal_iron", "mirror_scale", "tide_heart"]) {
   assert.strictEqual(data.items[id].type, "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
 }
 for (const id of ["tideglass_bow", "frostseal_robe", "abyssal_gauntlets"]) {
   const recipe = data.recipes.find(entry => entry.resultId === id);
@@ -54,8 +54,8 @@ assert.strictEqual(data.monsters.mirror_queen.mechanic.statusAmplifier.statusId,
 assert(data.monsters.mirror_queen.mechanic.statusAmplifier.multiplier > 1);
 assert.strictEqual(data.monsters.mirror_queen.magicDefense, 140, "explicit chapter monster stats must survive default stat hydration");
 for (const dungeon of required) assert(dungeon.encounters.at(-1).groups[0].length >= 2, `${dungeon.id} boss should fight with an escort`);
-assert(data.items.frostseal_robe.skillIds.includes("chill_resistance_35"));
-assert(data.items.stormcloak.skillIds.includes("chill_resistance_20"));
+assert(data.relations.itemSkillGrants.frostseal_robe.includes("chill_resistance_35"));
+assert(data.relations.itemSkillGrants.stormcloak.includes("chill_resistance_20"));
 const frostRobe = game.Items.add("frostseal_robe", 1, { qualityId: "standard", source: "craft", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];
 const counterCharacter = game.Characters.get(state.characters[0].id);
 const counterStats = game.Characters.stats(counterCharacter, [frostRobe]);
@@ -63,8 +63,8 @@ assert.strictEqual(counterStats.statusResistances.chill, .35);
 const dwarfId = require("./helpers").createCharacter(game, "耐寒試験", "warrior", "dwarf", "common").id;
 const dwarfStats = game.Characters.stats(game.Characters.get(dwarfId), [frostRobe]);
 assert(Math.abs(dwarfStats.statusResistances.chill - .4475) < 1e-9, "racial and equipment resistances should combine probabilistically");
-assert(data.upgrades.limits.some(entry => entry.chapterId === "mirror_tide" && entry.maximum === 11));
-assert(data.partyProgression.partySlots.unlocks.some(entry => entry.chapterNumber === 5 && entry.slot === 6));
+assert(data.config.upgrades.limits.some(entry => entry.chapterId === "mirror_tide" && entry.maximum === 11));
+assert(data.config.partyProgression.partySlots.unlocks.some(entry => entry.chapterNumber === 5 && entry.slot === 6));
 const parsed = game.SaveTransfer.parse(JSON.stringify(state));
 assert(parsed.ok, parsed.message);
 console.log("Chapter five test passed: five main sea routes, optional trench, chill combat mechanic, stories, materials, recipes, boss gear, upgrade cap and sixth-party right");

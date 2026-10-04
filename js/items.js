@@ -7,7 +7,11 @@
 
   function equipmentList() { return window.GameState.data.inventory.equipment; }
   function materials() { return window.GameState.data.inventory.materials; }
-  function template(templateId) { return window.GameData.items[templateId]; }
+  function template(templateId) {
+    const source = window.GameData.items[templateId];
+    const combatStats = window.GameData.derived?.itemCombatStats?.[templateId];
+    return source && combatStats ? { ...source, ...combatStats } : source;
+  }
   function getInstance(instanceId) { return equipmentList().find((instance) => instance.id === instanceId); }
   function quality(instance) { return window.GameData.qualities[instance.qualityId] || window.GameData.qualities.standard; }
 
@@ -56,7 +60,7 @@
   function equipmentTypeId(base) { return base.type === "weapon" ? base.weaponType : base.armorType; }
 
   function performanceScore(base) {
-    const weights = window.GameData.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)] || {};
+    const weights = window.GameData.config.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)] || {};
     return Object.entries(weights).reduce((total, [stat, weight]) => {
       const value = stat === "attackCount" ? Math.max(0, Number(base[stat]) || 0) : Number(base[stat]) || 0;
       return total + value * weight;
@@ -65,17 +69,17 @@
 
   function referenceEfficiency(base) {
     const typeId = equipmentTypeId(base);
-    return Number(window.GameData.equipmentBalance?.referenceEfficiency?.[typeId]) || performanceScore(base) / Math.max(.1, Number(base.weight) || 0);
+    return Number(window.GameData.config.equipmentBalance?.referenceEfficiency?.[typeId]) || performanceScore(base) / Math.max(.1, Number(base.weight) || 0);
   }
 
   function standardTierFloors(typeId) {
-    const growth = Number(window.GameData.equipmentBalance?.efficiencyGrowthPerTier) || 0;
-    const entries = (window.GameData.shop?.standardTiers || []).slice().sort((a, b) => a.tier - b.tier);
+    const growth = Number(window.GameData.config.equipmentBalance?.efficiencyGrowthPerTier) || 0;
+    const entries = (window.GameData.config.shop?.standardTiers || []).slice().sort((a, b) => a.tier - b.tier);
     const floors = new Map();
     let previousAchieved = 0;
     entries.forEach(entry => {
       const itemId = entry.itemIds.find(id => equipmentTypeId(window.GameData.items[id] || {}) === typeId);
-      const item = window.GameData.items[itemId];
+      const item = template(itemId);
       if (!item?.weight) return;
       const raw = performanceScore(item) / item.weight;
       const floor = previousAchieved
@@ -94,10 +98,11 @@
   }
 
   function performanceFloor(base) {
-    const growth = Number(window.GameData.equipmentBalance?.efficiencyGrowthPerTier) || 0;
+    base = base?.id ? template(base.id) || base : base;
+    const growth = Number(window.GameData.config.equipmentBalance?.efficiencyGrowthPerTier) || 0;
     const tier = Math.max(1, Number(base.tier) || 1);
     const typeId = equipmentTypeId(base);
-    const standardEntry = (window.GameData.shop?.standardTiers || []).find(entry => entry.tier === tier);
+    const standardEntry = (window.GameData.config.shop?.standardTiers || []).find(entry => entry.tier === tier);
     const standardItemId = standardEntry?.itemIds.find(id => equipmentTypeId(window.GameData.items[id] || {}) === typeId);
     if (standardItemId === base.id) return standardTierFloors(typeId).get(tier) || referenceEfficiency(base);
 
@@ -107,7 +112,7 @@
   }
 
   function multiplierForFloor(base, floor) {
-    const weights = window.GameData.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)] || {};
+    const weights = window.GameData.config.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)] || {};
     let scalable = 0, fixed = 0;
     Object.entries(weights).forEach(([stat, weight]) => {
       const value = stat === "attackCount" ? Math.max(0, Number(base[stat]) || 0) : Number(base[stat]) || 0;
@@ -120,14 +125,14 @@
   }
 
   function tierEfficiencyMultiplier(baseOrId) {
-    const base = typeof baseOrId === "string" ? template(baseOrId) : baseOrId;
+    const base = typeof baseOrId === "string" ? template(baseOrId) : (baseOrId?.id ? template(baseOrId.id) || baseOrId : baseOrId);
     if (!base || !["weapon", "armor"].includes(base.type) || !base.weight) return 1;
     return multiplierForFloor(base, performanceFloor(base));
   }
 
   function balancedBaseValue(base, stat, multiplier) {
     const value = Number(base[stat]) || 0;
-    const weight = window.GameData.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)]?.[stat] || 0;
+    const weight = window.GameData.config.equipmentBalance?.scoreWeights?.[equipmentTypeId(base)]?.[stat] || 0;
     return multiplier > 1 && weight > 0 && scalablePerformanceStats.has(stat) ? Math.ceil(value * multiplier) : value;
   }
 
@@ -136,8 +141,8 @@
     const grade = quality(instance);
     const modifiers = instance.modifiers || {};
     const roundedWeight = Math.round(base.weight * grade.weightMultiplier * 10) / 10;
-    const ultraMultiplier = window.EquipmentSkills.title(instance) ? window.GameData.ultraRareConfig.statMultiplier : 1;
-    const upgrade = (window.GameData.upgrades?.bonus || {})[base.type] || {};
+    const ultraMultiplier = window.EquipmentSkills.title(instance) ? window.GameData.config.ultraRare.statMultiplier : 1;
+    const upgrade = (window.GameData.config.upgrades?.bonus || {})[base.type] || {};
     const level = instance.upgradeLevel || 0;
     const efficiencyMultiplier = tierEfficiencyMultiplier(base);
     const balanced = stat => balancedBaseValue(base, stat, efficiencyMultiplier);
@@ -161,7 +166,9 @@
   }
 
   function performancePerWeight(itemOrTemplate, effectOverride) {
-    const base = itemOrTemplate?.templateId ? template(itemOrTemplate.templateId) : itemOrTemplate;
+    const base = itemOrTemplate?.templateId
+      ? template(itemOrTemplate.templateId)
+      : itemOrTemplate?.id ? template(itemOrTemplate.id) || itemOrTemplate : itemOrTemplate;
     if (!base || !["weapon", "armor"].includes(base.type)) return 0;
     const effect = effectOverride || (itemOrTemplate.templateId ? effects(itemOrTemplate) : standardEffects(base.id));
     return performanceScore({ ...base, ...effect }) / Math.max(.1, Number(effect.weight) || 0);
@@ -178,14 +185,14 @@
   }
 
   function qualityTable(source, multiplier = 1) {
-    const table = window.GameData.qualityTables[source] || window.GameData.qualityTables.drop;
+    const table = window.GameData.config.qualityTables[source] || window.GameData.config.qualityTables.drop;
     const scale = Math.max(0, Number.isFinite(multiplier) ? multiplier : 1);
     return table.map(([id, weight]) => [id, window.GameData.qualities[id]?.qualityBand === "high" ? weight * scale : weight]);
   }
 
   function rollModifiers(random, base, grade) {
     const count = Math.floor(grade.affixes[0] + random() * (grade.affixes[1] - grade.affixes[0] + 1));
-    const config = window.GameData.affixes;
+    const config = window.GameData.config.affixes;
     const available = config ? Object.keys(config.labels) : ["attack", "defense", "hp"];
     const weights = config ? config.profiles[base.weaponType || base.armorType] || {} : {};
     const modifiers = { hp: 0, attack: 0, defense: 0 };
@@ -214,7 +221,7 @@
       ? "standard"
       : pickWeighted(random, qualityTable(source, settings.qualityRateMultiplier)));
     const grade = window.GameData.qualities[qualityId];
-    const ultraConfig = window.GameData.ultraRareConfig || { dropChance: 0 };
+    const ultraConfig = window.GameData.config.ultraRare || { dropChance: 0 };
     const ultraTitles = window.GameData.ultraRareTitles || {};
     let ultraRareTitleId = settings.ultraRareTitleId && ultraTitles[settings.ultraRareTitleId] ? settings.ultraRareTitleId : null;
     if (!ultraRareTitleId && source === "drop" && random() < ultraConfig.dropChance) {
@@ -348,7 +355,7 @@
     const base = template(instance.templateId);
     const grade = quality(instance);
     const modifierValue = Object.values(instance.modifiers || {}).reduce((sum, value) => sum + value, 0);
-    const ultraValue = window.EquipmentSkills.title(instance) ? window.GameData.ultraRareConfig.saleMultiplier : 1;
+    const ultraValue = window.EquipmentSkills.title(instance) ? window.GameData.config.ultraRare.saleMultiplier : 1;
     return Math.max(1, Math.round((base.price * 0.35 * grade.valueMultiplier * (1 + window.EquipmentSkills.ids(instance).length * .08) + modifierValue * 2) * ultraValue));
   }
 
@@ -413,8 +420,11 @@
       const base = template(instance.templateId);
       const kind = settings.kind || "all";
       const matchesKind = kind === "all" || (kind === "unique" && base.unique) || base.type === kind || `${base.type}:${base.weaponType || base.armorType}` === kind;
+      const setFilter = settings.set || "all";
+      const equipmentSets = window.EquipmentSkills?.setsForTemplate(instance.templateId) || [];
+      const matchesSet = setFilter === "all" || (setFilter === "any" ? equipmentSets.length > 0 : equipmentSets.some(definition => definition.id === setFilter));
       const equipped = owners.has(instance.id);
-      return matchesKind && (!settings.quality || settings.quality === "all" || instance.qualityId === settings.quality)
+      return matchesKind && matchesSet && (!settings.quality || settings.quality === "all" || instance.qualityId === settings.quality)
         && (!settings.equipped || settings.equipped === "all" || (settings.equipped === "equipped" ? equipped : !equipped))
         && (!settings.lock || settings.lock === "all" || (settings.lock === "locked" ? Boolean(instance.locked) : !instance.locked));
     });

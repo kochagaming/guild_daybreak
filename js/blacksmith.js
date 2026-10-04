@@ -13,6 +13,7 @@
     if (!recipe) return { ok: false, message: "レシピが見つかりません。" };
     if (window.Story && !window.Story.canCraft(recipe)) return { ok: false, message: window.Story.recipeCondition(recipe) };
     if (!canCraft(recipe)) return { ok: false, message: "素材または所持金が足りません。" };
+    const knownSetCounts = window.EquipmentSkills?.discoveryCounts?.() || {};
     Object.entries(recipe.materials).forEach(([id, quantity]) => window.Items.remove(id, quantity));
     window.GameState.data.gold -= recipe.gold;
     const instance = window.Items.add(recipe.resultId, 1, { source: "craft" }).instances[0];
@@ -20,11 +21,11 @@
     if (window.RecurringMissions) window.RecurringMissions.record("craft");
     window.GameState.addLog(`鍛冶屋で${craftedName}を製作しました。`, "success");
     window.GameState.save();
-    return { ok: true, message: `${craftedName}を製作しました。`, instance };
+    return { ok: true, message: `${craftedName}を製作しました。`, instance, setDiscoveries: window.EquipmentSkills?.discoveryAdvances?.(knownSetCounts) || [] };
   }
 
   function materialSources(itemId) {
-    return Object.values(window.GameData.dungeons).filter(dungeon => dungeon.encounters.some(encounter => encounter.groups.some(group => group.some(id => (window.GameData.monsters[id].materialDrops || []).some(drop => drop.itemId === itemId))))).map(dungeon => dungeon.shortName);
+    return Object.values(window.GameData.dungeons).filter(dungeon => dungeon.encounters.some(encounter => encounter.groups.some(group => group.some(id => window.MonsterLoot.materialDrops(id).some(drop => drop.itemId === itemId))))).map(dungeon => dungeon.shortName);
   }
 
   function result(recipe) { return window.GameData.items[recipe.resultId]; }

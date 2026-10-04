@@ -1,8 +1,8 @@
 (function () {
   "use strict";
 
-  window.GameData = window.GameData || {};
-  window.GameData.recurringMissions = Object.freeze({
+  const data = window.GameData = window.GameData || {};
+  const recurringMissions = Object.freeze({
     version: 1,
     groups: Object.freeze([
       {
@@ -31,4 +31,5 @@
       }
     ])
   });
+  data.registry.config("recurringMissions", recurringMissions);
 })();

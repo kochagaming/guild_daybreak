@@ -3,7 +3,7 @@ const root = path.resolve(__dirname, ".."), storage = new Map();
 let now = 1700000000000;
 function load() {
   const context = vm.createContext({ window: {}, Date, Math, Blob, console });
-  const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["js/ui.js", "js/main.js"].includes(file));
+  const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file));
   for (const file of scripts) {
     vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
     if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => now, random: () => .5 });

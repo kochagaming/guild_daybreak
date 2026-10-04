@@ -60,30 +60,30 @@
     const source = typeof sourceOrId === "string" ? window.GameData.monsters[sourceOrId] : sourceOrId;
     if (!source) return null;
     const definition = tier(difficultyId), modifier = definition.monsterModifiers;
-    const profile = window.GameData.monsterDifficultyProfiles?.[source.id] || {};
+    const defaults = window.GameData.derived?.monsterCombatStats?.[source.id] || {};
+    const difficultyDrops = window.GameData.derived?.monsterDifficultyDrops?.[source.id] || {};
+    const skillGrants = window.GameData.relations?.monsterDifficultySkillGrants?.[source.id] || {};
     const inheritedIds = ids().filter(id => tier(id).order <= definition.order);
-    const titleProfiles = inheritedIds.filter(id => id !== "normal").map(id => ({ id, profile: profile[id] })).filter(entry => Boolean(entry.profile));
-    const combatOverrides = Object.assign({}, ...titleProfiles.map(entry => entry.profile.combatOverrides || {}));
     const result = {
       ...source,
-      ...combatOverrides,
       baseMonsterId: source.id,
       difficultyId: definition.id,
       name: `${definition.namePrefix}${source.name}`,
       hp: Math.max(1, Math.round(source.hp * modifier.hp)),
       attack: Math.max(1, Math.round(source.attack * modifier.attack)),
       defense: Math.max(0, Math.round(source.defense * modifier.defense)),
-      magicAttack: Math.max(1, Math.round((source.magicAttack ?? source.attack) * modifier.magicAttack)),
-      magicDefense: Math.max(0, Math.round((source.magicDefense ?? source.defense) * modifier.magicDefense)),
+      magicAttack: Math.max(1, Math.round((source.magicAttack ?? defaults.magicAttack ?? source.attack) * modifier.magicAttack)),
+      magicDefense: Math.max(0, Math.round((source.magicDefense ?? defaults.magicDefense ?? source.defense) * modifier.magicDefense)),
       speed: Math.max(1, Math.round((source.speed || 9) * modifier.speed)),
-      hitRate: Math.min(.99, (source.hitRate ?? .95) * modifier.hitRate),
-      evasionRate: Math.min(.65, (source.evasionRate ?? .03) * modifier.evasionRate),
-      difficultySkillIds: titleProfiles.flatMap(entry => entry.profile.skillIds || []),
+      hitRate: Math.min(.99, (source.hitRate ?? defaults.hitRate ?? .95) * modifier.hitRate),
+      evasionRate: Math.min(.65, (source.evasionRate ?? defaults.evasionRate ?? .03) * modifier.evasionRate),
+      difficultySkillIds: [...new Set(inheritedIds.filter(id => id !== "normal").flatMap(id => skillGrants[id] || []))],
       signatureDropTiers: []
     };
-    if (source.signatureDrops) result.signatureDropTiers.push({ difficultyId: "normal", drops: source.signatureDrops });
-    titleProfiles.forEach(entry => {
-      if (entry.profile.signatureDrops) result.signatureDropTiers.push({ difficultyId: entry.id, drops: entry.profile.signatureDrops });
+    const normalDrops = window.GameData.relations?.monsterSignatureDrops?.[source.id];
+    if (normalDrops) result.signatureDropTiers.push({ difficultyId: "normal", drops: normalDrops });
+    inheritedIds.filter(id => id !== "normal").forEach(id => {
+      if (difficultyDrops[id]) result.signatureDropTiers.push({ difficultyId: id, drops: difficultyDrops[id] });
     });
     return result;
   }

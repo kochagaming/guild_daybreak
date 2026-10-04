@@ -33,7 +33,7 @@ assert(game.Story.optionalStories().some(entry => entry.scene.id === "devouring_
 
 for (const id of ["black_sap", "moonleaf", "witch_ember", "saint_thorn", "worldroot_seed"]) {
   assert.strictEqual(data.items[id].type, "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
 }
 for (const id of ["moonleaf_bow", "thornplate_gauntlets", "nightbloom_robe"]) {
   const recipe = data.recipes.find(entry => entry.resultId === id);
@@ -42,12 +42,12 @@ for (const id of ["moonleaf_bow", "thornplate_gauntlets", "nightbloom_robe"]) {
 }
 assert.strictEqual(data.monsters.thorn_saint.bossDrop.itemId, "saint_thorn_sword");
 assert.strictEqual(data.monsters.worldroot_devourer.bossDrop.itemId, "worldroot_mail");
-assert(data.items.memory_robe.skillIds.includes("poison_resistance_20"));
-assert(data.items.nightbloom_robe.skillIds.includes("poison_resistance_35"));
-assert(data.items.chronoglass_rapier.skillIds.includes("plant_slayer_15"));
-assert(data.items.memory_robe.skillIds.includes("demon_slayer_15"));
-assert(data.items.ashweave_mantle.skillIds.includes("burn_resistance_20"));
-assert(data.items.nightbloom_robe.skillIds.includes("burn_resistance_35"));
+assert(data.relations.itemSkillGrants.memory_robe.includes("poison_resistance_20"));
+assert(data.relations.itemSkillGrants.nightbloom_robe.includes("poison_resistance_35"));
+assert(data.relations.itemSkillGrants.chronoglass_rapier.includes("plant_slayer_15"));
+assert(data.relations.itemSkillGrants.memory_robe.includes("demon_slayer_15"));
+assert(data.relations.itemSkillGrants.ashweave_mantle.includes("burn_resistance_20"));
+assert(data.relations.itemSkillGrants.nightbloom_robe.includes("burn_resistance_35"));
 const poisonRobe = game.Items.add("nightbloom_robe", 1, { qualityId: "standard", source: "craft", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];
 const poisonStats = game.Characters.stats(game.Characters.get(state.characters[0].id), [poisonRobe]);
 assert.strictEqual(poisonStats.statusResistances.poison, .35);
@@ -57,10 +57,11 @@ const plantStats = game.Characters.stats(game.Characters.get(state.characters[0]
 assert.strictEqual(plantStats.slayerMultipliers.plant, 1.15);
 for (const id of ["border_keeper", "ancient_treant", "thorn_saint", "nightbloom_oracle", "worldroot_devourer"]) assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst");
 for (const dungeon of routes) {
-  assert(dungeon.openingStoryId && data.storyScenes[dungeon.openingStoryId]);
-  assert(dungeon.discoveryStoryId && data.storyScenes[dungeon.discoveryStoryId]);
+  const links = data.relations.dungeonStoryLinks[dungeon.id];
+  assert(links?.openingStoryId && data.storyScenes[links.openingStoryId]);
+  assert(links?.discoveryStoryId && data.storyScenes[links.discoveryStoryId]);
 }
-assert(data.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 15));
+assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 15));
 const parsed = game.SaveTransfer.parse(JSON.stringify(state));
 assert(parsed.ok, parsed.message);
 console.log("Chapter seven test passed: five main blackwood routes, optional worldroot, poison counterplay, stories, materials, recipes, boss gear and upgrade cap");

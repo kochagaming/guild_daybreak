@@ -1,6 +1,7 @@
 (function () {
   "use strict";
-  window.GameData.recruitment = {
+  const data = window.GameData = window.GameData || {};
+  const recruitment = {
     version: 2, matchChance: .8,
     pricing: {
       base: 250,
@@ -58,22 +59,23 @@
       }
     }
   };
-  window.GameData.recruitmentTalents = {
+  data.registry.config("recruitment", recruitment);
+  const recruitmentTalents = {
     hardy: { id: "hardy", name: "頑健", description: "基礎HPに+3。応募時の能力値に反映済み。", bonus: { hp: 3 } },
     striker: { id: "striker", name: "攻撃が得意", description: "基礎攻撃に+1。応募時の能力値に反映済み。", bonus: { attack: 1 } },
     steady: { id: "steady", name: "守りが得意", description: "基礎防御に+1。応募時の能力値に反映済み。", bonus: { defense: 1 } }
   };
-  window.GameData.recruitment.fields.filter(field => field.unlockAfter).forEach(field => {
-    const chapter = window.GameData.storyChapters.find(chapter => chapter.id === field.unlockAfter);
-    if (chapter) chapter.unlockText += `、${field.name}の指定`;
-  });
+  data.registry.entities("recruitmentTalents", recruitmentTalents);
+  const chapterUnlockAdditions = recruitment.fields.filter(field => field.unlockAfter).map(field => ({
+    id: `recruitment-field-${field.id}`,
+    chapterId: field.unlockAfter,
+    text: `${field.name}の指定`
+  }));
   const additions = {
     roadside: "新しい職業4種・種族4種・生まれ3種の募集候補",
     seal: "新しい職業4種・種族4種・生まれ4種の募集候補",
     starfall: "上級職業3種・希少種族3種・特殊な生まれ3種の募集候補"
   };
-  Object.entries(additions).forEach(([chapterId, text]) => {
-    const chapter = window.GameData.storyChapters.find(chapter => chapter.id === chapterId);
-    if (chapter) chapter.unlockText += `、${text}`;
-  });
+  chapterUnlockAdditions.push(...Object.entries(additions).map(([chapterId, text]) => ({ id: `recruitment-candidates-${chapterId}`, chapterId, text })));
+  data.registry.relationList("chapterUnlockAdditions", chapterUnlockAdditions);
 })();

@@ -14,6 +14,45 @@
     };
   }
 
+  function memberHighlights(result) {
+    const reports = Array.isArray(result?.memberReports) ? result.memberReports : [];
+    const used = new Set(), highlights = [];
+    const exploration = new Map();
+    (result?.battleLog || []).forEach(entry => {
+      const routeSuccess = Boolean(entry.routeEventId && entry.routeEventSuccess);
+      const chestSuccess = Boolean(entry.kind === "treasure" && entry.treasureOpened && entry.treasureTierRank > 0);
+      if (!entry.explorationActorId || (!routeSuccess && !chestSuccess)) return;
+      const contribution = exploration.get(entry.explorationActorId) || { memberId: entry.explorationActorId, name: entry.explorationActorName || "冒険者", routeSuccesses: 0, chestsOpened: 0 };
+      if (routeSuccess) contribution.routeSuccesses += 1;
+      if (chestSuccess) contribution.chestsOpened += 1;
+      exploration.set(entry.explorationActorId, contribution);
+    });
+    const categories = [
+      { kind: "exploration", candidates: () => Array.from(exploration.values()).map(entry => ({ member: { id: entry.memberId, name: entry.name }, value: entry.routeSuccesses + entry.chestsOpened, routeSuccesses: entry.routeSuccesses, chestsOpened: entry.chestsOpened })) },
+      { kind: "damage", metric: "damageDealt", eligible: value => value > 0 },
+      { kind: "healing", metric: "healingDone", eligible: value => value > 0 },
+      { kind: "endurance", metric: "damageTaken", eligible: (value, member) => value > 0 && Number(member.remainingHp) > 0 }
+    ];
+    categories.forEach(category => {
+      const candidates = (category.candidates ? category.candidates() : reports
+        .map(member => ({ member, value: Math.max(0, Math.round(Number(member[category.metric]) || 0)) }))
+        .filter(entry => category.eligible(entry.value, entry.member)))
+        .sort((a, b) => b.value - a.value || String(a.member.name).localeCompare(String(b.member.name), "ja"));
+      const selected = candidates.find(entry => !used.has(entry.member.id)) || (reports.length === 1 ? candidates[0] : null);
+      if (!selected) return;
+      used.add(selected.member.id);
+      highlights.push({
+        kind: category.kind,
+        memberId: selected.member.id,
+        name: selected.member.name,
+        value: selected.value,
+        ...(category.kind === "exploration" ? { routeSuccesses: selected.routeSuccesses, chestsOpened: selected.chestsOpened } : {}),
+        ...(category.kind === "endurance" ? { remainingHp: Math.max(0, Math.round(Number(selected.member.remainingHp) || 0)), maxHp: Math.max(1, Math.round(Number(selected.member.maxHp) || 1)) } : {})
+      });
+    });
+    return highlights;
+  }
+
   function partySetupSummary(partySnapshot) {
     return (Array.isArray(partySnapshot) ? partySnapshot : []).map(member => ({
       id: member.id, name: member.name, jobId: member.jobId, level: member.level, position: member.position,
@@ -39,7 +78,43 @@
       timeMultiplier: result.timeMultiplier || 1,
       success: result.success, gold: result.gold, exp: result.exp,
       equipment, materials: Object.entries(materialTotals).map(([itemId, quantity]) => ({ itemId, quantity })),
+      growth: (result.levelUps || []).map(entry => ({ name: entry.name, level: entry.level, newSkillIds: [...(entry.newSkillIds || [])], statChanges: { ...(entry.statChanges || {}) } })),
+      routeEvents: (result.battleLog || []).filter(entry => entry.routeEventId).map(entry => ({
+        id: entry.routeEventId,
+        kind: entry.kind,
+        success: Boolean(entry.routeEventSuccess),
+        masteryApplied: Boolean(entry.routeEventMasteryApplied),
+        personalPracticeApplied: Boolean(entry.routeEventPersonalPracticeApplied),
+        teamSurveyApplied: Boolean(entry.routeTeamSurveyApplied),
+        teamSurveyMemberNames: [...(entry.routeTeamSurveyMemberNames || [])],
+        bondSupportApplied: Boolean(entry.routeBondSupportApplied),
+        bondSupportMemberNames: [...(entry.routeBondSupportMemberNames || [])],
+        bondSupportLabel: entry.routeBondSupportLabel || null,
+        rumorMatched: Boolean(entry.routeRumorMatched),
+        text: entry.text
+      })),
+      adventurerBondMoments: (result.battleLog || []).filter(entry => entry.kind === "bond").map(entry => ({
+        id: entry.adventurerBondMomentId,
+        memberNames: [...(entry.adventurerBondMemberNames || [])],
+        sharedSorties: entry.sharedSorties,
+        text: entry.text
+      })),
+      newAdventurerBondTiers: (result.newAdventurerBondTiers || []).map(entry => ({
+        memberIds: [...entry.memberIds], memberNames: [...entry.memberNames], sharedSorties: entry.sharedSorties,
+        routeLabel: entry.routeLabel || null, battleLabel: entry.battleLabel || null
+      })),
+      bondFormations: (result.bondFormations || []).map(entry => ({
+        memberNames: [...entry.memberNames],
+        positions: [...entry.positions],
+        sharedSorties: entry.sharedSorties,
+        label: entry.label
+      })),
+      routeMasteryIds: [...(result.newRouteMasteryIds || [])],
+      memberHighlights: memberHighlights(result),
       partySetup: Array.isArray(result.partySetup) ? result.partySetup.map(member => ({ ...member, actionRates: { ...member.actionRates }, equipmentNames: [...member.equipmentNames] })) : [],
+      storyMoments: Array.isArray(result.storyMoments) ? result.storyMoments.map(moment => ({
+        kind: moment.kind, dungeonId: moment.dungeonId, sceneId: moment.sceneId
+      })) : [],
       battle: battleSummary(result)
     };
   }
@@ -62,19 +137,32 @@
     if (members.some(member => state.expeditions.some((entry, index) => index !== partyIndex && entry?.partyIds.includes(member.id)))) return { ok: false, message: "別の探索中パーティと冒険者が重複しています。" };
     if (!members.length) return { ok: false, message: "先にパーティを編成してください。" };
     if (members.length > window.Party.memberLimit()) return { ok: false, message: "物語で解放された人数上限を超えています。" };
+    const partyRuleCheck = window.DungeonPartyRules?.check(baseDungeon, members);
+    if (partyRuleCheck && !partyRuleCheck.ok) return { ok: false, message: `この探索地の編成条件を満たしていません。${partyRuleCheck.message}` };
     const power = window.Party.power(partyIndex);
     const startedAt = window.GameRuntime.now();
     const partySnapshot = members.map((member, position) => {
       const equipped = member.equipment.map(id => window.Items.getInstance(id)).filter(Boolean);
       return {
         id: member.id, name: member.name, level: member.level,
-        jobId: member.jobId || "warrior", raceId: member.raceId || "human", position,
+        jobId: member.jobId || "warrior", raceId: member.raceId || "human", birthId: member.birthId || "common", position,
+        companionId: member.source?.type === "companion" ? member.source.companionId : null,
+        companionStageId: member.source?.type === "companion" ? window.Companions.stageId(member.source.companionId) : null,
         familyIds: window.CreatureFamilies ? window.CreatureFamilies.familyIdsForRace(member.raceId || "human") : [],
+        routeEventSuccesses: { ...window.Characters.expeditionRecord(member).routeEventSuccesses },
+        treasureOpenings: window.Characters.expeditionRecord(member).treasureOpenings,
+        sharedSorties: Object.fromEntries(window.Characters.sharedSorties(member).map(entry => [entry.characterId, entry.count])),
+        bondMomentIds: Object.fromEntries(window.Characters.sharedSorties(member).filter(entry => entry.memoryIds.length).map(entry => [entry.characterId, [...entry.memoryIds]])),
         actionRates: window.Characters.actionRates(member),
         weaponRange: window.Characters.weaponRange(member),
         basicDamageType: window.Characters.basicDamageType(member),
         skillIds: window.Characters.learnedSkills(member).map((skill) => skill.id),
-        equipmentSkillIds: [...new Set(equipped.flatMap(instance => window.EquipmentSkills.ids(instance)))],
+        equipmentSkillIds: window.EquipmentSkills.activeIds(equipped),
+        equipmentSetBonuses: window.EquipmentSkills.setProgress(equipped).filter(entry => entry.active).map(entry => ({
+          setId: entry.definition.id,
+          count: entry.count,
+          skillIds: entry.bonuses.filter(bonus => bonus.active).map(bonus => bonus.skillId)
+        })),
         specialEquipment: window.Characters.specialEquipment(member),
         loadout: {
           equipmentCount: equipped.length,
@@ -86,15 +174,29 @@
       };
     });
     const baseAcquisitionBonuses = acquisitionApi.resolve(partySnapshot);
-    const acquisitionBonuses = window.AccessCodes ? window.AccessCodes.applyAcquisitionBonuses(baseAcquisitionBonuses) : baseAcquisitionBonuses;
+    const accessAcquisitionBonuses = window.AccessCodes ? window.AccessCodes.applyAcquisitionBonuses(baseAcquisitionBonuses) : baseAcquisitionBonuses;
+    const rumor = window.ExpeditionRumors?.forDungeon(dungeonId) || null;
+    const acquisitionBonuses = window.ExpeditionRumors ? window.ExpeditionRumors.apply(accessAcquisitionBonuses, rumor) : accessAcquisitionBonuses;
     const accessDurationMultiplier = window.AccessCodes ? window.AccessCodes.explorationDurationMultiplier() : 1;
     const itemTarget = window.Encyclopedia?.trackedTarget() || null;
+    const routeMasterySuccesses = window.GameData.config.explorationEvents?.routeMastery?.successes || 3;
+    const knownRouteMasteryIds = (window.GameData.config.explorationEvents?.routeEvents || [])
+      .filter(event => (state.story.facts.routeEvents?.[event.id]?.successes || 0) >= routeMasterySuccesses)
+      .map(event => event.id);
+    const treasureMasteryOpenings = window.GameData.config.explorationEvents?.treasureMastery?.openings || 3;
+    const knownTreasureMasteryIds = (window.GameData.config.explorationEvents?.treasure?.types || [])
+      .filter(tier => (state.story.facts.treasureTiers?.[tier.id]?.openings || 0) >= treasureMasteryOpenings)
+      .map(tier => tier.id);
     state.expeditions[partyIndex] = {
       partyIndex,
       timeMultiplier,
       dungeonId, difficultyId, partyIds: members.map((member) => member.id),
       partySnapshot,
+      knownCompanionMomentKeys: [...(state.story.facts.companionMoments || [])],
+      knownRouteMasteryIds,
+      knownTreasureMasteryIds,
       acquisitionBonuses,
+      rumor,
       accessDurationMultiplier,
       trackedItemId: itemTarget?.itemId || null,
       trackedItemGoal: itemTarget?.quantity || null,
@@ -102,7 +204,8 @@
       power: Math.round(power),
       seed: Math.floor(window.GameRuntime.random() * 2147483646) + 1
     };
-    window.GameState.addLog(`${window.Party.name(partyIndex)}が${dungeon.name}へ出発しました。`, "info");
+    const rumorDefinition = window.ExpeditionRumors?.definition(rumor);
+    window.GameState.addLog(`${window.Party.name(partyIndex)}が${dungeon.name}へ出発しました。${rumorDefinition ? `「${rumorDefinition.name}」の噂を確かめに向かいます。` : ""}`, "info");
     if (window.Story) window.Story.recordDeparture(dungeonId);
     if (window.RecurringMissions) window.RecurringMissions.record("departure");
     window.GameState.save();
@@ -113,10 +216,87 @@
     const state = window.GameState.data;
     const expedition = state.expeditions[partyIndex];
     if (!expedition || (now || window.GameRuntime.now()) < expedition.endsAt) return null;
+    const routeMasterySuccesses = window.GameData.config.explorationEvents?.routeMastery?.successes || 3;
+    const masteredRouteIds = () => (window.GameData.config.explorationEvents?.routeEvents || [])
+      .filter(event => (state.story.facts.routeEvents?.[event.id]?.successes || 0) >= routeMasterySuccesses)
+      .map(event => event.id);
+    const knownRouteMasteryIds = new Set(masteredRouteIds());
+    const treasureMasteryOpenings = window.GameData.config.explorationEvents?.treasureMastery?.openings || 3;
+    const masteredTreasureIds = () => (window.GameData.config.explorationEvents?.treasure?.types || [])
+      .filter(tier => (state.story.facts.treasureTiers?.[tier.id]?.openings || 0) >= treasureMasteryOpenings)
+      .map(tier => tier.id);
+    const knownTreasureMasteryIds = new Set(masteredTreasureIds());
     const knownObservationIds = new Set(window.ObservationJournal?.unlockedNotes().map(note => note.id) || []);
+    const knownAchievementIds = new Set(window.Achievements?.entries().filter(entry => entry.complete).map(entry => entry.id) || []);
+    const knownSetCounts = window.EquipmentSkills?.discoveryCounts?.() || {};
     const baseDungeon = window.GameData.dungeons[expedition.dungeonId];
     const dungeon = window.DungeonDifficulty ? window.DungeonDifficulty.variant(baseDungeon, expedition.difficultyId || "normal") : baseDungeon;
     const outcome = window.Battle.resolve(expedition, dungeon);
+    const newAdventurerMilestones = [], newAdventurerRecords = [];
+    const earnedMilestonesBefore = new Map(outcome.memberReports.map(report => {
+      const character = window.Characters.get(report.id);
+      return [report.id, new Set(character ? window.Characters.expeditionMilestones(character).filter(entry => entry.complete).map(entry => entry.id) : [])];
+    }));
+    const newAdventurerBondMomentIds = [];
+    (outcome.battleLog || []).filter(entry => entry.kind === "bond").forEach(entry => {
+      if (window.Characters.recordBondMemory(entry.adventurerBondMemberIds, entry.adventurerBondMomentId)) newAdventurerBondMomentIds.push(entry.adventurerBondMomentId);
+    });
+    const returningMembers = (expedition.partySnapshot || []).map(member => ({ id: member.id, name: member.name }));
+    const bondCountsBefore = new Map();
+    for (let left = 0; left < returningMembers.length; left += 1) {
+      for (let right = left + 1; right < returningMembers.length; right += 1) {
+        const pair = [returningMembers[left].id, returningMembers[right].id].sort();
+        bondCountsBefore.set(pair.join("::"), Math.max(0, Number(state.adventurerBonds?.pairs?.[pair.join("::")]) || 0));
+      }
+    }
+    window.Characters.recordSharedSortie(returningMembers.map(member => member.id));
+    const routeTiers = window.GameData.config.explorationEvents?.adventurerBondRouteSupport || [];
+    const battleTiers = window.GameData.config.explorationEvents?.adventurerBondBattleSupport || [];
+    const bondThresholds = [...new Set([...routeTiers, ...battleTiers].map(tier => tier.minimumSharedSorties))].sort((a, b) => a - b);
+    const newAdventurerBondTiers = [];
+    for (let left = 0; left < returningMembers.length; left += 1) {
+      for (let right = left + 1; right < returningMembers.length; right += 1) {
+        const memberIds = [returningMembers[left].id, returningMembers[right].id];
+        const key = [...memberIds].sort().join("::"), before = bondCountsBefore.get(key) || 0;
+        const after = Math.max(0, Number(state.adventurerBonds?.pairs?.[key]) || 0);
+        bondThresholds.filter(threshold => before < threshold && after >= threshold).forEach(threshold => {
+          newAdventurerBondTiers.push({
+            memberIds, memberNames: [returningMembers[left].name, returningMembers[right].name], sharedSorties: after,
+            routeLabel: routeTiers.find(tier => tier.minimumSharedSorties === threshold)?.label || null,
+            battleLabel: battleTiers.find(tier => tier.minimumSharedSorties === threshold)?.label || null
+          });
+        });
+      }
+    }
+    const explorationContributions = new Map();
+    const explorationContribution = memberId => {
+      const current = explorationContributions.get(memberId) || { routeSuccesses: 0, routeEventSuccesses: {}, treasureOpenings: 0, teamSurveys: 0 };
+      explorationContributions.set(memberId, current);
+      return current;
+    };
+    (outcome.battleLog || []).forEach(entry => {
+      (entry.routeTeamSurveyMemberIds || []).forEach(memberId => { explorationContribution(memberId).teamSurveys += 1; });
+      if (!entry.explorationActorId) return;
+      const contribution = explorationContribution(entry.explorationActorId);
+      if (entry.routeEventId && entry.routeEventSuccess) {
+        contribution.routeSuccesses += 1;
+        contribution.routeEventSuccesses[entry.routeEventId] = (contribution.routeEventSuccesses[entry.routeEventId] || 0) + 1;
+      }
+      if (entry.kind === "treasure" && entry.treasureOpened && entry.treasureTierRank > 0) contribution.treasureOpenings += 1;
+    });
+    outcome.memberReports.forEach(report => {
+      const character = window.Characters.get(report.id);
+      if (!character) return;
+      Object.assign(report, explorationContributions.get(report.id) || { routeSuccesses: 0, routeEventSuccesses: {}, treasureOpenings: 0, teamSurveys: 0 });
+      const recordBefore = window.Characters.expeditionRecord(character);
+      const earnedBefore = earnedMilestonesBefore.get(report.id) || new Set();
+      const recordAfter = window.Characters.recordExpedition(character, report, outcome.success, outcome.encountersCleared, expedition.endsAt);
+      const milestoneIds = window.Characters.expeditionMilestones(character).filter(entry => entry.complete && !earnedBefore.has(entry.id)).map(entry => entry.id);
+      if (milestoneIds.length) newAdventurerMilestones.push({ characterId: character.id, name: character.name, milestoneIds });
+      const improvements = ["bestDamage", "bestHealing", "bestEndurance"].filter(field => recordAfter[field] > recordBefore[field]).map(field => ({ field, previous: recordBefore[field], value: recordAfter[field] }));
+      if (improvements.length) newAdventurerRecords.push({ characterId: character.id, name: character.name, improvements });
+    });
+    const newMonsterInsights = window.Encyclopedia ? window.Encyclopedia.battleInsights(outcome.monsterObservations) : [];
     const difficultyId = expedition.difficultyId || "normal";
     const earnsFirstClearReward = outcome.success && difficultyId !== "normal" && !window.DungeonDifficulty.cleared(baseDungeon.id, difficultyId);
     state.gold += outcome.gold;
@@ -149,14 +329,27 @@
       if (grant.autoSold?.length) autoSold.push(...grant.autoSold);
       autoSellGold += grant.autoSellGold || 0;
     });
+    const newSetDiscoveries = window.EquipmentSkills?.discoveryAdvances?.(knownSetCounts) || [];
     const levelUps = [], experienceGains = [];
     expedition.partyIds.forEach((id) => {
       const character = window.Characters.get(id);
       if (!character) return;
       const experience = acquisitionApi.memberExperience(outcome.exp, id, acquisitionBonuses);
       experienceGains.push({ id, name: character.name, amount: experience });
+      const learnedBefore = new Set(window.Characters.learnedSkills(character).map(skill => skill.id));
+      const statsBefore = window.Characters.stats(character), weightBefore = window.Characters.maxWeight(character);
       const gained = window.Characters.addExperience(character, experience);
-      if (gained) levelUps.push({ name: character.name, levels: gained, level: character.level });
+      if (gained) {
+        const newSkillIds = window.Characters.learnedSkills(character).map(skill => skill.id).filter(skillId => !learnedBefore.has(skillId));
+        const statsAfter = window.Characters.stats(character), weightAfter = window.Characters.maxWeight(character);
+        const statChanges = Object.fromEntries([
+          ["hp", statsAfter.hp - statsBefore.hp], ["attack", statsAfter.attack - statsBefore.attack], ["defense", statsAfter.defense - statsBefore.defense],
+          ["magicAttack", statsAfter.magicAttack - statsBefore.magicAttack], ["magicDefense", statsAfter.magicDefense - statsBefore.magicDefense],
+          ["magicHealing", statsAfter.magicHealing - statsBefore.magicHealing], ["speed", statsAfter.speed - statsBefore.speed],
+          ["maxWeight", Math.round((weightAfter - weightBefore) * 10) / 10]
+        ].filter(([, value]) => value));
+        levelUps.push({ name: character.name, levels: gained, level: character.level, newSkillIds, statChanges });
+      }
     });
     const trackedItemId = expedition.trackedItemId || null;
     const trackedItemQuantity = trackedItemId
@@ -171,8 +364,14 @@
       trackedItemGoal: expedition.trackedItemGoal || null,
       trackedItemProgress: trackedProgress?.progress ?? null,
       drops: grantedDrops, autoSold, autoSellGold, levelUps, newItemIds: Array.from(newItemIds),
+      newSetDiscoveries,
       newBestQualities: Array.from(newBestQualities, ([itemId, qualityId]) => ({ itemId, qualityId })),
       newUltraRareTitleIds: Array.from(newUltraRareTitleIds),
+      newAdventurerMilestones,
+      newAdventurerRecords,
+      newAdventurerBondMomentIds,
+      newAdventurerBondTiers,
+      rumor: expedition.rumor || null,
       partyNames: expedition.partySnapshot
         ? expedition.partySnapshot.map((member) => member.name)
         : expedition.partyIds.map(window.Characters.get).filter(Boolean).map((c) => c.name),
@@ -180,6 +379,7 @@
       battleLog: outcome.battleLog,
       mechanicReport: outcome.mechanicReport,
       strategyReport: outcome.strategyReport,
+      bondFormations: outcome.bondFormations,
       defeatFacts: outcome.defeatFacts,
       encountersCleared: outcome.encountersCleared,
       totalEncounters: outcome.totalEncounters,
@@ -187,11 +387,14 @@
       monsterCounts: outcome.monsterCounts,
       monsterEncounters: outcome.monsterEncounters,
       monsterObservations: outcome.monsterObservations,
+      newMonsterInsights,
       memberReports: outcome.memberReports,
       survivors: outcome.survivors
     };
     state.expeditions[partyIndex] = null;
     if (window.Story) state.lastResult.storyCompleted = window.Story.recordResult(state.lastResult);
+    state.lastResult.newRouteMasteryIds = masteredRouteIds().filter(id => !knownRouteMasteryIds.has(id));
+    state.lastResult.newTreasureMasteryIds = masteredTreasureIds().filter(id => !knownTreasureMasteryIds.has(id));
     if (earnsFirstClearReward) {
       const reward = window.DungeonDifficulty.firstClearReward(difficultyId);
       if (reward) {
@@ -211,6 +414,9 @@
     if (window.Commissions) window.Commissions.recordResult(state.lastResult, outcome.monsterCounts);
     if (window.RecurringMissions && outcome.success) window.RecurringMissions.record("clear");
     if (window.Encyclopedia) window.Encyclopedia.recordBattle(outcome.monsterEncounters, outcome.monsterCounts, outcome.monsterObservations, expedition.difficultyId || "normal");
+    state.lastResult.newAchievementIds = window.Achievements
+      ? window.Achievements.entries().filter(entry => entry.complete && !knownAchievementIds.has(entry.id)).map(entry => entry.id)
+      : [];
     state.partyResults[partyIndex] = state.lastResult;
     state.partyHistory[partyIndex].unshift(historySummary(state.lastResult));
     state.partyHistory[partyIndex] = state.partyHistory[partyIndex].slice(0, 10);
@@ -219,6 +425,8 @@
       outcome.success ? "success" : "danger"
     );
     if (trackedItemQuantity) window.GameState.addLog(`探索目標「${window.GameData.items[trackedItemId].name}」を${trackedItemQuantity}個持ち帰りました。`, "success");
+    if (state.lastResult.newRouteMasteryIds.length) window.GameState.addLog(`${state.lastResult.newRouteMasteryIds.map(id => window.GameData.config.explorationEvents.routeEvents.find(event => event.id === id)?.name).filter(Boolean).join("、")}の知見が観察日記にまとまり、次の遠征から共有されます。`, "success");
+    if (state.lastResult.newTreasureMasteryIds.length) window.GameState.addLog(`${state.lastResult.newTreasureMasteryIds.map(id => window.GameData.config.explorationEvents.treasure.types.find(tier => tier.id === id)?.name).filter(Boolean).join("、")}の開け方が共有され、次の遠征から役立ちます。`, "success");
     window.GameState.save();
     return state.lastResult;
   }
@@ -235,5 +443,5 @@
     return expedition ? Math.max(0, expedition.endsAt - window.GameRuntime.now()) : 0;
   }
 
-  window.Dungeon = { start, completeIfReady, remaining, activeCount, battleSummary, partySetupSummary };
+  window.Dungeon = { start, completeIfReady, remaining, activeCount, battleSummary, memberHighlights, partySetupSummary };
 })();

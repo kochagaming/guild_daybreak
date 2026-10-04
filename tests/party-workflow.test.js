@@ -57,12 +57,12 @@ async function run() {
   node(".main-area").scrollTop = 420;
   await listeners.change({ target: { hasAttribute: key => key === "data-roster-filter", dataset: { rosterFilter: "sort" }, value: "name" } });
   assert.strictEqual(node(".main-area").scrollTop, 420, "Detailed roster filters should preserve the formation viewport");
-  assert(html().includes("全員・全職業・名前順"), "Collapsed roster filters summarize the current conditions");
+  assert(html().includes("全員・全職業・全探索経験・名前順"), "Collapsed roster filters summarize the current conditions");
   node("party-roster-query").value = "存在しない名前";
   await listeners.submit({ target: { id: "party-roster-form" }, preventDefault() {} });
   assert(html().includes("条件に合う冒険者はいません。") && html().includes('data-action="reset-roster-filters"'), "An empty roster provides a direct recovery action");
   await click("reset-roster-filters");
-  assert(html().includes("全員・全職業・レベル順") && html().includes("先頭の戦士"), "Resetting restores the complete roster and default order");
+  assert(html().includes("全員・全職業・全探索経験・レベル順") && html().includes("先頭の戦士"), "Resetting restores the complete roster and default order");
   assert(html().includes('data-action="party-action-preset"') && html().includes("行動率を一括設定"));
   await click("party-action-preset", { preset: "physical" });
   assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Characters.get(a).actionRates)), { attack: 100, technique: 100, spell: 0, healing: 30 });
@@ -116,6 +116,11 @@ async function run() {
   assert(node("modal-root").innerHTML.includes("上書き前の変更確認") && node("modal-root").innerHTML.includes("新たに保存 → 1番") && node("modal-root").innerHTML.includes("隊列 1番 → 2番"), "Overwriting a preset should preview additions and formation changes before confirmation");
   await click("close-modal");
   game.Items.add("sticky_fluid", 1);
+  game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: {
+    incomingAttempts: 6, incomingHits: 4, enemyTurns: 3, maxAttackCount: 2, magicAttack: true, rearTargeting: true,
+    attackElements: ["neutral"], statusAttacks: ["poison"], elementWeaknesses: ["fire"], elementResistances: ["ice"],
+    statusLanded: ["burn"], statusResisted: ["poison"], burstRounds: [2, 5], difficultySkillIds: [], drops: []
+  } }, "normal");
   assert((await game.GameClient.execute("encyclopedia.trackItem", { itemId: "sticky_fluid" })).ok);
   await click("party-view", { view: "adventure" });
   assert(html().includes("DEPARTURE PARTY") && html().includes("先頭の戦士") && html().includes("後衛の魔術師"));
@@ -124,6 +129,8 @@ async function run() {
   assert(html().indexOf("DEPARTURE PARTY") < html().indexOf("dungeon-grid"));
   assert(html().includes('data-action="select-dungeon"') && html().includes("この攻略先へ出撃") && html().includes("選択中の攻略先"));
   assert(html().includes('<details class="dungeon-details"') && html().includes("依頼・噂・現地記録を見る"));
+  assert(html().includes("道中で聞いた話") && html().includes(game.Exploration.routeRumor(game.GameData.dungeons.meadow)) && html().includes("観察記録との照合") && html().includes("未照合の噂あり") && !game.Exploration.routeRumor(game.GameData.dungeons.meadow).includes("%"), "Destination cards expose an unresolved narrative lead and learned party comparison without event odds or a prescribed answer");
+  assert(html().includes("これまでの現地記録") && html().includes("攻撃命中 4/6回") && html().includes("一度に最大2回攻撃") && html().includes("魔法行動を確認") && html().includes("攻撃属性：無属性") && html().includes("付与攻撃：毒") && html().includes("弱点反応：炎") && html().includes("耐性反応：氷") && html().includes("通用した異常：火傷") && html().includes("抵抗された異常：毒") && html().includes("隊列後方への攻撃を確認") && html().includes("大技発動：第2T・第5T"), "Destination details recall only enemy behavior previously observed in battle");
   assert(html().includes("探索目標") && html().includes("ねばねばした液体") && html().includes("探索目標の記録あり") && html().includes("1種の魔物"), "A tracked discovery marks matching destination records without exposing drop rates");
   assert(!html().includes("攻略目安") && !html().includes("次の挑戦へのヒント"));
   assert(html().includes('data-action="select-dungeon-chapter"') && html().includes("data-dungeon-chapter-select") && html().includes("1〜5 / 16章を表示") && html().includes("本編攻略 0/5"), "Destination routes use a compact nearby tab set plus an all-chapter selector");
@@ -139,6 +146,10 @@ async function run() {
   assert(html().includes('<option value="5" selected>5倍'));
   assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Party.plan(0))), { dungeonId: "meadow", difficultyId: "normal", timeMultiplier: 5 }, "Destination settings are saved per party");
   require("./helpers").completeThrough(game, "seal");
+  require("./helpers").completeThrough(game, "ember_crown");
+  await click("select-dungeon-chapter", { chapter: "ember_crown" });
+  assert(html().includes("古灰竜の火口") && html().includes("竜人のみ編成可能") && html().includes("dungeon-party-restriction is-unmet"), "Restricted routes show their requirement and current party status before departure");
+  await click("select-dungeon-chapter", { chapter: "roadside" });
   game.GameState.data.unlockedPartyCount = 2;
   await click("party-open", { party: "1", view: "formation" }); await click("toggle-party", { character: d });
   await click("party-view", { view: "adventure" });
@@ -163,6 +174,9 @@ async function run() {
   assert(html().includes("LATEST REPORT") && html().includes("最新の探索報告"));
   assert(!html().includes("party-list") && !html().includes("dungeon-grid"));
   const previousResult = game.Party.result(0);
+  await click("party-view", { view: "adventure" });
+  assert(html().includes("dungeon-attempt-record") && html().includes(`この隊の前回・${previousResult.timeMultiplier}倍探索`) && html().includes(`${previousResult.encountersCleared}/${previousResult.totalEncounters}戦`) && html().includes(`討伐 ${previousResult.monstersDefeated}体`), "The destination card shows only factual results from the same party and exploration settings");
+  await click("party-view", { view: "results" });
   assert(html().includes("直前の探索条件") && html().includes(`${previousResult.timeMultiplier}倍探索`) && html().includes('data-action="repeat-expedition"'), "The report offers one manual repeat using the completed expedition settings");
   await click("repeat-expedition");
   assert(game.GameState.data.expeditions[0] && game.GameState.data.expeditions[0].dungeonId === previousResult.dungeonId && game.GameState.data.expeditions[0].difficultyId === previousResult.difficultyId && game.GameState.data.expeditions[0].timeMultiplier === previousResult.timeMultiplier, "Manual repeat preserves destination, difficulty and duration multiplier");

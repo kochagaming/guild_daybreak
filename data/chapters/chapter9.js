@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData;
 
-  Object.assign(data.items, {
+  data.registry.entities("items", {
     fallen_star_iron: { id: "fallen_star_iron", name: "落星鉄", type: "material", price: 0, icon: "◆" },
     black_wing_feather: { id: "black_wing_feather", name: "黒翼羽", type: "material", price: 0, icon: "➶" },
     floating_core: { id: "floating_core", name: "浮遊核", type: "material", price: 0, icon: "◈" },
@@ -15,7 +15,7 @@
     void_archon_robe: { id: "void_archon_robe", name: "虚星執政官の法衣", type: "armor", armorType: "cloth", tier: 11, price: 16800, attack: 0, defense: 48, magicDefense: 86, magicAttack: 28, magicHealing: 28, hp: 160, weight: 7, icon: "✧", unique: true, salvage: { itemId: "void_star_crystal", quantity: 4 }, specialEffects: [{ kind: "healing_boost", multiplier: 1.5 }], effectDescription: "単体・全体回復スキルの回復量を1.5倍にする。" }
   });
 
-  Object.assign(data.monsters, {
+  const monsters = {
     starroad_scout: { id: "starroad_scout", name: "星路の斥候", hp: 4400, attack: 500, defense: 275, magicDefense: 230, speed: 68, icon: "♟", element: "dark", targetRule: "rear_weighted" },
     winged_hound: { id: "winged_hound", name: "黒羽の猟犬", hp: 5400, attack: 575, attackCount: 2, defense: 270, magicDefense: 225, speed: 72, icon: "◆", element: "dark", actions: 2 },
     starroad_gatekeeper: { id: "starroad_gatekeeper", name: "星路門の番人", hp: 58000, attack: 570, defense: 335, magicDefense: 275, speed: 52, icon: "♛", boss: true, actions: 3, element: "arcane", statusAttack: { statusId: "paralysis", chance: .28, duration: 1 }, elementModifiers: { arcane: .4, lightning: 1.3 }, statusResistances: { paralysis: .8, chill: .7 }, mechanic: { kind: "telegraphed_burst", name: "星路閉鎖", period: 5, multiplier: 1.65, exposedMultiplier: 1.4, description: "浮遊核へ力を集め、次ターン終了時に星路全体を閉ざす衝撃を放つ。" } },
@@ -32,7 +32,7 @@
     throne_guard: { id: "throne_guard", name: "空城の近衛", hp: 6800, attack: 690, defense: 380, magicDefense: 285, speed: 53, icon: "♜", element: "arcane", actions: 2 },
     eclipse_regent: { id: "eclipse_regent", name: "蝕星王レグルス", hp: 79000, attack: 575, magicAttack: 665, defense: 350, magicDefense: 330, speed: 62, icon: "♛", boss: true, actions: 3, damageType: "magic", element: "dark", targetRule: "rear_weighted", elementModifiers: { dark: .35, lightning: 1.3 }, statusResistances: { poison: .8, paralysis: .85, chill: .8 }, mechanic: { kind: "telegraphed_burst", name: "王城日蝕", period: 4, multiplier: 1.75, exposedMultiplier: 1.5, description: "王城の光を奪い、次ターン終了時に全体へ蝕の魔力を降らせる。" } },
     void_archon: { id: "void_archon", name: "虚星執政官ノクス", hp: 112000, attack: 720, magicAttack: 760, defense: 410, magicDefense: 385, speed: 64, icon: "♛", boss: true, actions: 5, damageType: "magic", element: "dark", targetRule: "rear_weighted", elementModifiers: { dark: .25, lightning: 1.4 }, statusResistances: { poison: 1, burn: .8, paralysis: .9, chill: .9 }, bossDrop: { itemId: "void_archon_robe", chance: .1 }, mechanic: { kind: "telegraphed_burst", name: "虚空星葬", period: 3, multiplier: 1.85, exposedMultiplier: 1.55, description: "虚星を呼び寄せ、短い周期で戦場全体を虚空へ沈める。" } }
-  });
+  };
 
   const materials = {
     starroad_scout: [["black_wing_feather", .45, 1, 2]], winged_hound: [["black_wing_feather", .55, 1, 2]], starroad_gatekeeper: [["floating_core", 1, 2, 4]],
@@ -42,13 +42,16 @@
     eclipse_priest: [["eclipse_shard", .6, 1, 2]], throne_guard: [["floating_core", .7, 1, 3]], eclipse_regent: [["eclipse_shard", 1, 2, 4]],
     void_archon: [["void_star_crystal", 1, 3, 5], ["black_wing_feather", 1, 3, 5]]
   };
-  Object.entries(materials).forEach(([id, drops]) => { data.monsters[id].materialDrops = drops.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] })); });
+  data.registry.relations("monsterMaterialDrops", Object.fromEntries(Object.entries(materials).map(([id, entries]) => [id,
+    entries.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] }))
+  ])));
+  data.registry.entities("monsters", monsters);
 
   const route = (id, name, shortName, level, duration, difficulty, order, requirements, description, encounters, rewards, drops, extra = {}) => ({
     id, name, shortName, recommendedLevel: level, duration, difficulty, color: "purple", chapterId: "falling_sky_castle", orderInChapter: order, requiredForStory: true,
     unlockRequirements: requirements, description, strategy: { label: "空城の痕跡を追う", feature: description, advice: "後列を狙う黒翼と、火傷を重ねる星炉の記録を確かめてください。", preparation: [] }, encounters, rewards, drops, ...extra
   });
-  Object.assign(data.dungeons, {
+  data.registry.entities("dungeons", {
     starroad_gate: route("starroad_gate", "星路の外門", "星路外門", 68, 1620, 23200, 1, [{ type: "chapterCompleted", chapterId: "thunder_snow_peaks" }], "極光の先に浮かぶ外門。黒い翼を持つ斥候が星路を閉ざす。", [{ name: "浮石の参道", groups: [["starroad_scout", "winged_hound"], ["starroad_scout", "starroad_scout"]] }, { name: "閉ざされた星門", groups: [["winged_hound", "starroad_gatekeeper"]] }], { gold: [40200, 47800], exp: [38900, 46200] }, [{ itemId: "black_wing_feather", chance: .38, quantity: [1, 2] }], { clearStoryId: "starroad_gate_clear" }),
     broken_sky_garden: route("broken_sky_garden", "崩れた空中庭園", "空中庭園", 70, 1680, 25200, 2, [{ type: "dungeonClear", dungeonId: "starroad_gate" }], "空へ根を張る庭園。枯れない蔓が墜落した星を覆う。", [{ name: "逆さ根の庭", groups: [["skyvine", "fallen_gardener"], ["skyvine", "skyvine"]] }, { name: "熾使の花壇", groups: [["fallen_gardener", "garden_seraph"]] }], { gold: [43800, 52100], exp: [42300, 50300] }, [{ itemId: "floating_core", chance: .38, quantity: [1, 2] }], { clearStoryId: "broken_sky_garden_clear" }),
     blackwing_cloister: route("blackwing_cloister", "黒翼の回廊", "黒翼回廊", 72, 1740, 27400, 3, [{ type: "dungeonClear", dungeonId: "broken_sky_garden" }], "空城を巡る長い回廊。黒翼侯の射線は後列まで届く。", [{ name: "羽音の列柱", groups: [["blackwing_acolyte", "feather_blade"], ["blackwing_acolyte", "blackwing_acolyte"]] }, { name: "黒羽の謁見路", groups: [["feather_blade", "blackwing_marquis"]] }], { gold: [47700, 56700], exp: [46100, 54800] }, [{ itemId: "black_wing_feather", chance: .4, quantity: [1, 2] }], { clearStoryId: "blackwing_cloister_clear" }),
@@ -57,13 +60,13 @@
     void_star_prison: route("void_star_prison", "虚星の牢獄", "虚星牢獄", 80, 2160, 40500, 6, [{ type: "chapterCompleted", chapterId: "falling_sky_castle" }], "王座の下に封じられた虚空の監獄。本編には不要な危険地帯。", [{ name: "無明の回廊", groups: [["throne_guard", "eclipse_priest", "blackwing_acolyte"]] }, { name: "虚星の独房", groups: [["void_archon", "eclipse_priest"]] }], { gold: [70600, 84600], exp: [68200, 81700] }, [{ itemId: "void_star_crystal", chance: .3, quantity: [1, 2] }], { requiredForStory: false, optionalStoryId: "void_star_prison_clear" })
   });
 
-  data.recipes.push(
+  data.registry.entityList("recipes", [
     { id: "forge_starpiercer_rapier", resultId: "starpiercer_rapier", gold: 5900, materials: { fallen_star_iron: 8, floating_core: 4, black_wing_feather: 2 }, unlockAfter: "falling_sky_castle" },
     { id: "forge_blackwing_plate", resultId: "blackwing_plate", gold: 6100, materials: { black_wing_feather: 8, fallen_star_iron: 5, cloud_wool: 2 }, unlockAfter: "falling_sky_castle" },
     { id: "forge_eclipse_staff", resultId: "eclipse_staff", gold: 6200, materials: { eclipse_shard: 7, floating_core: 4, aurora_feather: 2 }, unlockAfter: "falling_sky_castle" }
-  );
+  ]);
 
-  Object.assign(data.storyScenes, {
+  data.registry.entities("storyScenes", {
     falling_sky_castle_opening: { id: "falling_sky_castle_opening", name: "極光に浮かぶ城影", text: "白い山脈を越えた夜、極光の星路に巨大な城影が浮かんだ。黒い羽はそこから落ちている。リナは望遠鏡を下ろし、『女王の使者は、あの城へ向かったようです』と告げた。" },
     starroad_gate_clear: { id: "starroad_gate_clear", name: "門に刻まれた地上の地図", text: "外門の裏には、王朝が失った地上の都市が赤い印で刻まれていた。空城の軍勢は逃亡者ではなく、帰還の時を待っていたらしい。" },
     broken_sky_garden_clear: { id: "broken_sky_garden_clear", name: "星を育てる庭", text: "空中庭園の蔓は土ではなく、砕けた星の光を吸っていた。女王の使者は、その根から浮遊核を一つ持ち去っている。" },
@@ -72,11 +75,11 @@
     falling_sky_castle_clear: { id: "falling_sky_castle_clear", name: "日蝕の王が恐れたもの", text: "蝕星王は門を開き、地上へ逃げようとしていた。女王の使者は王座の星図を奪い、空城より高い『黒い月』へ向かったという。" },
     void_star_prison_clear: { id: "void_star_prison_clear", name: "牢獄から届く星声", text: "虚星執政官は倒れる間際、黒い月を王朝の敵ではなく王朝自身が作った檻だと語った。空城の歴史には、消されたもう一人の王がいる。" }
   });
-  data.storyChapters.push({
+  data.registry.entityList("storyChapters", [{
     id: "falling_sky_castle", order: 9, number: 9, title: "第9章：落星の空中城", recommendedLevelRange: [68, 76],
     openingStoryId: "falling_sky_castle_opening", clearStoryId: "falling_sky_castle_clear",
     objective: "5つの本編ダンジョンを順番に攻略し、日蝕の王座を制圧する", entryRequirements: [],
     unlockText: "虚星の牢獄、星穿ちの細剣・黒翼の星鎧・蝕星の杖のレシピ、4,000G、蝕晶片×2",
     rewards: { gold: 4000, materials: { eclipse_shard: 2, guild_seal: 3 } }
-  });
+  }]);
 })();

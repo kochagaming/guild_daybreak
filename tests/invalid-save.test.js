@@ -5,7 +5,7 @@ for (const raw of ["{", "null", "false", "0", '""', "[]"]) {
   const context = vm.createContext({ window: {}, Date, Math, console: { warn() {} }, localStorage: {
     getItem: () => raw, setItem() { writes++; }, removeItem() { throw new Error("Must not delete original save"); }
   } });
-  ["data/items.js", "data/facilities.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context));
+  ["data/masterSchema.js", "data/items.js", "data/facilities.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context));
   assert(context.window.GameState.loadError, raw);
   assert(!context.window.GameState.needsInitialSave);
   assert.throws(() => context.window.GameState.save());

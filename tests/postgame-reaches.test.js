@@ -17,17 +17,21 @@ assert.deepStrictEqual(Array.from(required, route => route.recommendedLevel), [1
 assert.deepStrictEqual(Array.from(optional, route => route.id), ["five_reaches_nest"]);
 assert.deepStrictEqual(Array.from(game.Story.postgameChapters(), chapter => chapter.id), [region.id]);
 assert.strictEqual(game.Story.mainChapters().filter(chapter => chapter.number >= 1).length, 15);
-for (const route of routes) for (const sceneId of [route.openingStoryId, route.discoveryStoryId, route.clearStoryId || route.optionalStoryId]) assert(data.storyScenes[sceneId], `${sceneId} exists`);
+for (const route of routes) {
+  const storyLinks = data.relations.dungeonStoryLinks[route.id];
+  for (const sceneId of [storyLinks.openingStoryId, storyLinks.discoveryStoryId, route.clearStoryId || route.optionalStoryId]) assert(data.storyScenes[sceneId], `${sceneId} exists`);
+}
 
 for (const id of routes.flatMap(route => route.encounters.flatMap(encounter => encounter.groups.flat()))) {
   const monster = data.monsters[id];
-  assert(monster && data.monsterFamilies[id]?.length, `${id} has combat and family data`);
-  assert(monster.signatureDrops.materials.length && data.items[monster.signatureDrops.equipment.itemId]?.dropOnly, `${id} has fixed material and equipment drops`);
+  assert(monster && data.relations.monsterFamilies[id]?.length, `${id} has combat and family data`);
+  const signature = data.relations.monsterSignatureDrops[id];
+  assert(signature.materials.length && data.items[signature.equipment.itemId]?.dropOnly, `${id} has fixed material and equipment drops`);
 }
 assert.strictEqual(data.monsters.ashsea_leviathan.bossDrop.itemId, "ashsea_crown");
 assert.strictEqual(data.monsters.distant_observer.bossDrop.itemId, "distant_eye_bow");
 assert.strictEqual(data.monsters.reach_devourer.bossDrop.itemId, "boundary_plate");
-for (const id of ["ashwake_sabre", "cinderveil_cloak", "graytide_aegis", "aftersea_staff", "horizon_rapier", "watcher_robe", "ashsea_crown", "distant_eye_bow", "boundary_plate"]) assert(data.items[id].skillIds.length >= 4, `${id} has fixed skills`);
+for (const id of ["ashwake_sabre", "cinderveil_cloak", "graytide_aegis", "aftersea_staff", "horizon_rapier", "watcher_robe", "ashsea_crown", "distant_eye_bow", "boundary_plate"]) assert(data.relations.itemSkillGrants[id].length >= 4, `${id} has fixed skills`);
 const stagedRecipes = [
   ["forge_aftersea_staff", "gray_ash_sea"],
   ["forge_horizon_rapier", "inverted_glass_canyon"],
@@ -40,6 +44,7 @@ require("./helpers").completeThrough(game, "end_of_starless_night");
 assert(game.Story.mainComplete() && game.Story.current() === undefined, "The main story remains complete before postgame progression");
 assert(!game.Story.canEnter(dungeon.id), "The first reach still requires the chapter-15 optional sanctum");
 game.Story.recordResult({ success: true, dungeonId: "afterstar_sanctum" });
+while (game.Story.pendingEpisode()) game.Story.readPending();
 assert(game.Story.canEnter(dungeon.id) && !state.story.completed.includes(region.id));
 assert(stagedRecipes.every(([recipeId]) => !game.Story.canCraft(data.recipes.find(recipe => recipe.id === recipeId))));
 const beforeGold = state.gold;

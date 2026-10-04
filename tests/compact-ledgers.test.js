@@ -22,13 +22,15 @@ async function run() {
   game.GameState.reset();
   for (let index = 1; index <= 45; index += 1) create(game, `団員${String(index).padStart(2, "0")}`, index % 2 ? "warrior" : "mage");
   for (let index = 0; index < 30; index += 1) game.Items.add("iron_sword", 1, { source: "test", qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 }, equipmentSkills: [] });
+  const materialTemplates = Object.values(game.GameData.items).filter(item => item.type === "material");
+  materialTemplates.forEach(item => { if (!game.Items.count(item.id)) game.Items.add(item.id, 1, { source: "test" }); });
   game.UI.init();
 
   game.UI.navigate("characters");
   let html = node("app").innerHTML;
   assert.strictEqual(count(html, 'class="character-card compact-record"'), 20, "Character directory renders one compact page");
   assert(html.includes("行を押すと能力・スキル・装備を表示します") && html.includes("1 / 3ページ · 45人"));
-  assert(html.includes('class="compact-filter-panel directory-filter-panel" data-detail="character-directory-filters"') && html.includes("全職業・レベル順"), "Character directory filters expose current conditions and retain their open state");
+  assert(html.includes('class="compact-filter-panel directory-filter-panel" data-detail="character-directory-filters"') && html.includes("全職業・全探索経験・レベル順"), "Character directory filters expose current conditions and retain their open state");
   assert(html.includes("record-summary") && html.includes('data-action="open-character"') && !html.includes("character-detail-card"));
   node(".main-area").scrollTop = 780;
   await click("character-page", { page: "2" });
@@ -44,7 +46,19 @@ async function run() {
   assert(html.includes(`3種 / 全${totalEquipment}点`) && html.includes("×30") && html.includes("同じ性能の装備はまとめて表示します"));
   assert(html.includes('class="compact-filter-panel inventory-filter-panel" data-detail="inventory-filters"') && html.includes("全種・全品質・新しい順"), "Inventory filter heading exposes the current conditions and can retain its open state");
   assert(html.includes('class="auto-sell-panel" data-detail="inventory-auto-sell"'), "Auto-sell settings have a stable open-state identity");
-  assert(html.includes('class="panel inventory-material-panel" data-detail="inventory-materials"') && html.includes("1種 · 4点") && !html.includes('data-detail="inventory-materials" open'), "Materials stay in a compact expandable ledger with a visible total");
+  const materialTotal = materialTemplates.reduce((sum, item) => sum + game.Items.count(item.id), 0);
+  assert(html.includes('class="panel inventory-material-panel" data-detail="inventory-materials"') && html.includes(`${materialTemplates.length}種 · ${materialTotal}点`) && html.includes('id="material-search-form"') && html.includes("所持数が多い順") && html.includes(`1 / ${Math.ceil(materialTemplates.length / 20)}ページ · ${materialTemplates.length}種`) && !html.includes('data-detail="inventory-materials" open'), "Materials stay in a searchable paged ledger with a visible total");
+  node(".main-area").scrollTop = 615;
+  await listeners.change({ target: { value: "name", hasAttribute: key => key === "data-material-sort" } });
+  assert.strictEqual(node(".main-area").scrollTop, 615, "Changing the material order should preserve the inventory position");
+  node("material-query").value = "鉄鉱石";
+  await listeners.submit({ target: { id: "material-search-form" }, preventDefault() {} });
+  html = node("app").innerHTML;
+  assert(html.includes(`検索結果 1 / ${materialTemplates.length}種`) && html.includes("鉄鉱石") && html.includes('data-action="reset-material-filters"'), "Material-name search narrows the ledger without changing its total");
+  await click("reset-material-filters");
+  node(".main-area").scrollTop = 720;
+  await click("material-page", { page: "1" });
+  assert.strictEqual(node(".main-area").scrollTop, 0, "Changing material pages should return to the material-ledger heading");
   node(".main-area").scrollTop = 610;
   await listeners.change({ target: { checked: true, hasAttribute: key => key === "data-auto-sell-enabled" } });
   assert.strictEqual(node(".main-area").scrollTop, 610, "Toggling auto-sell should preserve the inventory position");

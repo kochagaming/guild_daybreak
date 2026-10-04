@@ -11,10 +11,10 @@ function rounded(value, digits = 2) {
 function generate(options = {}) {
   const game = options.game || loadGame();
   const severeRegression = Number(options.severeRegression ?? .25);
-  const maximumAdjustment = Number(game.GameData.equipmentBalance.maximumAutomaticAdjustment);
+  const maximumAdjustment = Number(game.GameData.config.equipmentBalance.maximumAutomaticAdjustment);
   const equipment = Object.values(game.GameData.items).filter(item => item.type === "weapon" || item.type === "armor");
   const types = Object.values(game.GameData.equipmentTypes).map(type => {
-    const standard = game.GameData.shop.standardTiers.map(entry => {
+    const standard = game.GameData.config.shop.standardTiers.map(entry => {
       const itemId = entry.itemIds.find(id => equipmentTypeId(game.GameData.items[id]) === type.id);
       const item = game.GameData.items[itemId];
       return {

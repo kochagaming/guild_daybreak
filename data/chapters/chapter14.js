@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData;
 
-  Object.assign(data.items, {
+  data.registry.entities("items", {
     eclipse_glass: { id: "eclipse_glass", name: "蝕玻璃", type: "material", price: 0, icon: "◇" },
     starblood_crystal: { id: "starblood_crystal", name: "星血晶", type: "material", price: 0, icon: "◆" },
     royal_memory: { id: "royal_memory", name: "王家の記憶", type: "material", price: 0, icon: "▤" },
@@ -15,7 +15,7 @@
     hollow_throne_shield: { id: "hollow_throne_shield", name: "空王座の大盾", type: "armor", armorType: "shield", tier: 16, price: 31800, defense: 164, magicDefense: 112, hp: 620, evasionRate: -.08, weight: 22, icon: "⬟", unique: true, salvage: { itemId: "throne_star_core", quantity: 4 }, specialEffects: [{ kind: "weight_defense", multiplier: 2, name: "空冠装甲" }], effectDescription: "実重量1につき防御力が2上昇する。" }
   });
 
-  Object.assign(data.monsters, {
+  const monsters = {
     starved_citizen: { id: "starved_citizen", name: "星渇きの都民", hp: 13900, attack: 1190, defense: 640, magicDefense: 610, speed: 82, icon: "♟", element: "dark", actions: 2 },
     eclipse_hound: { id: "eclipse_hound", name: "蝕影の猟犬", hp: 12500, attack: 1280, attackCount: 2, defense: 560, magicDefense: 560, speed: 104, icon: "◆", element: "dark", actions: 2, targetRule: "rear_weighted" },
     fallen_gate_captain: { id: "fallen_gate_captain", name: "帰都門の堕隊長", hp: 221000, attack: 1310, defense: 820, magicDefense: 720, speed: 78, icon: "♛", boss: true, actions: 6, element: "dark", elementModifiers: { dark: .15, arcane: 1.4 }, statusResistances: { poison: .9, paralysis: .9 }, mechanic: { kind: "telegraphed_burst", name: "閉都号令", period: 5, multiplier: 2.1, exposedMultiplier: 1.65, description: "外郭の星杭を起動し、次ターン終了時に全隊列を封鎖する。" } },
@@ -32,7 +32,7 @@
     false_queen: { id: "false_queen", name: "星影の偽女王", hp: 14400, attack: 1010, magicAttack: 1350, defense: 620, magicDefense: 790, speed: 96, icon: "♛", damageType: "magic", element: "arcane", actions: 3 },
     starbound_usurper: { id: "starbound_usurper", name: "星を纏う簒奪者", hp: 255000, attack: 1330, magicAttack: 1380, defense: 820, magicDefense: 840, speed: 90, icon: "♛", boss: true, actions: 6, damageType: "magic", element: "dark", targetRule: "rear_weighted", statusAttack: { statusId: "burn", chance: .32, duration: 3 }, elementModifiers: { dark: .1, arcane: 1.4 }, statusResistances: { burn: .95, paralysis: .95 }, bossDrop: { itemId: "regent_staff", chance: .08 }, mechanic: { kind: "telegraphed_burst", name: "王都星蝕", period: 4, multiplier: 2.2, exposedMultiplier: 1.7, description: "王都に蓄えた星力を奪い、次ターン終了時に全隊列へ落とす。" } },
     hollow_king: { id: "hollow_king", name: "冠なき空王", hp: 306000, attack: 1490, magicAttack: 1370, defense: 900, magicDefense: 820, speed: 88, icon: "♛", boss: true, actions: 7, element: "arcane", targetRule: "rear_weighted", elementModifiers: { arcane: .1, dark: 1.45 }, statusResistances: { poison: 1, burn: .95, paralysis: .95 }, bossDrop: { itemId: "hollow_throne_shield", chance: .1 }, mechanic: { kind: "telegraphed_burst", name: "無冠戴天", period: 4, multiplier: 2.25, exposedMultiplier: 1.75, description: "空の王座を地上へ重ね、次ターン終了時に全隊列を圧壊する。" } }
-  });
+  };
 
   const materials = {
     starved_citizen: [["eclipse_glass", .55, 1, 2]], eclipse_hound: [["starblood_crystal", .5, 1, 2]], fallen_gate_captain: [["eclipse_glass", 1, 2, 4]],
@@ -42,13 +42,16 @@
     eclipse_guard: [["eclipse_glass", .65, 1, 2]], false_queen: [["royal_memory", .65, 1, 3]], starbound_usurper: [["throne_star_core", 1, 2, 4]],
     hollow_king: [["throne_star_core", 1, 3, 5], ["royal_memory", 1, 3, 5]]
   };
-  Object.entries(materials).forEach(([id, drops]) => { data.monsters[id].materialDrops = drops.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] })); });
+  data.registry.relations("monsterMaterialDrops", Object.fromEntries(Object.entries(materials).map(([id, entries]) => [id,
+    entries.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] }))
+  ])));
+  data.registry.entities("monsters", monsters);
 
   const route = (id, name, shortName, level, duration, difficulty, order, requirements, description, encounters, rewards, drops, extra = {}) => ({
     id, name, shortName, recommendedLevel: level, duration, difficulty, color: "purple", chapterId: "returnless_capital", orderInChapter: order, requiredForStory: true,
     unlockRequirements: requirements, description, strategy: { label: "星蝕の王都へ帰る", feature: description, advice: "北から王都へ近づくほど、空の星が一つずつ消えていく。", preparation: [] }, encounters, rewards, drops, ...extra
   });
-  Object.assign(data.dungeons, {
+  data.registry.entities("dungeons", {
     north_return_road: route("north_return_road", "北帰の城道", "北帰城道", 98, 3120, 107200, 1, [{ type: "chapterCompleted", chapterId: "northern_star_tomb" }], "ノアと王都へ戻る凍結街道。城門は内側から閉ざされ、星渇きの民がさまよう。", [{ name: "凍れる帰路", groups: [["starved_citizen", "eclipse_hound"], ["starved_citizen", "starved_citizen"]] }, { name: "帰都門", groups: [["eclipse_hound", "fallen_gate_captain"]] }], { gold: [184800, 220100], exp: [178800, 213000] }, [{ itemId: "eclipse_glass", chance: .45, quantity: [1, 2] }], { clearStoryId: "north_return_road_clear" }),
     silent_outer_city: route("silent_outer_city", "声なき王都外郭", "沈黙外郭", 98, 3180, 111400, 2, [{ type: "dungeonClear", dungeonId: "north_return_road" }], "星力を抜かれた外郭。偽女王に従う侍祭と王冠機兵が沈黙を強いる。", [{ name: "無言の大路", groups: [["blackstar_acolyte", "crown_automaton"], ["blackstar_acolyte", "blackstar_acolyte"]] }, { name: "沈黙宮門", groups: [["crown_automaton", "palace_inquisitor"]] }], { gold: [192300, 229100], exp: [186000, 221600] }, [{ itemId: "starblood_crystal", chance: .45, quantity: [1, 2] }], { clearStoryId: "silent_outer_city_clear" }),
     royal_memory_vault: route("royal_memory_vault", "王家記憶庫", "王家記憶庫", 99, 3240, 115800, 3, [{ type: "dungeonClear", dungeonId: "silent_outer_city" }], "代々の王が失った記憶を封じた地下庫。簒奪者の正体を示す記録が眠る。", [{ name: "追憶回廊", groups: [["memory_ghost", "royal_chimera"], ["memory_ghost", "memory_ghost"]] }, { name: "王記中枢", groups: [["royal_chimera", "archive_sentinel"]] }], { gold: [200100, 238400], exp: [193500, 230500] }, [{ itemId: "royal_memory", chance: .45, quantity: [1, 2] }], { clearStoryId: "royal_memory_vault_clear" }),
@@ -57,13 +60,13 @@
     hollow_coronation: route("hollow_coronation", "空冠の地下宮", "空冠地下宮", 100, 3660, 143000, 6, [{ type: "chapterCompleted", chapterId: "returnless_capital" }], "歴代の失敗した王を一つに束ねた地下王座。本編には不要だが、王朝最後の秘儀が残る。", [{ name: "無冠王廊", groups: [["memory_ghost", "crown_automaton", "eclipse_guard"]] }, { name: "空王戴冠室", groups: [["hollow_king", "void_magister"]] }], { gold: [259900, 309400], exp: [251300, 299300] }, [{ itemId: "throne_star_core", chance: .35, quantity: [1, 2] }], { requiredForStory: false, optionalStoryId: "hollow_coronation_clear" })
   });
 
-  data.recipes.push(
+  data.registry.entityList("recipes", [
     { id: "forge_eclipse_sword", resultId: "eclipse_sword", gold: 11600, materials: { starblood_crystal: 8, royal_memory: 5, aurora_ore: 2 }, unlockAfter: "returnless_capital" },
     { id: "forge_starveil_cloth", resultId: "starveil_cloth", gold: 11800, materials: { eclipse_glass: 8, skykey_fragment: 4, black_ice: 2 }, unlockAfter: "returnless_capital" },
     { id: "forge_skykey_gauntlet", resultId: "skykey_gauntlet", gold: 12000, materials: { skykey_fragment: 8, starblood_crystal: 5, vessel_fragment: 2 }, unlockAfter: "returnless_capital" }
-  );
+  ]);
 
-  Object.assign(data.storyScenes, {
+  data.registry.entities("storyScenes", {
     returnless_capital_opening: { id: "returnless_capital_opening", name: "星の消える王都", text: "ノアを連れて北から戻ると、王都の上空だけ星が消えていた。天を貫く黒い光柱の下で、女王の使者が王座へ向かっている。『あの人は私の星核を使って、空の主を呼ぶつもりです』。" },
     north_return_road_clear: { id: "north_return_road_clear", name: "閉ざされた帰都門", text: "門衛の記録には、星力をすべて王宮へ送る命令が残っていた。民の命を燃料にしてでも、天門を完成させるつもりらしい。" },
     silent_outer_city_clear: { id: "silent_outer_city_clear", name: "偽女王の布告", text: "街角の布告は、現女王が病に倒れ、遠征から帰った王妹が摂政になったと告げていた。だが肖像の顔は、黒月で消えた使者そのものだった。" },
@@ -72,11 +75,11 @@
     returnless_capital_clear: { id: "returnless_capital_clear", name: "地上最後の王座", text: "簒奪者を倒し星核を取り戻した瞬間、ノアは自ら天門を完全に開いた。『ここで閉じても、また誰かが星を奪います。空へ行って、始まりそのものを終わらせましょう』。" },
     hollow_coronation_clear: { id: "hollow_coronation_clear", name: "冠を拒んだ名", text: "空王の中には、王になることを拒んだ者たちの記憶が残っていた。彼らが守った真名は、空の主を地上へ縛る最後の鎖になる。" }
   });
-  data.storyChapters.push({
+  data.registry.entityList("storyChapters", [{
     id: "returnless_capital", order: 14, number: 14, title: "第14章：帰らずの王都", recommendedLevelRange: [98, 99],
     openingStoryId: "returnless_capital_opening", clearStoryId: "returnless_capital_clear",
     objective: "5つの本編ダンジョンを順番に攻略し、奪われた星核を取り戻す", entryRequirements: [],
     unlockText: "空冠の地下宮、星蝕の長剣・星帷子の法衣・天鍵の篭手のレシピ、9,000G、王座星核×2",
     rewards: { gold: 9000, materials: { throne_star_core: 2, guild_seal: 4 } }
-  });
+  }]);
 })();

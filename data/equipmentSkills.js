@@ -8,7 +8,7 @@
   const conversion = (source, target, value) => ({ type: "conversion", source, target, value });
   const slayer = (familyId, value) => ({ type: "slayer", familyId, value });
   const statusResistance = (statusId, value) => ({ type: "statusResistance", statusId, value });
-  data.equipmentSkills = Object.fromEntries([
+  const equipmentSkills = Object.fromEntries([
     skill("physical_power_3", "物理攻撃威力+3%", "物理攻撃で与えるダメージが3%増加する。", [power("physical", .03)]),
     skill("magic_power_3", "魔法攻撃威力+3%", "魔法攻撃で与えるダメージが3%増加する。", [power("magic", .03)]),
     skill("attack_105", "物理攻撃力1.05倍", "装備を含む物理攻撃力が1.05倍になる。", [multiplier("attack", 1.05)]),
@@ -64,6 +64,40 @@
     skill("shield_mastery", "堅牢な守り", "最大HPと魔法防御力が1.08倍になる。", [multiplier("hp", 1.08), multiplier("magicDefense", 1.08)]),
     skill("gauntlet_training", "篭手捌き", "物理攻撃力と命中精度が上昇する。", [multiplier("attack", 1.05), bonus("hitRate", .03)]),
     skill("gauntlet_mastery", "連環の型", "攻撃回数と行動速度が増加する。", [bonus("attackCount", 1), bonus("speed", 2)]),
+    skill("set_windtrail_2", "風渡りの足並み", "行動速度+2、回避率+2%。", [bonus("speed", 2), bonus("evasionRate", .02)]),
+    skill("set_windtrail_3", "風読む眼", "命中精度+4%、会心率+4%。", [bonus("hitRate", .04), bonus("criticalRate", .04)]),
+    skill("set_glowdeep_2", "坑道の灯守り", "命中精度+3%、魔法防御力1.05倍。", [bonus("hitRate", .03), multiplier("magicDefense", 1.05)]),
+    skill("set_glowdeep_3", "深層の連携", "防御力1.05倍、造物特攻1.10倍。", [multiplier("defense", 1.05), slayer("construct", 1.1)]),
+    skill("set_ancient_echo_2", "古き残響", "魔法防御力1.05倍、不死特攻1.10倍。", [multiplier("magicDefense", 1.05), slayer("undead", 1.1)]),
+    skill("set_ancient_echo_3", "鎮魂の祈り", "魔法攻撃威力+4%、回復威力+8%。", [power("magic", .04), { type: "healingPower", value: .08 }]),
+    skill("set_starfall_2", "星渡りの共鳴", "物理攻撃と魔法攻撃の威力が2%増加する。", [power("physical", .02), power("magic", .02)]),
+    skill("set_starfall_3", "星嵐の極光", "物理攻撃と魔法攻撃の威力が4%増加し、行動速度+3。", [power("physical", .04), power("magic", .04), bonus("speed", 3)]),
+    skill("set_ashcrown_2", "灰路の守り", "防御力1.05倍、火傷耐性+20%。", [multiplier("defense", 1.05), statusResistance("burn", .2)]),
+    skill("set_ashcrown_3", "王冠砕き", "物理攻撃威力+4%、魔族特攻1.10倍。", [power("physical", .04), slayer("demon", 1.1)]),
+    skill("set_mirrortide_2", "凍潮の祈り", "魔法防御力1.05倍、凍寒耐性+20%。", [multiplier("magicDefense", 1.05), statusResistance("chill", .2)]),
+    skill("set_mirrortide_3", "深海の祝詞", "回復威力+8%、精霊特攻1.10倍。", [{ type: "healingPower", value: .08 }, slayer("spirit", 1.1)]),
+    skill("set_timewheel_2", "時刻みの歩調", "行動速度+3、命中精度+3%。", [bonus("speed", 3), bonus("hitRate", .03)]),
+    skill("set_timewheel_3", "止まらぬ歯車", "攻撃回数+1、造物特攻1.10倍。", [bonus("attackCount", 1), slayer("construct", 1.1)]),
+    skill("set_moonbriar_2", "月下の忍び歩き", "回避率+3%、毒耐性+20%。", [bonus("evasionRate", .03), statusResistance("poison", .2)]),
+    skill("set_moonbriar_3", "聖棘の巡礼", "回復威力+8%、植物特攻1.10倍。", [{ type: "healingPower", value: .08 }, slayer("plant", 1.1)]),
+    skill("set_thunderpeak_2", "雪峰の呼吸", "凍寒耐性+20%、麻痺耐性+20%。", [statusResistance("chill", .2), statusResistance("paralysis", .2)]),
+    skill("set_thunderpeak_3", "雷竜への挑み", "会心率+4%、竜特攻1.10倍。", [bonus("criticalRate", .04), slayer("dragon", 1.1)]),
+    skill("set_blackwing_2", "落星の照準", "命中精度+4%、魔法防御力1.05倍。", [bonus("hitRate", .04), multiplier("magicDefense", 1.05)]),
+    skill("set_blackwing_3", "黒翼の星蝕", "物理・魔法攻撃威力+3%、天上特攻1.10倍。", [power("physical", .03), power("magic", .03), slayer("celestial", 1.1)]),
+    skill("set_moonprison_2", "夢牢の歩法", "回避率+4%、魔法防御力1.05倍。", [bonus("evasionRate", .04), multiplier("magicDefense", 1.05)]),
+    skill("set_moonprison_3", "記憶を守る月", "最大HP1.05倍、不死特攻1.10倍。", [multiplier("hp", 1.05), slayer("undead", 1.1)]),
+    skill("set_firstroot_2", "根渡りの息吹", "行動速度+3、回復威力+5%。", [bonus("speed", 3), { type: "healingPower", value: .05 }]),
+    skill("set_firstroot_3", "始原の共生", "物理・魔法攻撃威力+3%、植物特攻1.10倍。", [power("physical", .03), power("magic", .03), slayer("plant", 1.1)]),
+    skill("set_starsea_2", "星路の導き", "命中精度+4%、魔法回復力1.05倍。", [bonus("hitRate", .04), multiplier("magicHealing", 1.05)]),
+    skill("set_starsea_3", "深潮の帰航歌", "回復威力+8%、精霊特攻1.10倍。", [{ type: "healingPower", value: .08 }, slayer("spirit", 1.1)]),
+    skill("set_northstar_2", "星器の護り", "防御力1.05倍、凍寒耐性+20%。", [multiplier("defense", 1.05), statusResistance("chill", .2)]),
+    skill("set_northstar_3", "北辰竜断ち", "物理攻撃威力+5%、竜特攻1.10倍。", [power("physical", .05), slayer("dragon", 1.1)]),
+    skill("set_skykey_2", "天鍵の照準", "命中精度+3%、魔法防御力1.05倍。", [bonus("hitRate", .03), multiplier("magicDefense", 1.05)]),
+    skill("set_skykey_3", "星蝕の開門", "魔法攻撃威力+5%、天上特攻1.10倍。", [power("magic", .05), slayer("celestial", 1.1)]),
+    skill("set_firstlight_2", "始光の共鳴", "物理・魔法攻撃威力+3%。", [power("physical", .03), power("magic", .03)]),
+    skill("set_firstlight_3", "夜明けの星座", "天上・魔族特攻1.10倍。", [slayer("celestial", 1.1), slayer("demon", 1.1)]),
+    skill("set_afterstar_2", "境界を渡る力", "物理・魔法攻撃威力+4%。", [power("physical", .04), power("magic", .04)]),
+    skill("set_afterstar_3", "星後の地平", "物理・魔法攻撃力1.05倍、行動速度+3。", [multiplier("attack", 1.05), multiplier("magicAttack", 1.05), bonus("speed", 3)]),
     skill("ultra_worldbreaker", "世界を砕く力", "物理攻撃威力が18%増加する。", [power("physical", .18)]),
     skill("ultra_starcaster", "星界の魔力", "魔法攻撃威力が18%増加する。", [power("magic", .18)]),
     skill("ultra_eternal", "不滅の生命", "最大HPが1.25倍になる。", [multiplier("hp", 1.25)]),
@@ -73,7 +107,9 @@
     skill("ultra_lifebringer", "命を巡らせる祈り", "魔法回復力1.20倍、回復威力+20%。", [multiplier("magicHealing", 1.2), { type: "healingPower", value: .2 }]),
     skill("ultra_transcendent", "理を越えた才", "物理攻撃力と魔法攻撃力が1.12倍になる。", [multiplier("attack", 1.12), multiplier("magicAttack", 1.12)])
   ].map(entry => [entry.id, entry]));
-  data.upgradeSkillProgression = {
+  data.registry.entities("equipmentSkills", equipmentSkills);
+
+  const upgradeSkillProgression = {
     rapier: [{ level: 3, skillId: "rapier_training" }, { level: 6, skillId: "rapier_mastery" }],
     sword: [{ level: 3, skillId: "sword_training" }, { level: 6, skillId: "sword_mastery" }],
     katana: [{ level: 3, skillId: "katana_training" }, { level: 6, skillId: "katana_mastery" }],
@@ -85,4 +121,5 @@
     shield: [{ level: 3, skillId: "shield_training" }, { level: 6, skillId: "shield_mastery" }],
     gauntlet: [{ level: 3, skillId: "gauntlet_training" }, { level: 6, skillId: "gauntlet_mastery" }]
   };
+  data.registry.relations("upgradeSkillProgression", upgradeSkillProgression);
 })();

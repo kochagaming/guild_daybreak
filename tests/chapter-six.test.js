@@ -27,15 +27,21 @@ required.forEach((dungeon, index) => {
 });
 assert.strictEqual(state.gold, rewardGold + chapter.rewards.gold);
 assert.strictEqual(game.Items.count("royal_spring"), 2);
-assert(data.partyProgression.partySlots.unlocks.some(entry => entry.chapterNumber === 6 && entry.slot === 7));
+assert(data.config.partyProgression.partySlots.unlocks.some(entry => entry.chapterNumber === 6 && entry.slot === 7));
 assert.strictEqual(game.Party.availableLimit(), 7, "Chapter six grants the seventh party right without a code");
 assert(game.Story.canEnter("forgotten_titan_tomb"));
-game.Story.recordResult({ success: true, dungeonId: "forgotten_titan_tomb" });
+const titanResult = { success: true, dungeonId: "forgotten_titan_tomb" };
+game.Story.recordResult(titanResult);
 assert(game.Story.optionalStories().some(entry => entry.scene.id === "forgotten_titan_clear"));
+assert.deepStrictEqual(JSON.parse(JSON.stringify(titanResult.companionAdvancements)), [{ companionId: "tio", stageId: "free_clock", previousStageId: "base" }]);
+assert.strictEqual(game.Companions.stageId("tio"), "free_clock");
+const tioSkills = game.Characters.learnedSkills(game.Companions.character("tio"));
+assert(tioSkills.some(skill => skill.id === "companion_tio_epoch_break") && tioSkills.some(skill => skill.id === "companion_tio_free_clock"));
+assert(!tioSkills.some(skill => skill.id === "companion_tio_second_hand"));
 
 for (const id of ["time_sand", "brass_gear", "memory_glass", "royal_spring", "giant_core"]) {
   assert.strictEqual(data.items[id].type, "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)), `${id} needs a monster source`);
 }
 for (const id of ["chronoglass_rapier", "brasswall_shield", "memory_robe"]) {
   const recipe = data.recipes.find(entry => entry.resultId === id);
@@ -44,8 +50,8 @@ for (const id of ["chronoglass_rapier", "brasswall_shield", "memory_robe"]) {
 }
 assert.strictEqual(data.monsters.gear_king.bossDrop.itemId, "gear_king_blade");
 assert.strictEqual(data.monsters.forgotten_titan.bossDrop.itemId, "titan_clock_armor");
-assert(data.items.ember_bulwark.skillIds.includes("paralysis_resistance_20"), "a pre-chapter paralysis counter should be obtainable");
-assert(data.items.brasswall_shield.skillIds.includes("paralysis_resistance_35"), "chapter-six crafting should provide a stronger paralysis counter");
+assert(data.relations.itemSkillGrants.ember_bulwark.includes("paralysis_resistance_20"), "a pre-chapter paralysis counter should be obtainable");
+assert(data.relations.itemSkillGrants.brasswall_shield.includes("paralysis_resistance_35"), "chapter-six crafting should provide a stronger paralysis counter");
 const paralysisShield = game.Items.add("brasswall_shield", 1, { qualityId: "standard", source: "craft", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];
 const paralysisStats = game.Characters.stats(game.Characters.get(state.characters[0].id), [paralysisShield]);
 assert.strictEqual(paralysisStats.statusResistances.paralysis, .35);
@@ -53,13 +59,14 @@ for (const id of ["gate_colossus", "gear_king", "time_queen", "forgotten_titan"]
   assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst", `${id} should expose a readable action cycle`);
 }
 for (const dungeon of routes) {
-  assert(dungeon.openingStoryId && data.storyScenes[dungeon.openingStoryId], `${dungeon.id} needs an opening scene`);
-  assert(dungeon.discoveryStoryId && data.storyScenes[dungeon.discoveryStoryId], `${dungeon.id} needs a discovery scene`);
+  const links = data.relations.dungeonStoryLinks[dungeon.id];
+  assert(links?.openingStoryId && data.storyScenes[links.openingStoryId], `${dungeon.id} needs an opening scene`);
+  assert(links?.discoveryStoryId && data.storyScenes[links.discoveryStoryId], `${dungeon.id} needs a discovery scene`);
 }
 for (const id of Object.keys(data.monsters).filter(id => ["gate_scarab", "tide_clockwork", "gate_colossus", "sand_jackal", "glass_nomad", "brass_basilisk", "minute_hand", "bell_wraith", "clock_warden", "gear_mason", "spring_guard", "gear_king", "memory_doll", "hourglass_knight", "time_queen", "forgotten_titan"].includes(id))) {
-  assert(data.monsters[id].signatureDrops?.materials?.length && data.monsters[id].signatureDrops?.equipment?.itemId, `${id} needs signature loot`);
+  assert(data.relations.monsterSignatureDrops[id]?.materials?.length && data.relations.monsterSignatureDrops[id]?.equipment?.itemId, `${id} needs signature loot`);
 }
-assert(data.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 13));
+assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 13));
 const parsed = game.SaveTransfer.parse(JSON.stringify(state));
 assert(parsed.ok, parsed.message);
-console.log("Chapter six test passed: five main clockwork routes, optional titan, story discoveries, materials, recipes, signature loot, boss gear and upgrade cap");
+console.log("Chapter six test passed: five main clockwork routes, Tio-only titan growth, story discoveries, materials, recipes, signature loot, boss gear and upgrade cap");

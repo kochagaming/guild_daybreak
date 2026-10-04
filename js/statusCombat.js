@@ -5,7 +5,7 @@
 
   function initialize(unit) {
     if (!unit.statuses || typeof unit.statuses !== "object") unit.statuses = {};
-    unit.skipTurn = false;
+    if (typeof unit.skipTurn !== "boolean") unit.skipTurn = false;
     return unit;
   }
 
@@ -34,13 +34,19 @@
   function apply(random, source, target, effect, log, encounter, round) {
     const definition = definitions()[effect.statusId];
     if (!definition || target.currentHp <= 0) return { applied: false, reason: "invalid" };
-    const chance = Math.min(1, Math.max(0, Number(effect.chance ?? 1))) * (1 - resistance(target, effect.statusId));
+    const baseChance = Math.min(1, Math.max(0, Number(effect.chance ?? 1)));
+    const resistanceValue = resistance(target, effect.statusId);
+    const chance = baseChance * (1 - resistanceValue);
     if (source?.side === "enemy" && source.observation && !source.observation.statusAttacks.includes(effect.statusId)) source.observation.statusAttacks.push(effect.statusId);
-    if (random() >= chance) {
-      log.push({ kind: "status", text: `【状態異常抵抗】${target.name}は${definition.name}を防いだ。`, encounter, round });
-      if (source?.side === "hero" && target.side === "enemy" && target.observation && !target.observation.statusResisted.includes(effect.statusId)) target.observation.statusResisted.push(effect.statusId);
-      if (source?.strategyReport) source.strategyReport.statusResisted++;
-      return { applied: false, resisted: true, chance };
+    const roll = random();
+    if (roll >= chance) {
+      const resisted = resistanceValue > 0 && roll < baseChance;
+      log.push({ kind: "status", text: resisted
+        ? `【状態異常抵抗】${target.name}は${definition.name}を防いだ。`
+        : `【状態異常不発】${target.name}に${definition.name}は定着しなかった。`, encounter, round });
+      if (resisted && source?.side === "hero" && target.side === "enemy" && target.observation && !target.observation.statusResisted.includes(effect.statusId)) target.observation.statusResisted.push(effect.statusId);
+      if (resisted && source?.strategyReport) source.strategyReport.statusResisted++;
+      return { applied: false, resisted, chance, reason: resisted ? "resistance" : "chance" };
     }
     initialize(target);
     const duration = Math.max(1, Math.round(effect.duration || definition.defaultDuration || 1));
@@ -57,6 +63,7 @@
     log.push({ kind: "status", text: `【状態異常】${source?.name || "効果"}により${target.name}は${definition.name}になった（${duration}ターン${detail}）。`, encounter, round });
     if (source?.side === "hero" && target.side === "enemy" && target.observation && !target.observation.statusLanded.includes(effect.statusId)) target.observation.statusLanded.push(effect.statusId);
     if (source?.strategyReport) source.strategyReport.statusInflicted++;
+    if (target.side === "hero" && window.SkillCombat?.afterStatusApplied) window.SkillCombat.afterStatusApplied(target, effect.statusId, log, encounter, round);
     return { applied: true, duration, potency };
   }
 
@@ -64,12 +71,23 @@
     return (effects || []).map(effect => apply(random, source, target, effect, log, encounter, round));
   }
 
+  function cleanseableStatusIds(target, effect) {
+    const statuses = target?.statuses && typeof target.statuses === "object" ? target.statuses : {};
+    const allowed = effect?.statusIds === "all" || !effect?.statusIds ? null : new Set(effect.statusIds);
+    return Object.keys(statuses)
+      .filter(id => !allowed || allowed.has(id))
+      .map((id, index) => ({ id, index, priority: Number(definitions()[id]?.cleansePriority) || 0, remaining: Number(statuses[id]?.remaining) || 0 }))
+      .sort((a, b) => b.priority - a.priority || b.remaining - a.remaining || a.index - b.index)
+      .slice(0, Math.max(1, effect?.count || 1))
+      .map(entry => entry.id);
+  }
+
   function cleanse(target, effect, log, encounter, round, sourceName) {
     initialize(target);
-    const allowed = effect.statusIds === "all" || !effect.statusIds ? null : new Set(effect.statusIds);
-    const ids = Object.keys(target.statuses).filter(id => !allowed || allowed.has(id)).slice(0, Math.max(1, effect.count || 1));
+    const ids = cleanseableStatusIds(target, effect);
     if (!ids.length) return [];
     ids.forEach(id => delete target.statuses[id]);
+    target.skipTurn = Object.keys(target.statuses).some(id => Boolean(definitions()[id]?.skipTurn));
     const names = ids.map(id => definitions()[id]?.name || id);
     log.push({ kind: "status", text: `【状態異常解除】${sourceName || target.name}が${target.name}の${names.join("・")}を解除した。`, encounter, round });
     return ids;
@@ -90,6 +108,7 @@
           if (state.source?.metrics) { state.source.metrics.damageDealt += damage; state.source.metrics.statusDamageDealt += damage; }
           if (state.source?.strategyReport) state.source.strategyReport.statusDamage += damage;
           log.push({ kind: "status", text: `【${definition.name}】${unit.name}は${damage}ダメージ。${unit.currentHp > 0 ? `残りHP ${unit.currentHp}/${unit.hp}` : "戦闘不能になった！"}`, encounter, round });
+          if (unit.currentHp > 0 && window.SkillCombat?.afterHealthLoss) window.SkillCombat.afterHealthLoss(unit, log, encounter, round);
         }
         if (unit.currentHp > 0 && definition.skipTurn) {
           unit.skipTurn = true;
@@ -115,5 +134,5 @@
   }
 
   function elementLabel(elementId) { return elements()[elementId]?.name || elementId || "無属性"; }
-  window.StatusCombat = { initialize, elementMultiplier, elementLabel, attackMultiplier, speedMultiplier, evasionMultiplier, resistance, apply, applyAll, cleanse, beginRound, endRound };
+  window.StatusCombat = { initialize, elementMultiplier, elementLabel, attackMultiplier, speedMultiplier, evasionMultiplier, resistance, apply, applyAll, cleanseableStatusIds, cleanse, beginRound, endRound };
 })();

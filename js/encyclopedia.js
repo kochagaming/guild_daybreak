@@ -80,6 +80,30 @@
       target[key] = Array.from(new Set(target[key].concat(incoming[key] || [])));
     });
   }
+  function battleInsights(observations) {
+    const book = ensure();
+    const arrayKeys = ["attackElements", "statusAttacks", "elementWeaknesses", "elementResistances", "statusResisted", "statusLanded", "difficultySkillIds"];
+    return Object.entries(observations || {}).map(([monsterId, incoming]) => {
+      if (!window.GameData.monsters[monsterId]) return null;
+      const stored = book.monsters[monsterId];
+      const previous = normalizeMonster(stored);
+      const insight = {
+        monsterId,
+        firstEncounter: !stored || previous.encountered <= 0,
+        magicAttack: Boolean(incoming.magicAttack && !previous.observations.magicAttack),
+        rearTargeting: Boolean(incoming.rearTargeting && !previous.observations.rearTargeting),
+        maxAttackCount: (incoming.maxAttackCount || 0) > previous.observations.maxAttackCount ? incoming.maxAttackCount : null,
+        burstRounds: (incoming.burstRounds || []).length && !(previous.observations.burstRounds || []).length ? Array.from(new Set(incoming.burstRounds)) : []
+      };
+      arrayKeys.forEach(key => {
+        const known = new Set(previous.observations[key] || []);
+        insight[key] = Array.from(new Set(incoming[key] || [])).filter(value => !known.has(value));
+      });
+      const discovered = insight.firstEncounter || insight.magicAttack || insight.rearTargeting || insight.maxAttackCount != null
+        || insight.burstRounds.length || arrayKeys.some(key => insight[key].length);
+      return discovered ? insight : null;
+    }).filter(Boolean);
+  }
   function bootstrap(book) {
     const state = window.GameState.data, itemMinimums = {};
     state.inventory.equipment.forEach(instance => {
@@ -209,7 +233,7 @@
         window.DungeonDifficulty.ids().forEach(difficultyId => {
           const variantDungeon = window.DungeonDifficulty.variant(dungeon, difficultyId);
           const variantMonster = window.DungeonDifficulty.monster(baseMonster, difficultyId);
-          const fixed = (baseMonster.materialDrops || []).some(drop => drop.itemId === id)
+          const fixed = window.MonsterLoot.materialDrops(baseMonster).some(drop => drop.itemId === id)
             || (variantMonster.signatureDropTiers || []).some(entry => (entry.drops.materials || []).some(drop => drop.itemId === id) || entry.drops.equipment?.itemId === id)
             || baseMonster.bossDrop?.itemId === id;
           const standard = equipment && window.MonsterLoot.preview(variantDungeon, baseMonster).some(candidate => candidate.id === id);
@@ -239,5 +263,5 @@
   }
 
   ensure();
-  window.Encyclopedia = { ensure, recordItem, recordQuality, recordUltraRareTitle, recordBattle, item, bestQuality, ultraRareTitle, monster, unreadItems, unreadUltraRareTitles, unreadMonsters, trackedItem, trackedTarget, setTrackedItem, recordTargetProgress, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
+  window.Encyclopedia = { ensure, recordItem, recordQuality, recordUltraRareTitle, battleInsights, recordBattle, item, bestQuality, ultraRareTitle, monster, unreadItems, unreadUltraRareTitles, unreadMonsters, trackedItem, trackedTarget, setTrackedItem, recordTargetProgress, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
 })();

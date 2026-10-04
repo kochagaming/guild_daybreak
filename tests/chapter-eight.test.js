@@ -30,7 +30,7 @@ assert(game.Story.optionalStories().some(entry => entry.scene.id === "white_drag
 
 for (const id of ["frost_steel", "thunder_crystal", "cloud_wool", "aurora_feather", "white_dragon_scale"]) {
   assert.strictEqual(data.items[id].type, "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)));
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)));
 }
 for (const id of ["thundersteel_katana", "cloudweave_mantle", "aurora_staff"]) {
   const recipe = data.recipes.find(entry => entry.resultId === id);
@@ -38,10 +38,13 @@ for (const id of ["thundersteel_katana", "cloudweave_mantle", "aurora_staff"]) {
 }
 assert.strictEqual(data.monsters.sky_monk.bossDrop.itemId, "sky_monk_gauntlets");
 assert.strictEqual(data.monsters.white_dragon.bossDrop.itemId, "white_dragon_shield");
-assert(data.items.cloudweave_mantle.skillIds.includes("chill_resistance_35"));
-assert(data.items.aurora_staff.skillIds.includes("paralysis_resistance_35"));
+assert(data.relations.itemSkillGrants.cloudweave_mantle.includes("chill_resistance_35"));
+assert(data.relations.itemSkillGrants.aurora_staff.includes("paralysis_resistance_35"));
 for (const id of ["pass_colossus", "thunder_rook", "sky_monk", "aurora_warden", "white_dragon"]) assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst");
-for (const dungeon of routes) assert(data.storyScenes[dungeon.openingStoryId] && data.storyScenes[dungeon.discoveryStoryId]);
-assert(data.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 17));
+for (const dungeon of routes) {
+  const links = data.relations.dungeonStoryLinks[dungeon.id];
+  assert(data.storyScenes[links.openingStoryId] && data.storyScenes[links.discoveryStoryId]);
+}
+assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 17));
 assert(game.SaveTransfer.parse(JSON.stringify(state)).ok);
 console.log("Chapter eight test passed: five main mountain routes, optional white dragon, chill/paralysis counterplay, stories, materials, recipes, boss gear and upgrade cap");

@@ -30,7 +30,7 @@ assert(game.Story.optionalStories().some(entry => entry.scene.id === "void_star_
 
 for (const id of ["fallen_star_iron", "black_wing_feather", "floating_core", "eclipse_shard", "void_star_crystal"]) {
   assert.strictEqual(data.items[id].type, "material");
-  assert(Object.values(data.monsters).some(monster => (monster.materialDrops || []).some(drop => drop.itemId === id)));
+  assert(Object.values(data.monsters).some(monster => (data.relations.monsterMaterialDrops[monster.id] || []).some(drop => drop.itemId === id)));
 }
 for (const id of ["starpiercer_rapier", "blackwing_plate", "eclipse_staff"]) {
   const recipe = data.recipes.find(entry => entry.resultId === id);
@@ -38,9 +38,12 @@ for (const id of ["starpiercer_rapier", "blackwing_plate", "eclipse_staff"]) {
 }
 assert.strictEqual(data.monsters.blackwing_marquis.bossDrop.itemId, "winglord_bow");
 assert.strictEqual(data.monsters.void_archon.bossDrop.itemId, "void_archon_robe");
-assert(data.items.eclipse_staff.skillIds.includes("burn_resistance_35"));
+assert(data.relations.itemSkillGrants.eclipse_staff.includes("burn_resistance_35"));
 for (const id of ["starroad_gatekeeper", "blackwing_marquis", "foundry_keeper", "eclipse_regent", "void_archon"]) assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst");
-for (const dungeon of routes) assert(data.storyScenes[dungeon.openingStoryId] && data.storyScenes[dungeon.discoveryStoryId]);
-assert(data.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 19));
+for (const dungeon of routes) {
+  const links = data.relations.dungeonStoryLinks[dungeon.id];
+  assert(data.storyScenes[links.openingStoryId] && data.storyScenes[links.discoveryStoryId]);
+}
+assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 19));
 assert(game.SaveTransfer.parse(JSON.stringify(state)).ok);
 console.log("Chapter nine test passed: five main sky-castle routes, optional void prison, rear-line/burn counterplay, stories, materials, recipes, boss gear and upgrade cap");

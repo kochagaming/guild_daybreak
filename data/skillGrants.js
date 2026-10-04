@@ -32,14 +32,14 @@
     arcane: ["fireball"], sacred: ["heal", "emergency_heal"], noble: ["battle_command"],
     mercenary: ["power_strike"], merchant: ["adaptive_strike"], blacksmith: ["stone_guard"],
     scholar: ["rune_spark"], frontier: ["feral_pounce"], orphan: ["vital_strike"],
-    troupe: ["healing_song"], alchemist: ["fireball"], dragon_ward: ["dragon_breath"]
+    troupe: ["healing_song"], alchemist: ["fireball", "instant_detox"], dragon_ward: ["dragon_breath"]
   };
 
-  data.skillGrants = { job: {}, race: {}, birth: {} };
+  const skillGrants = { job: {}, race: {}, birth: {} };
 
   Object.keys(data.jobs).forEach(id => {
     const actions = jobActions[id];
-    data.skillGrants.job[id] = [
+    skillGrants.job[id] = [
       ...["offense", "guard", "accuracy", "specialty"].map(tier => initial(initialSkill("job", id, tier))),
       at(actions[0] || trait("job", id), 10),
       at(actions[1] || progression("job", id, "veteran"), 40),
@@ -49,7 +49,7 @@
   });
 
   Object.keys(data.races).forEach(id => {
-    data.skillGrants.race[id] = [
+    skillGrants.race[id] = [
       ...["offense", "guard", "accuracy", "specialty"].map(tier => initial(initialSkill("race", id, tier))),
       at(raceActions[id], 1),
       at(trait("race", id), 30),
@@ -60,7 +60,7 @@
 
   Object.keys(data.births).forEach(id => {
     const actions = birthActions[id];
-    data.skillGrants.birth[id] = [
+    skillGrants.birth[id] = [
       ...["offense", "guard", "accuracy", "specialty"].map(tier => initial(initialSkill("birth", id, tier))),
       at(trait("birth", id), 1),
       at(actions[0] || progression("birth", id, "growth20"), 20),
@@ -68,4 +68,5 @@
       at(progression("birth", id, "legacy"), 100)
     ];
   });
+  data.registry.relations("skillGrants", skillGrants);
 })();

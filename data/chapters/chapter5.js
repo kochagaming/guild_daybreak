@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData;
 
-  Object.assign(data.items, {
+  data.registry.entities("items", {
     frost_pearl: { id: "frost_pearl", name: "霜真珠", type: "material", price: 0, icon: "○" },
     drowned_ink: { id: "drowned_ink", name: "沈黙の墨", type: "material", price: 0, icon: "☾" },
     abyssal_iron: { id: "abyssal_iron", name: "深海鉄", type: "material", price: 0, icon: "◆" },
@@ -16,7 +16,7 @@
     abyss_whale_shield: { id: "abyss_whale_shield", name: "深淵鯨の大盾", type: "armor", armorType: "shield", tier: 7, price: 6200, attack: 0, defense: 35, magicDefense: 23, hp: 60, weight: 15, icon: "⬟", unique: true, salvage: { itemId: "tide_heart", quantity: 3 }, specialEffects: [{ kind: "weight_defense", multiplier: 1 }], effectDescription: "この盾の実重量1につき防御+1。重量補正と防具適性を反映する。" }
   });
 
-  Object.assign(data.monsters, {
+  const monsters = {
     frost_crab: { id: "frost_crab", name: "霜甲ガニ", hp: 800, attack: 120, defense: 110, magicDefense: 45, speed: 32, icon: "⬟", element: "ice", statusAttack: { statusId: "chill", chance: .2, duration: 3 }, elementModifiers: { ice: .55, lightning: 1.3 }, statusResistances: { poison: .4, chill: .5 } },
     brine_wisp: { id: "brine_wisp", name: "潮霊", hp: 650, attack: 140, defense: 85, magicDefense: 55, speed: 38, icon: "◌", damageType: "magic", element: "ice", statusAttack: { statusId: "chill", chance: .28, duration: 3 }, elementModifiers: { ice: .6, fire: 1.2 }, statusResistances: { chill: .65 } },
     reef_guardian: { id: "reef_guardian", name: "白礁の番人", hp: 7000, attack: 210, defense: 140, magicDefense: 70, speed: 35, icon: "♜", boss: true, actions: 3, element: "ice", statusAttack: { statusId: "chill", chance: .32, duration: 3 }, elementModifiers: { ice: .5, lightning: 1.3 }, statusResistances: { chill: .7 } },
@@ -34,7 +34,7 @@
     mirror_queen: { id: "mirror_queen", name: "鏡海女王ネレイス", hp: 15500, attack: 190, magicAttack: 290, defense: 120, magicDefense: 140, speed: 45, icon: "♛", boss: true, actions: 3, damageType: "magic", element: "ice", statusAttack: { statusId: "chill", chance: .42, duration: 3 }, elementModifiers: { ice: .4, lightning: 1.35 }, statusResistances: { poison: .7, paralysis: .65, chill: .9 }, bossDrop: { itemId: "mirror_queen_rapier", chance: .08 }, mechanic: { kind: "telegraphed_burst", name: "静海の戴冠", period: 4, multiplier: 1.5, exposedMultiplier: 1.5, statusAmplifier: { statusId: "chill", multiplier: 1.15 }, description: "鏡の潮を集めた次ターン終了時に全体攻撃。凍寒中の相手には威力1.15倍。防御・解除・耐性で被害を抑えられ、発動後は隙が生まれる。" } },
     trench_maw: { id: "trench_maw", name: "海溝の大顎", hp: 2500, attack: 245, defense: 170, magicDefense: 90, speed: 38, actions: 2, icon: "◆", element: "dark", elementModifiers: { dark: .55, lightning: 1.3 } },
     abyss_whale: { id: "abyss_whale", name: "深淵鯨アビサル", hp: 18000, attack: 260, magicAttack: 310, defense: 110, magicDefense: 140, speed: 42, icon: "♛", boss: true, actions: 3, damageType: "magic", element: "dark", elementModifiers: { dark: .4, lightning: 1.4 }, statusResistances: { poison: 1, paralysis: .8 }, bossDrop: { itemId: "abyss_whale_shield", chance: .1 }, mechanic: { kind: "telegraphed_burst", name: "深淵の潮声", period: 3, multiplier: 1.7, exposedMultiplier: 1.55, description: "短い周期で全体へ潮圧を放つ。防御で軽減でき、発動後は隙が生まれる。" } }
-  });
+  };
 
   const materialDrops = {
     frost_crab: [["frost_pearl", .45, 1, 2]], brine_wisp: [["frost_pearl", .5, 1, 2]], reef_guardian: [["frost_pearl", 1, 2, 4]],
@@ -44,13 +44,16 @@
     mirror_mermaid: [["mirror_scale", .65, 1, 2]], tide_priest: [["drowned_ink", .55, 1, 2]], mirror_queen: [["tide_heart", 1, 2, 3], ["mirror_scale", 1, 3, 5]],
     trench_maw: [["abyssal_iron", .7, 1, 3]], abyss_whale: [["tide_heart", 1, 3, 5], ["abyssal_iron", 1, 3, 5]]
   };
-  Object.entries(materialDrops).forEach(([id, drops]) => { data.monsters[id].materialDrops = drops.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] })); });
+  data.registry.relations("monsterMaterialDrops", Object.fromEntries(Object.entries(materialDrops).map(([id, entries]) => [id,
+    entries.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] }))
+  ])));
+  data.registry.entities("monsters", monsters);
 
   const route = (id, name, shortName, level, duration, difficulty, order, requirements, description, encounters, rewards, drops, extra = {}) => ({
     id, name, shortName, recommendedLevel: level, duration, difficulty, color: "blue", chapterId: "mirror_tide", orderInChapter: order, requiredForStory: true,
     unlockRequirements: requirements, description, strategy: { label: "潮の異変を調べる", feature: description, advice: "現地の戦闘記録から有効な手段を探してください。", preparation: [] }, encounters, rewards, drops, ...extra
   });
-  Object.assign(data.dungeons, {
+  data.registry.entities("dungeons", {
     frost_coast: route("frost_coast", "白霜の海岸", "白霜海岸", 28, 510, 1850, 1, [{ type: "chapterCompleted", chapterId: "ember_crown" }], "季節外れの霜に覆われ、波音だけが遠く響く海岸。", [{ name: "凍る波打ち際", groups: [["frost_crab", "frost_crab"], ["brine_wisp", "frost_crab"]] }, { name: "白礁の門", groups: [["reef_guardian", "frost_crab"]] }], { gold: [3300, 4000], exp: [3200, 3900] }, [{ itemId: "frost_pearl", chance: .35, quantity: [1, 2] }], { clearStoryId: "frost_coast_clear" }),
     drowned_archive: route("drowned_archive", "水没した記録院", "水没記録院", 30, 540, 2100, 2, [{ type: "dungeonClear", dungeonId: "frost_coast" }], "海中へ沈んだ王朝の記録院。文字を消す黒い潮が満ちている。", [{ name: "沈んだ閲覧室", groups: [["drowned_scribe", "ink_slime"], ["ink_slime", "ink_slime"]] }, { name: "封印書架", groups: [["drowned_scribe", "archive_keeper"]] }], { gold: [3800, 4600], exp: [3700, 4500] }, [{ itemId: "drowned_ink", chance: .4, quantity: [1, 2] }], { clearStoryId: "drowned_archive_clear" }),
     blue_reef: route("blue_reef", "蒼晶珊瑚の回廊", "蒼晶回廊", 32, 570, 2400, 3, [{ type: "dungeonClear", dungeonId: "drowned_archive" }], "海底で玻璃のような珊瑚が育つ、光の迷路。", [{ name: "玻璃の狭間", groups: [["glass_shark", "glass_shark"], ["ice_serpent", "glass_shark"]] }, { name: "蒼礁の心臓", groups: [["blue_reef_lord", "ice_serpent"]] }], { gold: [4350, 5250], exp: [4250, 5100] }, [{ itemId: "mirror_scale", chance: .4, quantity: [1, 2] }], { clearStoryId: "blue_reef_clear" }),
@@ -59,13 +62,13 @@
     abyssal_trench: route("abyssal_trench", "深淵鯨の海溝", "深淵海溝", 40, 780, 3900, 6, [{ type: "chapterCompleted", chapterId: "mirror_tide" }], "音も光も沈む海溝。巨大な潮声だけが海底から届く。", [{ name: "光なき斜面", groups: [["trench_maw", "trench_maw"]] }, { name: "深淵の底", groups: [["trench_maw", "abyss_whale"]] }], { gold: [7600, 9200], exp: [7400, 8900] }, [{ itemId: "tide_heart", chance: .3, quantity: [1, 2] }], { requiredForStory: false, optionalStoryId: "abyssal_trench_clear" })
   });
 
-  data.recipes.push(
+  data.registry.entityList("recipes", [
     { id: "forge_tideglass_bow", resultId: "tideglass_bow", gold: 1450, materials: { mirror_scale: 6, frost_pearl: 3, skyglass: 2 }, unlockAfter: "mirror_tide" },
     { id: "forge_frostseal_robe", resultId: "frostseal_robe", gold: 1400, materials: { frost_pearl: 6, drowned_ink: 3, ashwood: 2 }, unlockAfter: "mirror_tide" },
     { id: "forge_abyssal_gauntlets", resultId: "abyssal_gauntlets", gold: 1500, materials: { abyssal_iron: 6, drowned_ink: 2, ember_ore: 2 }, unlockAfter: "mirror_tide" }
-  );
+  ]);
 
-  Object.assign(data.storyScenes, {
+  data.registry.entities("storyScenes", {
     mirror_tide_opening: { id: "mirror_tide_opening", name: "灰の先にある海", text: "灰冠の大地に戻った風は、冷たい潮の匂いを運んできた。海図には存在しない海岸と、海中へ沈む古い街道が描き出される。リナは濡れた地図を広げ、『消された記録を追いましょう。今度の道は、海の底へ続いています』と告げた。" },
     frost_coast_clear: { id: "frost_coast_clear", name: "波が運んだ黒い頁", text: "白礁の番人が崩れると、凍った波間から黒い頁が流れ着いた。文字は読めないが、王朝の記録院を示す印だけが残っている。" },
     drowned_archive_clear: { id: "drowned_archive_clear", name: "消された航海記録", text: "沈黙の司書が守っていた帳簿には、灰冠王国へ火を運んだ船団の名があった。最後の航路だけが、何者かの墨で塗り潰されている。" },
@@ -74,10 +77,10 @@
     mirror_tide_clear: { id: "mirror_tide_clear", name: "海が記憶を返す時", text: "鏡海女王が剣を収めると、黒い潮は澄み、消された航海記録が海面へ浮かび上がった。王朝が隠した道はさらに深い海溝へ続くが、まずは長い沈黙が終わった。" },
     abyssal_trench_clear: { id: "abyssal_trench_clear", name: "深淵の底で聞いた歌", text: "深淵鯨の潮声は警告だった。海溝の底には、王朝より古い門が眠っている。鯨は大盾となる鱗を残し、門のさらに先へ姿を消した。" }
   });
-  data.storyChapters.push({
+  data.registry.entityList("storyChapters", [{
     id: "mirror_tide", order: 5, number: 5, title: "第5章：鏡潮の海", recommendedLevelRange: [28, 36], openingStoryId: "mirror_tide_opening", clearStoryId: "mirror_tide_clear",
     objective: "5つの本編ダンジョンを順番に攻略し、鏡潮の宮殿へ到達する", entryRequirements: [],
     unlockText: "深淵鯨の海溝、潮玻璃の長弓・霜印の祭衣・深海鉄の篭手のレシピ、2,000G、潮騒の心核×2",
     rewards: { gold: 2000, materials: { tide_heart: 2, guild_seal: 4 } }
-  });
+  }]);
 })();

@@ -12,33 +12,88 @@
   }
 
   function blankFacility(id, now = window.GameRuntime.now(), completed = []) {
-    const definition = window.GameData.facilities.definitions[id];
+    const definition = window.GameData.facilities[id];
     const active = !definition.unlockAfter || completed.includes(definition.unlockAfter);
     return {
       startedAt: now, activatedAt: active ? now : null, storedDuration: 0, gold: 0, materials: {}, bonusProgress: {},
-      levels: Object.fromEntries(window.GameData.facilities.trackOrder.map(trackId => [trackId, 1]))
+      levels: Object.fromEntries(window.GameData.config.facilities.trackOrder.map(trackId => [trackId, 1]))
     };
   }
   function initialFacilities() {
     const facilities = { version: 3 };
-    window.GameData.facilities.order.forEach(id => { facilities[id] = blankFacility(id); });
+    window.GameData.config.facilities.order.forEach(id => { facilities[id] = blankFacility(id); });
     return facilities;
   }
 
   function ensureFacilities(target) {
     const completed = target.story?.completed || [], now = window.GameRuntime.now();
-    window.GameData.facilities.order.forEach(id => {
+    window.GameData.config.facilities.order.forEach(id => {
       if (!target.facilities[id]) target.facilities[id] = blankFacility(id, now, completed);
       else if (target.facilities[id].activatedAt === undefined) {
-        const definition = window.GameData.facilities.definitions[id];
+        const definition = window.GameData.facilities[id];
         target.facilities[id].activatedAt = !definition.unlockAfter || completed.includes(definition.unlockAfter) ? target.facilities[id].startedAt : null;
       }
     });
     return target;
   }
 
+  function ensureStory(target) {
+    if (!Array.isArray(target.story.joinedCompanionIds)) target.story.joinedCompanionIds = [];
+    if (!target.story.companionStages || typeof target.story.companionStages !== "object" || Array.isArray(target.story.companionStages)) target.story.companionStages = {};
+    if (!Array.isArray(target.story.facts.companionMoments)) target.story.facts.companionMoments = [];
+    if (Array.isArray(target.story.facts.routeEvents)) {
+      target.story.facts.routeEvents = Object.fromEntries(target.story.facts.routeEvents.map(id => [id, { encounters: 1, successes: 0, rumorMatches: 0 }]));
+    } else if (!target.story.facts.routeEvents || typeof target.story.facts.routeEvents !== "object") target.story.facts.routeEvents = {};
+    Object.values(target.story.facts.routeEvents).forEach(record => { if (record.rumorMatches == null) record.rumorMatches = 0; });
+    if (!target.story.facts.treasureTiers || typeof target.story.facts.treasureTiers !== "object" || Array.isArray(target.story.facts.treasureTiers)) target.story.facts.treasureTiers = {};
+    if (!Number.isInteger(target.story.facts.teamSurveys) || target.story.facts.teamSurveys < 0) target.story.facts.teamSurveys = 0;
+    if (!Array.isArray(target.story.readSceneIds)) {
+      const read = new Set();
+      (target.story.completed || []).forEach(chapterId => {
+        const chapter = window.GameData.storyChapters.find(entry => entry.id === chapterId);
+        if (chapter) { read.add(chapter.openingStoryId); read.add(chapter.clearStoryId); }
+      });
+      (target.story.facts?.clears || []).forEach(dungeonId => {
+        const dungeon = window.GameData.dungeons[dungeonId], links = window.GameData.relations?.dungeonStoryLinks?.[dungeonId] || {};
+        if (!dungeon) return;
+        read.add(links.openingStoryId); read.add(links.discoveryStoryId); read.add(dungeon.clearStoryId || dungeon.optionalStoryId);
+      });
+      [...(target.partyPlans || []), ...(target.expeditions || [])].filter(Boolean).forEach(entry => {
+        const dungeon = window.GameData.dungeons[entry.dungeonId];
+        const links = window.GameData.relations?.dungeonStoryLinks?.[dungeon?.baseDungeonId || dungeon?.id] || {};
+        read.add(links.openingStoryId);
+      });
+      target.story.readSceneIds = Array.from(read).filter(id => id && window.GameData.storyScenes[id]);
+    }
+    target.story.joinedCompanionIds.forEach(companionId => {
+      const progression = window.GameData.relations?.companionProgressions?.[companionId];
+      if (progression && !target.story.companionStages[companionId]) target.story.companionStages[companionId] = progression.initialStageId;
+    });
+    return target;
+  }
+
+  function ensureCharacterSources(target) {
+    if (!target.adventurerBonds || typeof target.adventurerBonds !== "object" || Array.isArray(target.adventurerBonds)) target.adventurerBonds = { version: 1, pairs: {}, memories: {} };
+    if (!target.adventurerBonds.pairs || typeof target.adventurerBonds.pairs !== "object" || Array.isArray(target.adventurerBonds.pairs)) target.adventurerBonds.pairs = {};
+    if (!target.adventurerBonds.memories || typeof target.adventurerBonds.memories !== "object" || Array.isArray(target.adventurerBonds.memories)) target.adventurerBonds.memories = {};
+    target.characters.forEach(character => {
+      if (!character.source) character.source = { type: "recruitment", ...(character.recruitmentId ? { recruitmentId: character.recruitmentId } : {}) };
+      if (character.expeditionRecord && typeof character.expeditionRecord === "object") {
+        if (!Number.isInteger(character.expeditionRecord.routeSuccesses)) character.expeditionRecord.routeSuccesses = 0;
+        if (!character.expeditionRecord.routeEventSuccesses || typeof character.expeditionRecord.routeEventSuccesses !== "object" || Array.isArray(character.expeditionRecord.routeEventSuccesses)) character.expeditionRecord.routeEventSuccesses = {};
+        if (!Number.isInteger(character.expeditionRecord.treasureOpenings)) character.expeditionRecord.treasureOpenings = 0;
+        if (!Number.isInteger(character.expeditionRecord.teamSurveys)) character.expeditionRecord.teamSurveys = 0;
+      }
+      if (character.source.type === "companion") {
+        const companion = window.GameData.companions?.[character.source.companionId];
+        if (companion?.previousPortraitIds?.includes(character.portraitId)) character.portraitId = companion.portraitId;
+      }
+    });
+    return target;
+  }
+
   function partyCapacity() {
-    return Math.max(1, Number(window.GameData.partyProgression?.partySlots?.maximum) || Number(window.Party?.maximum?.()) || 1);
+    return Math.max(1, Number(window.GameData.config.partyProgression?.partySlots?.maximum) || Number(window.Party?.maximum?.()) || 1);
   }
 
   function ensurePartyCapacity(target) {
@@ -58,7 +113,7 @@
   function initialState() {
     return {
       version: 11,
-      story: { version: 1, completed: [], facts: { departed: false, clears: [], difficultyClears: [], discoveries: [] } },
+      story: { version: 1, completed: [], readSceneIds: [], joinedCompanionIds: [], companionStages: {}, facts: { departed: false, clears: [], difficultyClears: [], discoveries: [], companionMoments: [], routeEvents: {}, treasureTiers: {}, teamSurveys: 0 } },
       gold: 500,
       facilities: initialFacilities(),
       recruitment: { version: 2, nextId: 1, pending: null },
@@ -71,6 +126,7 @@
       accessCodes: { version: 1, redeemedIds: [] },
       presets: { version: 1, slots: [null, null, null, null, null, null] },
       characters: [],
+      adventurerBonds: { version: 1, pairs: {}, memories: {} },
       inventory: {
         equipment: [plainInstance("item-1", "wooden_sword"), plainInstance("item-2", "cloth_clothes")],
         materials: { guild_seal: 4 }
@@ -94,7 +150,7 @@
     || saved.recruitment?.version !== 2 || saved.autoSell?.version !== 2 || saved.facilities?.version !== 3
     || !Array.isArray(saved.inventory?.equipment) || saved.inventory.equipment.some(item => item.ultraRareTitleId === undefined || Object.prototype.hasOwnProperty.call(item, "equipmentSkills"))))
     ? "旧形式または不完全なセーブは読み込めません。保存データは変更していません。" : null;
-  const state = ensureFacilities(ensurePartyCapacity(loadError ? initialState() : saved || initialState()));
+  const state = ensureCharacterSources(ensureStory(ensureFacilities(ensurePartyCapacity(loadError ? initialState() : saved || initialState()))));
   const addedDailyShop = !state.dailyShop;
   if (addedDailyShop) state.dailyShop = { version: 1, dateKey: null, offers: [] };
   const addedObservationJournal = !state.observationJournal;
@@ -110,6 +166,8 @@
     partyCapacity,
     ensurePartyCapacity,
     ensureFacilities,
+    ensureStory,
+    ensureCharacterSources,
     loadError,
     needsInitialSave: (!saved || addedDailyShop || addedObservationJournal) && !loadError,
     save() {

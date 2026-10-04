@@ -2,7 +2,7 @@
   "use strict";
   const data = window.GameData;
 
-  Object.assign(data.items, {
+  data.registry.entities("items", {
     sky_dust: { id: "sky_dust", name: "天穹塵", type: "material", price: 0, icon: "✧" },
     constellation_fragment: { id: "constellation_fragment", name: "星座片", type: "material", price: 0, icon: "✦" },
     first_light: { id: "first_light", name: "始光", type: "material", price: 0, icon: "◇" },
@@ -15,7 +15,7 @@
     afterstar_armor: { id: "afterstar_armor", name: "星後の神鎧", type: "armor", armorType: "heavy", tier: 17, price: 36800, defense: 196, magicDefense: 132, hp: 760, speed: -2, weight: 24, icon: "♜", unique: true, salvage: { itemId: "nameless_star", quantity: 4 }, specialEffects: [{ kind: "weight_defense", multiplier: 2.2, name: "終星装甲" }], effectDescription: "実重量1につき防御力が2.2上昇する。" }
   });
 
-  Object.assign(data.monsters, {
+  const monsters = {
     gate_seraph: { id: "gate_seraph", name: "天門の熾使", hp: 16200, attack: 1080, magicAttack: 1390, defense: 700, magicDefense: 820, speed: 100, icon: "✧", damageType: "magic", element: "arcane", actions: 3 },
     void_hunter: { id: "void_hunter", name: "虚空猟兵", hp: 17600, attack: 1480, attackCount: 2, defense: 740, magicDefense: 680, speed: 108, icon: "◆", element: "dark", actions: 3, targetRule: "rear_weighted" },
     sky_threshold_warden: { id: "sky_threshold_warden", name: "天境の門守", hp: 276000, attack: 1420, magicAttack: 1410, defense: 900, magicDefense: 880, speed: 92, icon: "♛", boss: true, actions: 7, element: "arcane", elementModifiers: { arcane: .1, dark: 1.4 }, statusResistances: { paralysis: .95, chill: .95 }, mechanic: { kind: "telegraphed_burst", name: "天境閉鎖", period: 5, multiplier: 2.2, exposedMultiplier: 1.7, description: "天門の縁を閉じ、次ターン終了時に全隊列を虚空へ押し戻す。" } },
@@ -32,7 +32,7 @@
     nameless_herald: { id: "nameless_herald", name: "無名星の先触れ", hp: 20200, attack: 1600, magicAttack: 1380, defense: 880, magicDefense: 820, speed: 104, icon: "◇", element: "arcane", actions: 3 },
     lord_beyond_sky: { id: "lord_beyond_sky", name: "空の彼方の主", hp: 338000, attack: 1530, magicAttack: 1580, defense: 960, magicDefense: 1020, speed: 102, icon: "♛", boss: true, actions: 8, damageType: "magic", element: "arcane", targetRule: "rear_weighted", statusAttack: { statusId: "burn", chance: .34, duration: 3 }, elementModifiers: { arcane: .05, dark: 1.45 }, statusResistances: { poison: 1, burn: .95, chill: .95, paralysis: .98 }, bossDrop: { itemId: "nameless_staff", chance: .08 }, mechanic: { kind: "telegraphed_burst", name: "星界回帰", period: 4, multiplier: 2.3, exposedMultiplier: 1.75, description: "地上の全星力を呼び戻し、次ターン終了時に全隊列へ終焉を降らせる。" } },
     afterstar_abomination: { id: "afterstar_abomination", name: "星後の異形神", hp: 412000, attack: 1710, magicAttack: 1640, defense: 1060, magicDefense: 1060, speed: 106, icon: "♛", boss: true, actions: 8, element: "dark", targetRule: "rear_weighted", elementModifiers: { dark: .05, fire: 1.45 }, statusResistances: { poison: 1, burn: .98, chill: .98, paralysis: .98 }, bossDrop: { itemId: "afterstar_armor", chance: .1 }, mechanic: { kind: "telegraphed_burst", name: "星後降誕", period: 4, multiplier: 2.4, exposedMultiplier: 1.8, description: "終わった星の残滓を神体へ集め、次ターン終了時に全隊列を消し去る。" } }
-  });
+  };
 
   const materials = {
     gate_seraph: [["sky_dust", .55, 1, 2]], void_hunter: [["void_heart", .5, 1, 2]], sky_threshold_warden: [["sky_dust", 1, 2, 4]],
@@ -42,13 +42,16 @@
     sky_eye: [["void_heart", .65, 1, 2]], nameless_herald: [["constellation_fragment", .65, 1, 3]], lord_beyond_sky: [["nameless_star", 1, 2, 4]],
     afterstar_abomination: [["nameless_star", 1, 3, 5], ["void_heart", 1, 3, 5]]
   };
-  Object.entries(materials).forEach(([id, drops]) => { data.monsters[id].materialDrops = drops.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] })); });
+  data.registry.relations("monsterMaterialDrops", Object.fromEntries(Object.entries(materials).map(([id, entries]) => [id,
+    entries.map(([itemId, chance, minimum, maximum]) => ({ itemId, chance, quantity: [minimum, maximum] }))
+  ])));
+  data.registry.entities("monsters", monsters);
 
   const route = (id, name, shortName, duration, difficulty, order, requirements, description, encounters, rewards, drops, extra = {}) => ({
     id, name, shortName, recommendedLevel: 100, duration, difficulty, color: "gold", chapterId: "end_of_starless_night", orderInChapter: order, requiredForStory: true,
     unlockRequirements: requirements, description, strategy: { label: "星なき夜の果てへ進む", feature: description, advice: "足元には空があり、頭上には名を失った星々が沈んでいる。", preparation: [] }, encounters, rewards, drops, ...extra
   });
-  Object.assign(data.dungeons, {
+  data.registry.entities("dungeons", {
     sky_gate_ascent: route("sky_gate_ascent", "天門昇路", "天門昇路", 3420, 130200, 1, [{ type: "chapterCompleted", chapterId: "returnless_capital" }], "ノアが開いた天門を昇る光の道。地上へ戻そうとする門守が待つ。", [{ name: "逆さ星の階", groups: [["gate_seraph", "void_hunter"], ["gate_seraph", "gate_seraph"]] }, { name: "天境門", groups: [["void_hunter", "sky_threshold_warden"]] }], { gold: [225300, 268400], exp: [217900, 259600] }, [{ itemId: "sky_dust", chance: .45, quantity: [1, 2] }], { clearStoryId: "sky_gate_ascent_clear" }),
     broken_constellation: route("broken_constellation", "砕けた星座回廊", "砕星座回廊", 3480, 135400, 2, [{ type: "dungeonClear", dungeonId: "sky_gate_ascent" }], "役目を終えた世界の星座が流れ着く回廊。裁定者は地上を次の供物と定める。", [{ name: "星座の残骸", groups: [["broken_zodiac", "constellation_beast"], ["broken_zodiac", "broken_zodiac"]] }, { name: "星界裁定庭", groups: [["constellation_beast", "astral_judge"]] }], { gold: [234500, 279400], exp: [226800, 270200] }, [{ itemId: "constellation_fragment", chance: .46, quantity: [1, 2] }], { clearStoryId: "broken_constellation_clear" }),
     first_light_archive: route("first_light_archive", "始光の記録海", "始光記録海", 3540, 140800, 3, [{ type: "dungeonClear", dungeonId: "broken_constellation" }], "空の主が最初の星を生んだ記録の海。星海と王朝の本当の始まりが映る。", [{ name: "創世残響", groups: [["firstlight_echo", "genesis_automaton"], ["firstlight_echo", "firstlight_echo"]] }, { name: "暁の記録核", groups: [["genesis_automaton", "archive_of_dawn"]] }], { gold: [244000, 290700], exp: [236000, 281200] }, [{ itemId: "first_light", chance: .46, quantity: [1, 2] }], { clearStoryId: "first_light_archive_clear" }),
@@ -57,13 +60,13 @@
     afterstar_sanctum: route("afterstar_sanctum", "星後の神域", "星後神域", 4020, 176000, 6, [{ type: "chapterCompleted", chapterId: "end_of_starless_night" }], "星の循環が終わった後に現れた未知の神域。本編には不要だが、別世界から最初の異形が訪れる。", [{ name: "星後の空洞", groups: [["broken_zodiac", "sky_eye", "void_hunter"]] }, { name: "異形降誕座", groups: [["afterstar_abomination", "nameless_herald"]] }], { gold: [317000, 377500], exp: [306600, 365100] }, [{ itemId: "nameless_star", chance: .35, quantity: [1, 2] }], { recommendedLevel: 105, requiredForStory: false, optionalStoryId: "afterstar_sanctum_clear" })
   });
 
-  data.recipes.push(
+  data.registry.entityList("recipes", [
     { id: "forge_heavensplit_rapier", resultId: "heavensplit_rapier", gold: 13100, materials: { constellation_fragment: 8, sky_dust: 5, starblood_crystal: 2 }, unlockAfter: "end_of_starless_night" },
     { id: "forge_firstlight_robe", resultId: "firstlight_robe", gold: 13400, materials: { first_light: 8, void_heart: 4, eclipse_glass: 2 }, unlockAfter: "end_of_starless_night" },
     { id: "forge_constellation_leather", resultId: "constellation_leather", gold: 13600, materials: { sky_dust: 8, constellation_fragment: 5, royal_memory: 2 }, unlockAfter: "end_of_starless_night" }
-  );
+  ]);
 
-  Object.assign(data.storyScenes, {
+  data.registry.entities("storyScenes", {
     end_of_starless_night_opening: { id: "end_of_starless_night_opening", name: "空へ向かう冒険者たち", text: "王都の天門を前に、ノアはギルドの仲間を振り返った。王命でも予言でもない。名もない宿で始まった冒険者たちが、自分たちの意思で空へ踏み出す。" },
     sky_gate_ascent_clear: { id: "sky_gate_ascent_clear", name: "地上を離れる足跡", text: "門守を越えると、地上は小さな灯の集まりに見えた。リナは宿の灯を見つけ、『帰る場所があるから、空の果てまで行けます』と笑った。" },
     broken_constellation_clear: { id: "broken_constellation_clear", name: "終わった世界の星座", text: "砕けた星座は、空の主へ力を返し尽くした世界の墓標だった。地上の星海もまた、同じ循環のために育てられていた。" },
@@ -72,11 +75,11 @@
     end_of_starless_night_clear: { id: "end_of_starless_night_clear", name: "星なき夜の終わり", text: "ノアが星核を砕き、冒険者たちが空の主の真名を呼ぶと、世界を巡る収穫の鎖は途切れた。王都へ戻った夜、名もなき宿の上には初めて誰のものでもない星が輝いた。ギルドの扉には、また新しい依頼が届いている。" },
     afterstar_sanctum_clear: { id: "afterstar_sanctum_clear", name: "星の後から来るもの", text: "循環の外側には、空の主さえ知らない世界が広がっていた。異形神の残した座標は五つの遠い領域を示す。大きな物語は終わったが、冒険者の旅に終わりはない。" }
   });
-  data.storyChapters.push({
+  data.registry.entityList("storyChapters", [{
     id: "end_of_starless_night", order: 15, number: 15, title: "第15章：星なき夜の果て", recommendedLevelRange: [100, 100],
     openingStoryId: "end_of_starless_night_opening", clearStoryId: "end_of_starless_night_clear",
     objective: "5つの本編ダンジョンを順番に攻略し、星を収穫する循環を終わらせる", entryRequirements: [],
     unlockText: "星後の神域、天裂きの細剣・始光の法衣・星座の軽鎧のレシピ、10,000G、名もなき星×2",
     rewards: { gold: 10000, materials: { nameless_star: 2, guild_seal: 5 } }
-  });
+  }]);
 })();

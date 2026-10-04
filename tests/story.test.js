@@ -4,7 +4,7 @@ function load() {
   const context = vm.createContext({ window: {}, Date, Math, Blob, localStorage: {
     getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)
   } });
-  ["data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "data/recipes.js", "data/story.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/shop.js", "js/party.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/battle.js", "js/dungeon.js", "js/blacksmith.js", "js/story.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
+  ["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "data/recipes.js", "data/story.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/shop.js", "js/party.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/dungeon.js", "js/blacksmith.js", "js/story.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
   return context.window;
 }
 let game = load();
@@ -32,6 +32,9 @@ game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 const gold = game.GameState.data.gold;
 const result = game.Dungeon.completeIfReady();
 assert(result.success && result.storyCompleted.includes("roadside"));
+assert(game.Story.pendingEpisode(), "The next route waits for the home story reader");
+const roadsideReading = game.Story.readPending();
+assert(roadsideReading.ok);
 assert.strictEqual(game.GameState.data.gold, gold + result.gold + 150);
 assert(game.Story.canEnter("cave") && !game.Story.canEnter("ruins"));
 assert.strictEqual(game.Dungeon.completeIfReady(), null);
@@ -40,6 +43,7 @@ game.Characters.get(hero.id).level = 99;
 game.Dungeon.start("cave");
 game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 assert(game.Dungeon.completeIfReady().success);
+while (game.Story.pendingEpisode()) game.Story.readPending();
 assert(game.Story.canEnter("ruins"));
 assert.strictEqual(game.Story.current().id, "starfall");
 assert(game.Story.canCraft(game.GameData.recipes.find(recipe => recipe.id === "forge_spirit_staff")));

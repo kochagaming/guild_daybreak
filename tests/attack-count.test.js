@@ -2,12 +2,20 @@ const fs = require("fs"), vm = require("vm"), path = require("path"), assert = r
 const root = path.resolve(__dirname, ".."), storage = new Map();
 const context = vm.createContext({ window: {}, Date, Math, Blob, console });
 for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g)) {
-  if (["js/ui.js", "js/main.js"].includes(file)) continue;
+  if (["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file)) continue;
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
   if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => 1700000000000, random: () => .5 });
   if (file === "js/storage.js") context.window.SaveStorage.use({ get: key => storage.get(key) || null, set: (key, value) => storage.set(key, value), remove: key => storage.delete(key) });
 }
 const game = context.window, create = require("./helpers").createCharacter;
+
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameData.config.combatRules.attackCountProgression)), {
+  minimum: 1, maximum: 8, speedBaseline: 8, speedPerAdditionalAttack: 8,
+  speedWeights: { job: 1, level: 1, profile: 1, equipment: 1, equipmentSkills: 1 }, jobBonuses: {}
+});
+assert.strictEqual(game.Characters.attackCountForSpeed(8, "warrior", 0), 1);
+assert.strictEqual(game.Characters.attackCountForSpeed(16, "thief", 0), 2);
+assert.strictEqual(game.Characters.attackCountFor({ jobId: "warrior", job: 8, level: 33, profile: 0, equipment: 0, equipmentSkills: 0, explicitBonus: 0 }), 5, "現行のLv100相当値は構造整理後も維持する");
 
 assert.strictEqual(game.Battle.attackAccuracyMultiplier(0), 1);
 assert.strictEqual(game.Battle.attackAccuracyMultiplier(1), .6);

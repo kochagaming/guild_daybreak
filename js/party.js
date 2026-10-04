@@ -4,7 +4,7 @@
     memberLimit: { initial: 3, maximum: 6, unlocks: [{ chapterId: "roadside", size: 4 }, { chapterId: "seal", size: 5 }, { chapterId: "starfall", size: 6 }] },
     partySlots: { initial: 1, maximum: 8, unlocks: [{ slot: 2, chapterNumber: 1, gold: 10000, seals: 2 }, { slot: 3, chapterNumber: 2, gold: 100000, seals: 4 }, { slot: 4, chapterNumber: 3, gold: 500000, seals: 6 }, { slot: 5, chapterNumber: 4, gold: 2000000, seals: 8 }, { slot: 6, chapterNumber: 5, gold: 8000000, seals: 10 }, { slot: 7, chapterNumber: 6, gold: 30000000, seals: 12 }, { slot: 8, codeOnly: true, gold: 100000000, seals: 15 }] }
   };
-  const config = () => window.GameData.partyProgression || fallback;
+  const config = () => window.GameData.config.partyProgression || fallback;
   const slotConfig = slot => config().partySlots.unlocks.find(entry => entry.slot === slot);
   function limit() { return window.GameState.data.unlockedPartyCount; }
   function maximum() { return config().partySlots.maximum; }
@@ -118,7 +118,7 @@
   }
   function applyActionPreset(presetId, partyIndex = selected()) {
     if (!Number.isInteger(partyIndex) || partyIndex < 0 || partyIndex >= limit()) return { ok: false, message: "このパーティは未解放です。" };
-    const preset = window.GameData.combatRules.actionPresets.find(entry => entry.id === presetId);
+    const preset = window.GameData.config.combatRules.actionPresets.find(entry => entry.id === presetId);
     if (!preset) return { ok: false, message: "行動率プリセットが不正です。" };
     const partyMembers = members(partyIndex);
     if (!partyMembers.length) return { ok: false, message: "行動率を設定するメンバーがいません。" };

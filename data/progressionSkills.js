@@ -1,6 +1,7 @@
 (function () {
   "use strict";
   const data = window.GameData = window.GameData || {};
+  const generatedSkills = {};
 
   const plans = {
     job: [
@@ -82,7 +83,7 @@
     const base = source.effects.find(effect => effect.type === "combatModifier").modifiers;
     const modifiers = Object.fromEntries(Object.entries(base).map(([key, value]) => [key, scaledModifier(value, plan.scale)]));
     const id = `progression_${type}_${owner.id}_${plan.tier}`;
-    data.skills[id] = {
+    generatedSkills[id] = {
       id,
       name: `${owner.name}・${plan.label}`,
       category: "passive",
@@ -97,10 +98,10 @@
     const id = `initial_${type}_${owner.id}_${plan.tier}`;
     const override = initialOverrides[type]?.[owner.id]?.[plan.tier];
     if (override) {
-      data.skills[id] = Object.assign({ id }, override);
+      generatedSkills[id] = Object.assign({ id }, override);
       return;
     }
-    data.skills[id] = {
+    generatedSkills[id] = {
       id,
       name: `${owner.name}・${plan.label}`,
       category: "passive",
@@ -117,4 +118,5 @@
       plans[type].forEach(plan => create(type, owner, plan));
     });
   });
+  data.registry.entities("skills", generatedSkills);
 })();

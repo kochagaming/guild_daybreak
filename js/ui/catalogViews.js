@@ -31,7 +31,7 @@
 
   function shop(context) {
     const goods = window.Shop.standardStock();
-    const nextTier = (window.GameData.shop.standardTiers || []).find(entry => !window.Shop.standardTierUnlocked(entry));
+    const nextTier = (window.GameData.config.shop.standardTiers || []).find(entry => !window.Shop.standardTierUnlocked(entry));
     const dailyGoods = window.Shop.dailyStock().map(offer => {
       const base = window.Items.template(offer.templateId), effect = window.Items.effects(offer);
       return Object.assign({}, base, effect, {
@@ -53,7 +53,7 @@
   function upgrades(context) {
     const { escape, forgeEquipmentStats, formatGold, itemName, upgradeView: view } = context;
     const maximum = window.Upgrades.limit();
-    const limits = window.GameData.upgrades.limits.map(entry => {
+    const limits = window.GameData.config.upgrades.limits.map(entry => {
       const chapter = window.GameData.storyChapters.find(candidate => candidate.id === entry.chapterId);
       return `${chapter.title.split("：")[0]}：＋${entry.maximum}${window.GameState.data.story.completed.includes(entry.chapterId) ? "（解放済み）" : ""}`;
     }).join(" ／ ");
@@ -78,7 +78,7 @@
     const pageSize = 20, pages = Math.max(1, Math.ceil(equipmentGroups.length / pageSize));
     view.page = Math.min(view.page, pages - 1);
     const visible = equipmentGroups.slice(view.page * pageSize, (view.page + 1) * pageSize);
-    const typeOptions = [["all", "すべて"], ["weapon", "武器すべて"], ...Object.entries(window.GameData.weaponTypes).map(([id, name]) => [`weapon:${id}`, name]), ["armor", "防具すべて"], ...Object.entries(window.GameData.armorTypes).map(([id, name]) => [`armor:${id}`, name])];
+    const typeOptions = [["all", "すべて"], ["weapon", "武器すべて"], ...Object.entries(window.GameData.derived.weaponTypes).map(([id, name]) => [`weapon:${id}`, name]), ["armor", "防具すべて"], ...Object.entries(window.GameData.derived.armorTypes).map(([id, name]) => [`armor:${id}`, name])];
     const select = (key, label, options) => `<label>${label}<select data-upgrade-filter="${key}">${options.map(([id, name]) => `<option value="${id}" ${view[key] === id ? "selected" : ""}>${escape(name)}</option>`).join("")}</select></label>`;
     const statusOptions = [["all", "すべて"], ["ready", "強化可能"], ["missing", "素材・資金不足"], ["capped", "上限到達"]];
     const sortOptions = [["ready", "強化可能順"], ["level", "強化値が高い順"], ["name", "名前順"]];
@@ -115,7 +115,13 @@
     const craftedBase = craftedInstance ? window.Items.template(craftedInstance.templateId) : null;
     const craftedEffects = craftedInstance ? window.Items.effects(craftedInstance) : null;
     const craftedSkills = craftedInstance ? window.EquipmentSkills.descriptions(craftedInstance).map(skill => skill.name).join("・") : "";
-    const craftedNotice = craftedInstance && craftedBase ? `<section class="crafted-equipment-notice"><span class="crafted-equipment-icon" aria-hidden="true">${craftedBase.icon}</span><div><small>CRAFT COMPLETE</small><strong>${escape(window.Items.displayName(craftedInstance))}</strong><span>${escape(window.Items.qualityDescription(craftedInstance))}</span>${forgeEquipmentStats({ ...craftedBase, ...craftedEffects, name: window.Items.displayName(craftedInstance) }, craftedSkills ? `固有スキル：${craftedSkills}` : "固有スキル：なし")}</div><button class="button secondary" data-action="open-crafted-inventory" data-instance="${craftedInstance.id}">所持品で確認</button></section>` : "";
+    const craftedSetProgress = (view.lastCraftedSetDiscoveries || []).map(entry => {
+      const definition = window.GameData.equipmentSets?.[entry.setId];
+      if (!definition) return "";
+      const unlocked = (entry.newBonusSkillIds || []).map(id => window.GameData.equipmentSkills[id]?.name).filter(Boolean);
+      return `<article><span><small>装備組合せ</small><strong>${escape(definition.name)}</strong></span><b>${entry.previousCount} → ${entry.count} / ${definition.itemIds.length}</b>${unlocked.length ? `<em>新効果：${unlocked.map(escape).join("・")}</em>` : ""}${entry.complete ? "<em>全品発見</em>" : ""}</article>`;
+    }).join("");
+    const craftedNotice = craftedInstance && craftedBase ? `<section class="crafted-equipment-notice"><span class="crafted-equipment-icon" aria-hidden="true">${craftedBase.icon}</span><div><small>CRAFT COMPLETE</small><strong>${escape(window.Items.displayName(craftedInstance))}</strong><span>${escape(window.Items.qualityDescription(craftedInstance))}</span>${forgeEquipmentStats({ ...craftedBase, ...craftedEffects, name: window.Items.displayName(craftedInstance) }, craftedSkills ? `固有スキル：${craftedSkills}` : "固有スキル：なし")}${craftedSetProgress ? `<div class="crafted-set-progress">${craftedSetProgress}</div>` : ""}</div><button class="button secondary" data-action="open-crafted-inventory" data-instance="${craftedInstance.id}">所持品で確認</button></section>` : "";
     const focusIds = new Set(Array.isArray(view.focusRecipeIds) ? view.focusRecipeIds : []);
     const recipes = window.Blacksmith.catalog(view).filter(recipe => !focusIds.size || focusIds.has(recipe.id));
     const unlockedTotal = window.GameData.recipes.filter(recipe => window.Blacksmith.status(recipe) !== "locked").length;
@@ -129,9 +135,9 @@
     const visible = visibleGroups.flatMap(group => group.recipes);
     const categoryOptions = [
       ["all", "すべて"], ["weapon", "武器すべて"],
-      ...Object.entries(window.GameData.weaponTypes).filter(([id]) => window.GameData.recipes.some(recipe => window.Blacksmith.category(recipe) === `weapon:${id}`)).map(([id, name]) => [`weapon:${id}`, name]),
+      ...Object.entries(window.GameData.derived.weaponTypes).filter(([id]) => window.GameData.recipes.some(recipe => window.Blacksmith.category(recipe) === `weapon:${id}`)).map(([id, name]) => [`weapon:${id}`, name]),
       ["armor", "防具すべて"],
-      ...Object.entries(window.GameData.armorTypes).filter(([id]) => window.GameData.recipes.some(recipe => window.Blacksmith.category(recipe) === `armor:${id}`)).map(([id, name]) => [`armor:${id}`, name])
+      ...Object.entries(window.GameData.derived.armorTypes).filter(([id]) => window.GameData.recipes.some(recipe => window.Blacksmith.category(recipe) === `armor:${id}`)).map(([id, name]) => [`armor:${id}`, name])
     ];
     const materialIds = [...new Set(window.GameData.recipes.flatMap(recipe => Object.keys(recipe.materials)))].sort((a, b) => itemName(a).localeCompare(itemName(b), "ja"));
     const field = (key, label, entries) => `<label>${label}<select data-blacksmith-filter="${key}">${entries.map(([id, name]) => `<option value="${id}" ${view[key] === id ? "selected" : ""}>${escape(name)}</option>`).join("")}</select></label>`;
@@ -158,10 +164,28 @@
       }).join("");
       const skillNames = window.EquipmentSkills.pool(item).map(id => window.GameData.equipmentSkills[id]?.name).filter(Boolean);
       const skillPreview = `<div class="recipe-skill-pool"><strong>この装備の固有スキル</strong><p>${skillNames.map(name => `<span>${escape(name)}</span>`).join("") || "なし"}</p><small>製作品にも必ず同じスキルが付きます。強化段階に応じた武器種・防具種スキルは別に追加されます。</small></div>`;
+      const setDefinitions = window.EquipmentSkills.setsForTemplate(item.id);
+      const setPreview = setDefinitions.map(definition => {
+        const knownIds = definition.itemIds.filter(id => window.Encyclopedia.item(id));
+        const currentKnown = knownIds.includes(item.id), projectedCount = knownIds.length + (currentKnown ? 0 : 1);
+        const next = definition.bonuses.find(bonus => bonus.count > knownIds.length);
+        const revealsNext = !currentKnown && next && projectedCount >= next.count;
+        const members = definition.itemIds.map(id => {
+          const known = knownIds.includes(id), current = id === item.id;
+          return `<span class="${known ? "is-known" : current ? "is-current" : "is-unknown"}">${known || current ? `${escape(window.GameData.items[id].icon || "◇")} ${escape(window.GameData.items[id].name)}` : "？ ？？？"}</span>`;
+        }).join("");
+        const guidance = knownIds.length === definition.itemIds.length
+          ? "この装備組合せは全品発見済みです。"
+          : revealsNext ? "この品を初めて作ると、新しい組合せ効果が判明します。"
+            : !currentKnown ? "この品を初めて作ると、発見記録が1つ進みます。"
+              : next ? `あと${next.count - knownIds.length}種類の異なる装備で、次の効果が判明します。` : "異なる系統品を探してみましょう。";
+        return `<article class="recipe-set-preview ${knownIds.length === definition.itemIds.length ? "is-complete" : ""}"><header><span>装備組合せ</span><strong>${knownIds.length ? escape(definition.name) : "未記録の組合せ"}</strong><b>${knownIds.length}/${definition.itemIds.length}</b></header><div>${members}</div><small>${escape(guidance)}</small></article>`;
+      }).join("");
+      const setMark = setDefinitions.length ? '<em class="recipe-set-mark">組合せ</em>' : "";
       const locked = state === "locked";
       const label = ready ? "製作可能" : state === "missing" ? "素材不足" : "未解放";
       const focusedBadge = focusIds.has(recipe.id) && view.focusContext === "new" ? "新解放" : label;
-      return `<details class="item-card compact-item shop-item-card forge-shop-card ${state} ${focusIds.has(recipe.id) ? "newly-unlocked" : ""}" data-detail="forge-recipe-${recipe.id}"><summary><span class="item-icon" aria-hidden="true">${item.icon}</span><span class="item-info"><span class="type-label">${escape(typeName)}${range} · Tier ${item.tier || 1}</span><h3>${escape(item.name)}</h3>${forgeEquipmentStats(item)}</span><span class="item-action"><strong>${formatGold(recipe.gold)}</strong><span class="badge ${ready ? "good" : state === "missing" ? "bad" : ""}">${focusedBadge}</span><i class="record-chevron" aria-hidden="true">›</i></span></summary><div class="forge-shop-detail"><p class="recipe-source">${escape(window.Blacksmith.recipeName(recipe))}</p>${skillPreview}<div class="recipe-needs">${materials}<span class="material-need ${window.GameState.data.gold >= recipe.gold ? "met" : "missing"}"><span>工賃</span><strong>${formatGold(recipe.gold)}</strong></span></div>${locked ? `<p class="story-lock-condition">${escape(window.Story.recipeCondition(recipe))}</p><button class="button ghost full" data-nav="home">物語の依頼を確認</button>` : `<button class="button primary full" data-action="craft" data-recipe="${recipe.id}" ${ready ? "" : "disabled"}>${ready ? "この装備を製作する" : "素材または所持金が不足"}</button>`}</div></details>`;
+      return `<details class="item-card compact-item shop-item-card forge-shop-card ${state} ${focusIds.has(recipe.id) ? "newly-unlocked" : ""}" data-detail="forge-recipe-${recipe.id}"><summary><span class="item-icon" aria-hidden="true">${item.icon}</span><span class="item-info"><span class="type-label">${escape(typeName)}${range} · Tier ${item.tier || 1}${setMark}</span><h3>${escape(item.name)}</h3>${forgeEquipmentStats(item)}</span><span class="item-action"><strong>${formatGold(recipe.gold)}</strong><span class="badge ${ready ? "good" : state === "missing" ? "bad" : ""}">${focusedBadge}</span><i class="record-chevron" aria-hidden="true">›</i></span></summary><div class="forge-shop-detail"><p class="recipe-source">${escape(window.Blacksmith.recipeName(recipe))}</p>${setPreview}${skillPreview}<div class="recipe-needs">${materials}<span class="material-need ${window.GameState.data.gold >= recipe.gold ? "met" : "missing"}"><span>工賃</span><strong>${formatGold(recipe.gold)}</strong></span></div>${locked ? `<p class="story-lock-condition">${escape(window.Story.recipeCondition(recipe))}</p><button class="button ghost full" data-nav="home">物語の依頼を確認</button>` : `<button class="button primary full" data-action="craft" data-recipe="${recipe.id}" ${ready ? "" : "disabled"}>${ready ? "この装備を製作する" : "素材または所持金が不足"}</button>`}</div></details>`;
     }
     const catalogEntries = visible.map(recipe => ({ recipe, item: window.Blacksmith.result(recipe) }));
     const futureRecipes = type => {

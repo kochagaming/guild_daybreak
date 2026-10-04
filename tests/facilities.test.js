@@ -4,7 +4,7 @@ let now = 1700000000000, fail = false;
 function load() {
   const context = vm.createContext({ window: {}, Date, Math, Blob, console: { log: console.log, warn() {} } });
   for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g)) {
-    if (["js/ui.js", "js/main.js"].includes(file)) continue;
+    if (["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file)) continue;
     vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
     if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => now, random: () => .5 });
     if (file === "js/storage.js") context.window.SaveStorage.use({ get: key => storage.get(key) || null, set: (key, value) => { if (fail) throw Error("quota"); storage.set(key, value); }, remove: key => storage.delete(key) });
@@ -17,8 +17,8 @@ async function run() {
   assert((await game.GameClient.execute("progress.sync")).ok);
   assert.strictEqual(game.Facilities.profile("mine").capacityMs, 60 * minute, "Initial storage holds one hour");
   assert(!game.Facilities.unlocked("herb_garden") && game.Facilities.quote("herb_garden") === null, "late facilities stay locked and produce nothing before their chapter");
-  assert.deepStrictEqual(Array.from(game.GameData.facilities.definitions.mine.upgrades.speed, entry => entry.interval / minute), [60, 30, 20, 15, 12], "Speed levels follow one hour divided by level");
-  const mineProduction = game.GameData.facilities.definitions.mine.upgrades.production;
+  assert.deepStrictEqual(Array.from(game.GameData.facilities.mine.upgrades.speed, entry => entry.interval / minute), [60, 30, 20, 15, 12], "Speed levels follow one hour divided by level");
+  const mineProduction = game.GameData.facilities.mine.upgrades.production;
   assert.deepStrictEqual(Array.from(mineProduction, entry => (entry.chanceRewards || []).length), [0, 1, 2, 3, 4], "Production upgrades reveal more kinds of rare ore");
   assert.deepStrictEqual(Array.from(mineProduction[4].chanceRewards, bonus => bonus.itemId), ["magic_stone", "glow_crystal", "starsteel_ore", "star_shard"]);
   const start = game.GameState.data.facilities.mine.startedAt;
@@ -147,9 +147,9 @@ async function run() {
   const magicBefore = game.Items.count("magic_stone");
   assert((await game.GameClient.execute("facility.collect", { facilityId: "mine" })).ok);
   assert.strictEqual(game.Items.count("magic_stone"), magicBefore + (rareQuote.materials.magic_stone || 0), "Rolled ore is granted when production is collected");
-  const annex = JSON.parse(JSON.stringify(game.GameData.facilities.definitions.mine));
+  const annex = JSON.parse(JSON.stringify(game.GameData.facilities.mine));
   annex.id = "annex"; annex.name = "試験別館";
-  game.GameData.facilities.definitions.annex = annex; game.GameData.facilities.order.push("annex");
+  game.GameData.facilities.annex = annex; game.GameData.config.facilities.order.push("annex");
   game.GameState.reset();
   assert(game.GameState.data.facilities.annex && game.Facilities.quote("annex"), "A master-data entry creates a usable saved facility without logic changes");
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok, "Dynamic facilities participate in save validation");

@@ -1,8 +1,8 @@
 (function () {
   "use strict";
   const data = window.GameData = window.GameData || {};
-  data.ultraRareConfig = { dropChance: .001, statMultiplier: 2, saleMultiplier: 25 };
-  data.ultraRareTitles = {
+  data.registry.config("ultraRare", { dropChance: .001, statMultiplier: 2, saleMultiplier: 25 });
+  const ultraRareTitles = {
     worldbreaker: { id: "worldbreaker", name: "天地を砕く", skillId: "ultra_worldbreaker" },
     starcaster: { id: "starcaster", name: "星界を呼ぶ", skillId: "ultra_starcaster" },
     eternal: { id: "eternal", name: "永劫を生きる", skillId: "ultra_eternal" },
@@ -12,4 +12,5 @@
     lifebringer: { id: "lifebringer", name: "命を巡らせる", skillId: "ultra_lifebringer" },
     transcendent: { id: "transcendent", name: "理を越える", skillId: "ultra_transcendent" }
   };
+  data.registry.entities("ultraRareTitles", ultraRareTitles);
 })();

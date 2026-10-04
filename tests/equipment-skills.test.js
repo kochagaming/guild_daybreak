@@ -2,7 +2,7 @@ const fs = require("fs"), path = require("path"), vm = require("vm"), assert = r
 const root = path.resolve(__dirname, ".."), storage = new Map();
 function load() {
   const context = vm.createContext({ window: {}, Date, Math, Blob, console });
-  const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["js/ui.js", "js/main.js"].includes(file));
+  const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g), match => match[1]).filter(file => !["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file));
   for (const file of scripts) {
     vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
     if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => 1700000000000, random: () => .5 });
@@ -14,16 +14,24 @@ function load() {
 const game = load(), equipment = Object.values(game.GameData.items).filter(item => ["weapon", "armor"].includes(item.type));
 assert(equipment.length > 40);
 equipment.forEach(item => {
-  assert(Array.isArray(item.skillIds) && item.skillIds.length >= 1, `${item.id} needs fixed skills`);
-  assert.strictEqual(new Set(item.skillIds).size, item.skillIds.length);
-  item.skillIds.forEach(id => assert(game.GameData.equipmentSkills[id], `${item.id}:${id}`));
+  const skillIds = game.GameData.relations.itemSkillGrants[item.id];
+  assert(Array.isArray(skillIds) && skillIds.length >= 1, `${item.id} needs fixed skills`);
+  assert.strictEqual(new Set(skillIds).size, skillIds.length);
+  skillIds.forEach(id => assert(game.GameData.equipmentSkills[id], `${item.id}:${id}`));
+  assert(!Object.prototype.hasOwnProperty.call(item, "skillIds"), `${item.id} must not mix skill relations into the item record`);
 });
+const canonicalWoodenSkills = game.GameData.relations.itemSkillGrants.wooden_sword;
+delete game.GameData.relations.itemSkillGrants.wooden_sword;
+game.GameData.items.wooden_sword.skillIds = ["attack_105"];
+assert.deepStrictEqual(Array.from(game.EquipmentSkills.pool(game.GameData.items.wooden_sword)), [], "Runtime must not read legacy skillIds from item entities");
+game.GameData.relations.itemSkillGrants.wooden_sword = canonicalWoodenSkills;
+delete game.GameData.items.wooden_sword.skillIds;
 
 const zero = { hp: 0, attack: 0, defense: 0 };
 const first = game.Items.add("iron_sword", 1, { source: "shop", modifiers: zero }).instances[0];
 const second = game.Items.add("iron_sword", 1, { source: "shop", qualityId: "divine", modifiers: zero }).instances[0];
-assert.deepStrictEqual(Array.from(game.EquipmentSkills.ids(first)), Array.from(game.GameData.items.iron_sword.skillIds));
-assert.deepStrictEqual(Array.from(game.EquipmentSkills.ids(second)), Array.from(game.GameData.items.iron_sword.skillIds));
+assert.deepStrictEqual(Array.from(game.EquipmentSkills.ids(first)), Array.from(game.GameData.relations.itemSkillGrants.iron_sword));
+assert.deepStrictEqual(Array.from(game.EquipmentSkills.ids(second)), Array.from(game.GameData.relations.itemSkillGrants.iron_sword));
 assert(!Object.prototype.hasOwnProperty.call(first, "equipmentSkills"));
 first.upgradeLevel = 2;
 assert(!game.EquipmentSkills.ids(first).includes("sword_training"));
@@ -40,7 +48,7 @@ assert.strictEqual(ultraEffects.weight, normalEffects.weight);
 assert(game.EquipmentSkills.ids(ultra).includes("ultra_worldbreaker"));
 assert(game.Items.displayName(ultra).startsWith("★天地を砕く"));
 assert(ultra.locked, "ultra-rare equipment must be protected on acquisition");
-assert.strictEqual(game.GameData.ultraRareConfig.dropChance, .001);
+assert.strictEqual(game.GameData.config.ultraRare.dropChance, .001);
 const forcedDrop = game.Items.createInstance("wooden_sword", { source: "drop", qualityId: "standard", modifiers: zero, random: () => 0 });
 assert(forcedDrop.ultraRareTitleId && forcedDrop.locked);
 const forcedShop = game.Items.createInstance("wooden_sword", { source: "shop", qualityId: "standard", modifiers: zero, random: () => 0 });
@@ -49,7 +57,7 @@ assert.strictEqual(forcedShop.ultraRareTitleId, null, "shop purchases never roll
 const hero = require("./helpers").createCharacter(game, "称号発見隊").id;
 game.Characters.get(hero).level = 50;
 assert(game.Party.toggle(hero).ok && game.Dungeon.start("meadow").ok);
-game.GameData.ultraRareConfig.dropChance = 1;
+game.GameData.config.ultraRare.dropChance = 1;
 game.Battle.resolve = () => ({
   success: true, gold: 0, exp: 0, drops: [{ itemId: "wooden_sword", quantity: 1 }], battleLog: [],
   mechanicReport: null, strategyReport: null, defeatFacts: [], encountersCleared: 1, totalEncounters: 1,
@@ -59,7 +67,7 @@ game.GameState.data.expeditions[0].endsAt = 0;
 const ultraResult = game.Dungeon.completeIfReady(1);
 assert(ultraResult.drops[0].ultraRareTitleId && ultraResult.drops[0].displayName.startsWith("★"), "Expedition results preserve ultra-rare identity for reward presentation");
 assert(ultraResult.drops[0].newUltraRareTitle && ultraResult.newUltraRareTitleIds.includes(ultraResult.drops[0].ultraRareTitleId), "First ultra-rare titles are announced and archived");
-game.GameData.ultraRareConfig.dropChance = .001;
+game.GameData.config.ultraRare.dropChance = .001;
 
 const aggregated = game.EquipmentSkills.aggregate([first, first, ultra]);
 assert.strictEqual(aggregated.multipliers.attack, 1.05 * 1.05);
@@ -73,4 +81,4 @@ const unknown = JSON.parse(saved); unknown.inventory.equipment[0].ultraRareTitle
 assert(!game.SaveTransfer.parse(JSON.stringify(unknown)).ok);
 const legacy = JSON.parse(saved); legacy.inventory.equipment[0].equipmentSkills = ["physical_power_3"];
 assert(!game.SaveTransfer.parse(JSON.stringify(legacy)).ok);
-console.log("Equipment skills test passed: fixed item skills, type-based upgrade skills, separate ultra-rare titles, doubled stats, protected drops and version-8 validation");
+console.log("Equipment skills test passed: relation-only fixed skills, type-based upgrades, separate ultra-rare titles, doubled stats, protected drops and current-save validation");

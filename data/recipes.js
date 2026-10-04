@@ -2,7 +2,7 @@
   "use strict";
 
   window.GameData = window.GameData || {};
-  window.GameData.recipes = [
+  const recipes = [
     { id: "forge_moon_rapier", resultId: "moon_rapier", gold: 340, materials: { iron_ore: 4, magic_stone: 2 }, unlockAfter: "seal" },
     { id: "forge_dragon_nodachi", resultId: "dragon_nodachi", gold: 420, materials: { iron_ore: 7, beast_fang: 3, magic_stone: 1 }, unlockAfter: "seal" },
     { id: "forge_tower_shield", resultId: "tower_shield", gold: 360, materials: { iron_ore: 8, magic_stone: 1 }, unlockAfter: "seal" },
@@ -39,4 +39,5 @@
     { id: "forge_stormcloak", resultId: "stormcloak", gold: 520, materials: { storm_feather: 4, star_shard: 2, arcane_dust: 3 }, unlockAfter: "starfall" },
     { id: "forge_astral_katana", resultId: "astral_katana", gold: 560, materials: { starsteel_ore: 4, storm_feather: 2, star_shard: 3 }, unlockAfter: "starfall" }
   ];
+  window.GameData.registry.entityList("recipes", recipes);
 })();

@@ -1,6 +1,7 @@
 (function () {
   "use strict";
-  window.GameData.upgrades = {
+  const data = window.GameData = window.GameData || {};
+  const upgrades = {
     limits: [
       { chapterId: "prologue", maximum: 1 },
       { chapterId: "roadside", maximum: 3 },
@@ -22,8 +23,10 @@
     bonus: { weapon: { attack: 2, defense: 0, hp: 0 }, armor: { attack: 0, defense: 2, hp: 3 } },
     goldPerTierAndLevel: 30
   };
-  window.GameData.upgrades.limits.forEach(entry => {
-    const chapter = window.GameData.storyChapters.find(chapter => chapter.id === entry.chapterId);
-    if (chapter) chapter.unlockText += `、装備強化＋${entry.maximum}まで`;
-  });
+  data.registry.config("upgrades", upgrades);
+  data.registry.relationList("chapterUnlockAdditions", upgrades.limits.map(entry => ({
+    id: `upgrade-limit-${entry.chapterId}`,
+    chapterId: entry.chapterId,
+    text: `装備強化＋${entry.maximum}まで`
+  })));
 })();

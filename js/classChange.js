@@ -9,7 +9,7 @@
   function quote(characterId, targetJobId) {
     const character = window.Characters.get(characterId);
     const target = window.GameData.jobs[targetJobId];
-    const rule = window.GameData.classChanges[targetJobId];
+    const rule = window.GameData.config.classChanges[targetJobId];
     if (!character || !target || !rule) return { ok: false, message: "冒険者または転職先が見つかりません。" };
     if (character.career) return { ok: false, message: "転職できるのは生涯に一度だけです。" };
     const stats = window.Characters.stats(character);
@@ -22,7 +22,7 @@
     if (master) requirements.unshift({ stat: "level", label: "レベル", minimum: 50, current: character.level, percent: false, met: character.level >= 50 });
     const busy = isExploring(character.id);
     const eligible = !busy && requirements.every(requirement => requirement.met);
-    const formerSkills = (window.GameData.skillGrants.job[character.jobId] || [])
+    const formerSkills = (window.GameData.relations.skillGrants.job[character.jobId] || [])
       .filter(entry => entry.initial)
       .map(entry => entry.skillId);
     return {

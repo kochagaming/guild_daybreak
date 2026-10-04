@@ -29,6 +29,23 @@
     return planned?.name || `第${number}戦`;
   }
 
+  function observations(entries) {
+    const definitions = [
+      ["大技", entry => ["warning", "burst"].includes(entry.kind)],
+      ["敵の特殊行動", entry => entry.kind === "enemy-skill"],
+      ["即応", entry => /【リアクション】/.test(entry.text)],
+      ["弱点", entry => entry.kind === "weakness" || /弱点|攻撃の好機/.test(entry.text)],
+      ["耐性", entry => /耐性|抵抗|防いだ/.test(entry.text)],
+      ["状態異常", entry => entry.kind === "status"],
+      ["命中・回避", entry => /命中せず|回避された|回命中/.test(entry.text)],
+      ["会心", entry => /会心/.test(entry.text)]
+    ];
+    return definitions.map(([label, matches]) => ({
+      label,
+      entries: Array.from(new Set((entries || []).filter(matches).map(entry => entry.text))).slice(0, 2)
+    })).filter(group => group.entries.length);
+  }
+
   function active(expedition, now = window.GameRuntime.now()) {
     const dungeon = window.DungeonDifficulty.variant(expedition.dungeonId, expedition.difficultyId || "normal");
     const outcome = preview(expedition), plan = window.Exploration.plan(dungeon, expedition.timeMultiplier || 1);
@@ -72,7 +89,8 @@
       status: last?.status === "撤退" ? "撤退・帰還中" : resolved ? "帰還中" : last?.status === "交戦中" ? `第${last.number}戦・交戦中` : last ? `第${last.number}区画・探索中` : "探索中",
       next, outcome, totalEncounters: plan.encounters.length,
       dungeonName: dungeon.name,
-      partyIndex: expedition.partyIndex || 0
+      partyIndex: expedition.partyIndex || 0,
+      partyNames: (expedition.partySnapshot || []).map(member => member.name).filter(Boolean)
     };
   }
 
@@ -87,9 +105,10 @@
       setup: groups.setup, events, status: result.success ? "探索成功" : "撤退",
       next: 0, outcome: result, totalEncounters: result.totalEncounters || events.length,
       dungeonName: result.dungeonName || window.DungeonDifficulty.variant(result.dungeonId, result.difficultyId || "normal").name,
-      partyIndex: result.partyIndex || 0
+      partyIndex: result.partyIndex || 0,
+      partyNames: (result.partyNames || result.partySetup?.map(member => member.name) || []).filter(Boolean)
     };
   }
 
-  window.ExpeditionLog = { active, completed, preview };
+  window.ExpeditionLog = { active, completed, preview, observations };
 })();

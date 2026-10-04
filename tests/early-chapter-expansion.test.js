@@ -36,8 +36,9 @@ for (const chapterId of Object.keys(expected)) {
     const result = { success: true, dungeonId: dungeon.id };
     const completed = game.Story.recordResult(result);
     assert(result.storyMoments.some(moment => moment.kind === "ending" && moment.dungeonId === dungeon.id), `${dungeon.id} needs a clear story moment`);
-    if (index + 1 < routes.length) assert(result.storyMoments.some(moment => moment.kind === "opening" && moment.dungeonId === routes[index + 1].id), `${routes[index + 1].id} needs an unlock story moment`);
+    if (index + 1 < routes.length) assert(game.Story.pendingEpisode()?.entries.some(entry => entry.kind === "dungeonOpening" && entry.dungeon?.id === routes[index + 1].id), `${routes[index + 1].id} needs a home reading moment`);
     assert.strictEqual(completed.includes(chapterId), index === routes.length - 1, `${chapterId} completed at the wrong route`);
+    while (game.Story.pendingEpisode()) game.Story.readPending();
     if (index + 1 < routes.length) assert(game.Story.canEnter(routes[index + 1].id));
   });
   assert.strictEqual(state.gold, gold + chapter.rewards.gold);

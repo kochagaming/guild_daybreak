@@ -3,7 +3,7 @@ const root = path.resolve(__dirname, ".."), storage = new Map();
 let now = 1700000000000;
 const context = vm.createContext({ window: {}, Date, Math, Blob, console });
 for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").matchAll(/src="([^"]+\.js)"/g)) {
-  if (["js/ui.js", "js/main.js"].includes(file)) continue;
+  if (["data/masterFinalize.js", "js/ui.js", "js/main.js"].includes(file)) continue;
   vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file });
   if (file === "js/runtime.js") context.window.GameRuntime.configure({ now: () => now, random: () => .5 });
   if (file === "js/storage.js") context.window.SaveStorage.use({ get: key => storage.get(key) || null, set: (key, value) => storage.set(key, value), remove: key => storage.delete(key) });
@@ -14,6 +14,7 @@ assert.strictEqual(game.GameData.skills.heal.category, "healing");
 assert.strictEqual(game.GameData.skills.power_strike.category, "technique");
 assert.strictEqual(game.GameData.skills.rear_protection.category, "passive");
 assert.strictEqual(game.GameData.skills.emergency_heal.category, "reaction");
+assert.strictEqual(game.SkillCombat.healingAmount({ hp: 100, magicHealing: 999, healingPower: 9, currentHp: 1, skillIds: [] }, game.SkillCombat.effect(game.GameData.skills.emergency_heal, "heal")), 20, "Reaction healing must honor its max-HP scaling and opt out of ordinary healing modifiers.");
 function hero(id, skills, overrides = {}) {
   return { id, name: id, level: 5, jobId: "warrior", position: 0, weaponRange: "melee", actionRates: { attack: 0, technique: 100, spell: 0, healing: 0 }, skillIds: skills,
     stats: { hp: 99999, attack: 10, defense: 0, magicAttack: 20, magicDefense: 0, magicHealing: 10, hitRate: 1.2, evasionRate: 0, speed: 100, criticalRate: 0, ...overrides } };
@@ -55,6 +56,34 @@ const b = { currentHp: 1, position: 1, skillIds: ["battle_command", "rear_protec
 const unit = { currentHp: 1, position: 2, allies: [a, b] };
 assert.strictEqual(game.SkillCombat.attackMultiplier(unit), 1.2);
 assert.strictEqual(game.SkillCombat.protection(unit), 2 / 3);
+game.GameData.skills.temporary_active_aura = {
+  id: "temporary_active_aura", name: "未発動の一時号令", category: "technique",
+  activation: { type: "active", cooldownTurns: 10 }, targeting: { scope: "self" },
+  effects: [{ type: "damage", multiplier: 1 }, { type: "statMultiplier", target: "party", stat: "attack", multiplier: 9 }]
+};
+game.GameData.skills.temporary_reaction_wall = {
+  id: "temporary_reaction_wall", name: "未発動の一時防壁", category: "reaction",
+  activation: { type: "reaction", trigger: "hpBelow", threshold: .5 }, targeting: { scope: "self" },
+  effects: [{ type: "heal", multiplier: .1 }, { type: "rearProtection", multiplier: .01 }]
+};
+game.GameData.skills.temporary_active_counter = {
+  id: "temporary_active_counter", name: "未発動の反撃技", category: "technique",
+  activation: { type: "active", cooldownTurns: 10 }, targeting: { scope: "singleEnemy" },
+  effects: [{ type: "damage", multiplier: 1 }, { type: "counter", chance: 1, multiplier: 9 }]
+};
+const inactiveSource = { currentHp: 1, position: 0, skillIds: ["temporary_active_aura", "temporary_reaction_wall"] };
+const inactiveTarget = { currentHp: 1, position: 1, skillIds: [], allies: [inactiveSource] };
+assert.strictEqual(game.SkillCombat.attackMultiplier(inactiveTarget), 1, "Active effects must not become permanent party auras before use.");
+assert.strictEqual(game.SkillCombat.protection(inactiveTarget), 1, "Reaction effects must not become permanent rear protection before triggering.");
+const counterLog = [];
+const counterHero = { currentHp: 10, hp: 10, side: "hero", skillIds: ["temporary_active_counter"], metrics: { healingDone: 0, healingAttempted: 0, overhealing: 0 }, reactionsUsed: new Set() };
+const counterAttacker = { currentHp: 10, name: "攻撃役" };
+let counterCalls = 0;
+game.SkillCombat.afterDamage(() => 0, counterAttacker, counterHero, { actualDamage: 1 }, () => { counterCalls++; return { actualDamage: 9, missed: false }; }, counterLog, 1, 1);
+assert.strictEqual(counterCalls, 0, "An unused active skill's counter effect must not trigger as a permanent passive.");
+delete game.GameData.skills.temporary_active_aura;
+delete game.GameData.skills.temporary_reaction_wall;
+delete game.GameData.skills.temporary_active_counter;
 a.currentHp = b.currentHp = 0;
 assert.strictEqual(game.SkillCombat.attackMultiplier(unit), 1);
 assert.strictEqual(game.SkillCombat.protection(unit), 1);

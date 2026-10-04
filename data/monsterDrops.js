@@ -82,15 +82,17 @@
     afterstar_abomination: { material: "nameless_star", equipment: "constellation_leather" }
   };
 
+  const signatureDrops = {};
   Object.entries(definitions).forEach(([monsterId, definition]) => {
     const monster = data.monsters[monsterId];
     if (!monster) return;
     const materialChance = monster.boss ? bossMaterial : normalMaterial;
     const equipmentChance = monster.boss ? bossEquipment : normalEquipment;
     const materials = definition.materials || [[definition.material, materialChance]];
-    monster.signatureDrops = {
+    signatureDrops[monsterId] = {
       materials: materials.map(([itemId, chance]) => ({ itemId, chance: chance == null ? materialChance : chance, quantity: [1, 1] })),
       equipment: { itemId: definition.equipment, chance: equipmentChance, quantity: [1, 1] }
     };
   });
+  data.registry.relations("monsterSignatureDrops", signatureDrops);
 })();
