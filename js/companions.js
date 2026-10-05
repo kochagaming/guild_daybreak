@@ -3,7 +3,13 @@
 
   const relations = () => window.GameData.relations;
   const rosterLimit = () => window.GameData.config.companions.rosterLimit;
-  function definition(id) { return window.GameData.companions?.[id] || null; }
+  function identity(id) { return window.GameData.storyCharacters?.[id] || null; }
+  function profile(id) { return window.GameData.companionProfiles?.[id] || null; }
+  function definition(id) {
+    const person = identity(id), combat = profile(id);
+    return person && combat ? Object.assign({}, person, combat, { id: combat.id, characterId: person.id, portraitId: person.portraitId }) : null;
+  }
+  function canJoin(id) { return Boolean(identity(id) && profile(id)); }
   function joinedIds(state = window.GameState.data) {
     if (!Array.isArray(state.story.joinedCompanionIds)) state.story.joinedCompanionIds = [];
     return state.story.joinedCompanionIds;
@@ -94,5 +100,5 @@
     return { ok: true, changed: true, companionId, stageId: targetStageId, previousStageId: currentStageId };
   }
 
-  window.Companions = { definition, joinedIds, character, progression, stageId, stage, stageChain, skillGrants, join, advance };
+  window.Companions = { identity, profile, definition, canJoin, joinedIds, character, progression, stageId, stage, stageChain, skillGrants, join, advance };
 })();

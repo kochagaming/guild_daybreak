@@ -85,8 +85,9 @@
         if (!Number.isInteger(character.expeditionRecord.teamSurveys)) character.expeditionRecord.teamSurveys = 0;
       }
       if (character.source.type === "companion") {
-        const companion = window.GameData.companions?.[character.source.companionId];
-        if (companion?.previousPortraitIds?.includes(character.portraitId)) character.portraitId = companion.portraitId;
+        const profile = window.GameData.companionProfiles?.[character.source.companionId];
+        const identity = window.GameData.storyCharacters?.[profile?.characterId];
+        if (profile?.previousPortraitIds?.includes(character.portraitId)) character.portraitId = identity?.portraitId || character.portraitId;
       }
     });
     return target;

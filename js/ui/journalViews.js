@@ -23,7 +23,7 @@
   function companionCast(entry, context) {
     const { escape } = context;
     const cast = (entry.companionIds || []).map(id => {
-      const companion = window.GameData.companions[id];
+      const companion = window.Companions.definition(id);
       const portrait = companion && window.GameData.portraits[companion.portraitId];
       if (!companion) return "";
       const image = portrait ? `<img src="${escape(portrait.image)}" alt="" loading="lazy">` : '<span class="journey-companion-fallback" aria-hidden="true">♙</span>';

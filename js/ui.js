@@ -166,7 +166,7 @@
       ? `<section class="result-new-discoveries"><span class="label">NEW RECIPES</span><strong>鍛冶屋に新しい製作記録が加わりました</strong><p>${result.newRecipeIds.map(id => window.GameData.recipes.find(recipe => recipe.id === id)).filter(Boolean).map(recipe => `${window.GameData.items[recipe.resultId]?.icon || "⚒"} ${escape(itemName(recipe.resultId))}`).join("　")}</p><button class="button ghost" data-action="open-new-recipes" data-recipes="${escape(result.newRecipeIds.join(","))}">鍛冶屋で確認</button></section>`
       : "";
     const newCompanions = Array.isArray(result.newCompanionIds) && result.newCompanionIds.length
-      ? `<section class="result-new-discoveries"><span class="label">NEW COMPANION</span>${result.newCompanionIds.map(id => { const companion = window.GameData.companions[id]; return `<strong>${escape(companion.name)}がギルドに加わりました</strong><p>${escape(companion.title)} · ${escape(companion.description)}</p>`; }).join("")}<button class="button ghost" data-nav="characters">冒険者を確認</button></section>`
+      ? `<section class="result-new-discoveries"><span class="label">NEW COMPANION</span>${result.newCompanionIds.map(id => window.Companions.definition(id)).filter(Boolean).map(companion => `<strong>${escape(companion.name)}がギルドに加わりました</strong><p>${escape(companion.title)} · ${escape(companion.description)}</p>`).join("")}<button class="button ghost" data-nav="characters">冒険者を確認</button></section>`
       : "";
     const newAchievements = Array.isArray(result.newAchievementIds) && result.newAchievementIds.length
       ? `<section class="result-new-discoveries result-achievement-unlocks"><span class="label">NEW ACHIEVEMENT</span><strong>新しい実績が${result.newAchievementIds.length}件刻まれました</strong><p>${result.newAchievementIds.map(id => window.GameData.achievements.find(achievement => achievement.id === id)?.name).filter(Boolean).map(escape).join("、")}</p><button class="button ghost" data-action="open-achievements">実績の記録を読む</button></section>`
@@ -183,14 +183,14 @@
     const newCompanionMemories = Array.isArray(result.newCompanionMomentKeys) && result.newCompanionMomentKeys.length
       ? `<section class="result-new-discoveries result-companion-memories"><span class="label">NEW TRAVEL MEMORY</span><strong>人物録に新しい旅の記憶が加わりました</strong>${result.newCompanionMomentKeys.map(key => {
         const split = key.lastIndexOf(":"), moment = window.GameData.config.explorationEvents.companionMoments.find(candidate => candidate.id === key.slice(0, split));
-        const names = (moment?.companionIds || []).map(id => window.GameData.companions[id]?.name).filter(Boolean);
+        const names = (moment?.companionIds || []).map(id => window.Companions.definition(id)?.name).filter(Boolean);
         return moment ? `<p><b>${escape(moment.title)}</b><small>${names.length ? ` · ${escape(names.join("・"))}` : ""}</small></p>` : "";
       }).join("")}<button class="button ghost" data-action="open-companion-ledger">人物録で読み返す</button></section>`
       : "";
     const completedCompanionBonds = Array.isArray(result.completedCompanionBonds) && result.completedCompanionBonds.length
       ? `<section class="result-new-discoveries result-companion-bonds"><span class="label">TRAVEL BOND</span><strong>同行の縁が深まりました</strong>${result.completedCompanionBonds.map(entry => {
         const moment = window.GameData.config.explorationEvents.companionMoments.find(candidate => candidate.id === entry.momentId);
-        const names = entry.companionIds.map(id => window.GameData.companions[id]?.name).filter(Boolean);
+        const names = entry.companionIds.map(id => window.Companions.definition(id)?.name).filter(Boolean);
         return `<p><b>${escape(names.join("と"))}</b><small> · ${escape(moment?.title || "旅の記録")}</small><em>${escape(window.GameData.items[entry.rewardItemId]?.name || "記念品")} +${entry.rewardQuantity}</em></p>`;
       }).join("")}<button class="button ghost" data-action="open-companion-ledger">同行の記録を見る</button></section>`
       : "";
@@ -257,8 +257,15 @@
 
   function homePage() { return window.GameUIViews.home.page({ escape }); }
 
+  function serviceKeeper(pageId) {
+    const keeper = window.GuildServices.keeper(pageId);
+    if (!keeper) return "";
+    const initial = String(keeper.name || "人").slice(0, 1);
+    return `<aside class="service-keeper" aria-label="${escape(keeper.title)} ${escape(keeper.name)}"><span aria-hidden="true">${escape(initial)}</span><div><small>${escape(keeper.title)}</small><strong>${escape(keeper.name)}</strong><p>${escape(keeper.description)}</p></div></aside>`;
+  }
+
   function guildPage() {
-    return window.GameUIViews.guild.page({ escape, formatGold, itemName, time });
+    return `${serviceKeeper("guild")}${window.GameUIViews.guild.page({ escape, formatGold, itemName, time })}`;
   }
 
   function settingsPage() {
@@ -294,7 +301,7 @@
   }
 
   function archivePage() {
-    return window.GameUIViews.archives.page(archiveViewContext());
+    return `${serviceKeeper("archives")}${window.GameUIViews.archives.page(archiveViewContext())}`;
   }
 
   function archiveViewContext() {
@@ -895,7 +902,7 @@
   }
 
   function shopPage() {
-    return window.GameUIViews.catalog.shop(catalogViewContext());
+    return `${serviceKeeper("shop")}${window.GameUIViews.catalog.shop(catalogViewContext())}`;
   }
 
   function inventoryPage() {
@@ -956,10 +963,11 @@
 
   function blacksmithPage() {
     const context = catalogViewContext();
-    if (blacksmithScreen === "menu") return window.GameUIViews.catalog.blacksmithMenu(context);
+    const keeper = serviceKeeper("blacksmith");
+    if (blacksmithScreen === "menu") return `${keeper}${window.GameUIViews.catalog.blacksmithMenu(context)}`;
     const title = blacksmithScreen === "upgrade" ? "装備を強化する" : "装備を製作する";
     const content = blacksmithScreen === "upgrade" ? upgradesPanel() : window.GameUIViews.catalog.blacksmith(context);
-    return `<div class="blacksmith-subnav"><button class="button ghost" type="button" data-action="blacksmith-back">‹ 鍛冶メニュー</button><div><span class="label">BLACKSMITH</span><h3>${title}</h3></div></div>${content}`;
+    return `${keeper}<div class="blacksmith-subnav"><button class="button ghost" type="button" data-action="blacksmith-back">‹ 鍛冶メニュー</button><div><span class="label">BLACKSMITH</span><h3>${title}</h3></div></div>${content}`;
   }
 
   const renderers = { home: homePage, archives: archivePage, guild: guildPage, settings: settingsPage, characters: charactersPage, party: partyPage, shop: shopPage, blacksmith: blacksmithPage, inventory: inventoryPage };
@@ -971,8 +979,10 @@
     return { observations, rewards, discoveries, total: observations + rewards + discoveries };
   }
 
+  function availablePages() { return pages.filter(page => window.GuildServices.unlocked(page[0])); }
+
   function openMobileNavigation() {
-    const secondary = pages.filter(page => !mobilePrimaryPages.has(page[0]));
+    const secondary = availablePages().filter(page => !mobilePrimaryPages.has(page[0]));
     const notices = archiveNoticeCounts();
     const facilities = window.Facilities.collectable().length;
     document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop mobile-nav-backdrop" data-action="close-modal"><div class="modal mobile-nav-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-nav-title"><div class="modal-heading"><div><span class="label">GUILD MENU</span><h3 id="mobile-nav-title">その他の施設</h3></div><button class="modal-close" data-action="close-modal" aria-label="メニューを閉じる">×</button></div><div class="mobile-nav-grid">${secondary.map(page => `<button type="button" class="mobile-nav-link ${page[0] === currentPage ? "active" : ""}" data-action="mobile-nav" data-page="${page[0]}"><span aria-hidden="true">${page[1]}</span><strong>${escape(page[2])}</strong><small>${escape(page[3])}</small>${page[0] === "archives" && notices.total ? `<i class="nav-notice archive" aria-label="受取可能な依頼${notices.rewards}件、観察日記の新着${notices.observations}件、図鑑の新発見${notices.discoveries}件">${notices.total}</i>` : page[0] === "guild" && facilities ? `<i class="nav-notice facility" aria-label="回収できる施設${facilities}件">${facilities}</i>` : ""}</button>`).join("")}</div><p class="mobile-nav-guide">ホーム・冒険者・パーティ・所持品は、画面下部からいつでも開けます。</p></div></div>`;
@@ -994,8 +1004,8 @@
   function storyReaderBlock(block) {
     if (block.kind === "setting") return `<aside class="story-reader-setting"><span aria-hidden="true">◇</span><p>${escape(block.text)}</p></aside>`;
     if (block.kind !== "dialogue") return storyParagraphs({ text: block.text }).map(text => `<p class="story-reader-narration">${escape(text)}</p>`).join("");
-    const character = window.GameData.companions?.[block.speakerId];
-    const portrait = character ? window.GameData.portraits?.[character.portraitId] : null;
+    const character = window.GameData.storyCharacters?.[block.speakerId];
+    const portrait = character?.portraitId ? window.GameData.portraits?.[character.portraitId] : null;
     const name = character?.name || block.speakerName;
     const role = character?.title || block.speakerRole;
     const mark = name === "ギルドオーナー" ? "主" : String(name || "語").slice(0, 1);
@@ -1017,9 +1027,9 @@
     if (!episode) { toast("今読むべき新しい物語はありません。", "error"); return; }
     const scenes = episode.entries.map((entry, index) => {
       const place = entry.dungeon?.name || entry.chapter?.title || "ギルドの記録";
-      const protagonist = window.GameData.companions?.[entry.scene.protagonistId];
+      const protagonist = window.GameData.storyCharacters?.[entry.scene.protagonistId];
       const portrait = protagonist ? window.GameData.portraits?.[protagonist.portraitId] : null;
-      const cast = (entry.scene.castIds || []).map(id => window.GameData.companions?.[id]?.name).filter(Boolean);
+      const cast = (entry.scene.castIds || []).map(id => window.GameData.storyCharacters?.[id]?.name).filter(Boolean);
       return `<article class="story-reader-scene"><header><span>${index + 1} / ${episode.entries.length} · ${escape(entry.label)}</span><small>${escape(place)}</small></header>${protagonist ? `<div class="story-reader-character">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<span><small>この場面の視点</small><strong>${escape(protagonist.name)}</strong>${cast.length ? `<em>共にいる者：${escape(cast.join("、"))}</em>` : ""}</span></div>` : ""}<h3>${escape(entry.scene.name)}</h3><div class="story-reader-script">${storyReaderBlocks(entry.scene).map(storyReaderBlock).join("")}</div></article>`;
     }).join("");
     document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop story-reader-backdrop"><section class="modal story-reader-modal" role="dialog" aria-modal="true" aria-labelledby="story-reader-title"><header class="story-reader-heading"><button class="button ghost" data-action="close-modal">あとで読む</button><div><span class="label">STORY</span><h2 id="story-reader-title">${escape(episode.title)}</h2></div><span data-story-read-progress>読書中 0%</span></header><div class="story-reader-scroll" data-story-reader-scroll tabindex="0">${scenes}<footer class="story-reader-ending"><span aria-hidden="true">◆</span><strong>ここまでの物語を記録する</strong><p>${escape(episode.subtitle)}</p><button class="button primary" data-action="finish-story-reader" data-episode="${escape(episode.id)}" disabled>読み終える</button></footer></div></section></div>`;
@@ -1037,8 +1047,8 @@
     facilityNoticeCount = window.Facilities.collectable().length;
     const unreadPartyResults = window.Party.unreadResultCount();
     const unreadStory = Boolean(window.Story.pendingEpisode());
-    const secondaryTotal = notices.total + facilityNoticeCount;
-    nav.innerHTML = pages.map((page) => {
+    const secondaryTotal = (window.GuildServices.unlocked("archives") ? notices.total : 0) + (window.GuildServices.unlocked("guild") ? facilityNoticeCount : 0);
+    nav.innerHTML = availablePages().map((page) => {
       const noticeLabel = page[0] === "home" && unreadStory
         ? "・続きの物語があります"
         : page[0] === "party" && unreadPartyResults
@@ -1097,6 +1107,7 @@
   }
 
   function render() {
+    if (!window.GuildServices.unlocked(currentPage)) currentPage = "home";
     renderNav();
     const page = pages.find((entry) => entry[0] === currentPage) || pages[0];
     const openDetails = new Set(Array.from(document.querySelectorAll("details[data-detail][open]"), detail => detail.dataset.detail));
@@ -1128,6 +1139,10 @@
 
   function navigate(page) {
     window.RecruitmentReveal.cancel();
+    if (!window.GuildServices.unlocked(page)) {
+      toast(window.GuildServices.lockedMessage(page), "error");
+      page = "home";
+    }
     if (page === "characters" && currentPage !== "characters") { characterScreen = "overview"; selectedCharacterId = null; }
     if (page === "blacksmith") { blacksmithScreen = "menu"; blacksmithView.focusRecipeIds = []; blacksmithView.focusContext = ""; blacksmithView.lastCraftedInstanceId = null; blacksmithView.lastCraftedSetDiscoveries = []; }
     if (page === "inventory") { inventoryView.focusInstanceId = null; inventoryView.focusLabel = null; }
@@ -1341,10 +1356,12 @@
     const action = button.dataset.action;
     if (action === "open-story-reader") { openStoryReader(); return; }
     if (action === "finish-story-reader") {
+      const servicesBefore = new Set(window.GuildServices.unlockedIds());
       const result = await window.GameClient.execute("story.readPending", { episodeId: button.dataset.episode });
       if (!result.ok) { toast(result.message, "error"); return; }
       document.getElementById("modal-root").innerHTML = "";
-      toast(result.message, "success");
+      const unlockedServices = window.GuildServices.newlyUnlocked(servicesBefore);
+      toast(unlockedServices.length ? unlockedServices.map(entry => entry.unlockMessage).join(" ") : result.message, "success");
       renderNav();
       render();
       document.querySelector(".main-area").scrollTop = 0;

@@ -19,6 +19,7 @@ async function click(action, data = {}) {
 
 async function run() {
   game.GameState.reset();
+  game.GameState.data.story.readSceneIds.push("whispering_brook_clear");
   const character = require("./helpers").createCharacter(game, "導線確認の戦士");
   require("./helpers").createCharacter(game, "経験の浅い魔術師", "mage");
   game.UI.init(); game.UI.navigate("characters");

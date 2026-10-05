@@ -21,6 +21,7 @@ async function click(action, data = {}) {
 }
 async function run() {
   game.UI.init();
+  game.GameState.data.story.readSceneIds.push("whispering_brook_clear");
   assert.deepStrictEqual(Array.from(game.ObservationJournal.unread(), note => note.id), ["choosing_an_action"]);
   assert((await game.GameClient.execute("observation.read", { noteId: "choosing_an_action" })).ok);
   assert(!game.ObservationJournal.unlocked(game.ObservationJournal.note("weight_efficiency")));

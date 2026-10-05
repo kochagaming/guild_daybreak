@@ -87,8 +87,8 @@
     ["primordial_forest_opening", "rize", ["elena"]],
     ["starsea_corridor_opening", "shia", []],
     ["returnless_capital_opening", "garm", ["noah"]],
-    ["end_of_starless_night_opening", "noah", Object.keys(data.companions)],
-    ["end_of_starless_night_clear", "noah", Object.keys(data.companions)]
+    ["end_of_starless_night_opening", "noah", Object.keys(data.companionProfiles)],
+    ["end_of_starless_night_clear", "noah", Object.keys(data.companionProfiles)]
   ].forEach(([sceneId, protagonistId, castIds]) => feature(sceneId, protagonistId, castIds));
 
   [

@@ -20,6 +20,7 @@ async function click(action, data = {}) {
 
 async function run() {
   game.GameState.reset();
+  game.GameState.data.story.readSceneIds.push("prologue_opening", "meadow_clear");
   for (let index = 1; index <= 45; index += 1) create(game, `団員${String(index).padStart(2, "0")}`, index % 2 ? "warrior" : "mage");
   for (let index = 0; index < 30; index += 1) game.Items.add("iron_sword", 1, { source: "test", qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 }, equipmentSkills: [] });
   const materialTemplates = Object.values(game.GameData.items).filter(item => item.type === "material");

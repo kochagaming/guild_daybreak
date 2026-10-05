@@ -21,6 +21,7 @@ async function click(action, data = {}) {
 
 async function run() {
   game.GameState.reset();
+  game.GameState.data.story.readSceneIds.push("whispering_brook_clear");
   const heroes = [];
   for (const [name, job] of [["盾役", "warrior"], ["術師", "mage"], ["癒し手", "cleric"]]) {
     const hero = game.Characters.get(create(game, name, job).id);

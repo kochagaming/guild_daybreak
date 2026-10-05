@@ -136,7 +136,7 @@
     check(object(story) && story.version === 1 && Array.isArray(story.completed) && story.completed.length <= chapterIds.length && story.completed.every((id, index) => id === chapterIds[index]), "物語の進行データが不正です。");
     check(Array.isArray(story.readSceneIds) && new Set(story.readSceneIds).size === story.readSceneIds.length && story.readSceneIds.every(id => known(data.storyScenes, id)), "物語の読了記録が不正です。");
     check(Array.isArray(story.joinedCompanionIds) && new Set(story.joinedCompanionIds).size === story.joinedCompanionIds.length
-      && story.joinedCompanionIds.every(id => known(data.companions, id)), "物語加入者の記録が不正です。");
+      && story.joinedCompanionIds.every(id => known(data.companionProfiles, id) && known(data.storyCharacters, data.companionProfiles[id].characterId)), "物語加入者の記録が不正です。");
     check(story.joinedCompanionIds.length <= (data.config?.companions?.rosterLimit ?? Number.MAX_SAFE_INTEGER), "物語加入者の上限を超えています。");
     check(object(story.companionStages) && Object.entries(story.companionStages).every(([companionId, stageId]) => story.joinedCompanionIds.includes(companionId) && data.relations?.companionProgressions?.[companionId]?.stages?.[stageId]), "物語加入者の成長段階が不正です。");
     check(story.joinedCompanionIds.every(companionId => typeof story.companionStages[companionId] === "string"), "物語加入者の成長段階が不足しています。");
@@ -259,7 +259,7 @@
       check(text(character.name) && character.name.trim().length > 0 && character.name.length <= 16 && integer(character.level) && character.level >= 1 && character.level <= 100000 && integer(character.exp) && character.exp < window.Characters.expToNext(character.level));
       check(object(character.source) && ["recruitment", "companion"].includes(character.source.type), "冒険者の加入経路が不正です。");
       if (character.source.type === "companion") {
-        const companion = data.companions?.[character.source.companionId];
+        const companion = data.companionProfiles?.[character.source.companionId];
         check(companion && !companionCharacters.has(companion.id) && story.joinedCompanionIds.includes(companion.id), "物語加入者の参照または重複が不正です。");
         check(!Object.prototype.hasOwnProperty.call(character, "base"), "物語加入者にマスター能力が重複保存されています。");
         companionCharacters.add(companion.id);
@@ -487,7 +487,7 @@
           check(object(member) && member.id === expedition.partyIds[index] && text(member.name) && integer(member.level) && member.level > 0 && member.position === index
             && known(data.jobs, member.jobId) && known(data.races, member.raceId) && known(data.births, member.birthId));
           if (member.companionId != null) {
-            check(known(data.companions, member.companionId), "探索中の物語人物参照が不正です。");
+            check(known(data.companionProfiles, member.companionId), "探索中の物語人物参照が不正です。");
             if (member.companionStageId != null) check(Boolean(data.relations?.companionProgressions?.[member.companionId]?.stages?.[member.companionStageId]), "探索中の人物成長段階が不正です。");
           } else check(member.companionStageId == null, "一般冒険者に人物成長段階が設定されています。");
           check(["melee", "ranged", "mixed"].includes(member.weaponRange) && Array.isArray(member.skillIds) && member.skillIds.every(id => known(data.skills, id)) && new Set(member.skillIds).size === member.skillIds.length);
@@ -525,7 +525,7 @@
       check(result.difficultyId == null || ["normal", "abyss", "divine"].includes(result.difficultyId), "探索結果の難易度が不正です。");
       check(result.timeMultiplier == null || integer(result.timeMultiplier) && result.timeMultiplier >= 1 && result.timeMultiplier <= 6);
       if (result.storyCompleted != null) check(Array.isArray(result.storyCompleted) && result.storyCompleted.length <= chapterIds.length && result.storyCompleted.every(id => chapterIds.includes(id)));
-      if (result.newCompanionIds != null) check(Array.isArray(result.newCompanionIds) && new Set(result.newCompanionIds).size === result.newCompanionIds.length && result.newCompanionIds.every(id => story.joinedCompanionIds.includes(id) && known(data.companions, id)), "探索結果の物語加入者が不正です。");
+      if (result.newCompanionIds != null) check(Array.isArray(result.newCompanionIds) && new Set(result.newCompanionIds).size === result.newCompanionIds.length && result.newCompanionIds.every(id => story.joinedCompanionIds.includes(id) && known(data.companionProfiles, id)), "探索結果の物語加入者が不正です。");
       if (result.companionAdvancements != null) check(Array.isArray(result.companionAdvancements) && result.companionAdvancements.every(entry => object(entry) && story.joinedCompanionIds.includes(entry.companionId) && data.relations?.companionProgressions?.[entry.companionId]?.stages?.[entry.stageId] && typeof entry.previousStageId === "string"), "探索結果の人物成長記録が不正です。");
       if (result.storyMoments != null) check(Array.isArray(result.storyMoments) && result.storyMoments.every(moment => object(moment) && ["opening", "discovery", "ending"].includes(moment.kind) && known(data.dungeons, moment.dungeonId) && known(data.storyScenes, moment.sceneId)));
       if (result.newRecipeIds != null) check(Array.isArray(result.newRecipeIds) && new Set(result.newRecipeIds).size === result.newRecipeIds.length && result.newRecipeIds.every(id => data.recipes.some(recipe => recipe.id === id)), "探索結果の解放レシピが不正です。");

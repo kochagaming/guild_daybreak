@@ -168,7 +168,7 @@
     return record;
   }
   function companionDefinition(character) {
-    return character?.source?.type === "companion" ? window.GameData.companions?.[character.source.companionId] || null : null;
+    return character?.source?.type === "companion" ? window.Companions?.definition(character.source.companionId) || null : null;
   }
   function baseStats(character) { return companionDefinition(character)?.baseStats || character.base; }
 

@@ -953,6 +953,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .story-reader-speaker strong { color: #473820; font-size: .78rem; line-height: 1.35; }
 .story-reader-speaker small { color: #8a704c; font-size: .62rem; line-height: 1.35; }
 .story-reader-dialogue > p { align-self: center; margin: 0; font-size: .94rem; line-height: 1.9; text-align: left; }
+
+.service-keeper { display: grid; grid-template-columns: 44px minmax(0,1fr); gap: .7rem; align-items: center; margin: 0 0 .8rem; padding: .65rem .8rem; border: 1px solid rgba(116,91,53,.22); border-left: 3px solid var(--gold, #b68a43); border-radius: 8px; background: rgba(255,255,255,.62); }
+.service-keeper > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: #182635; color: #f1d28b; font-family: serif; font-size: 1.15rem; }
+.service-keeper div { min-width: 0; display: grid; grid-template-columns: max-content minmax(0,1fr); column-gap: .55rem; align-items: baseline; }
+.service-keeper small { color: #8b672e; font-size: .68rem; letter-spacing: .08em; }
+.service-keeper strong { font-size: .93rem; }
+.service-keeper p { grid-column: 1 / -1; margin: .12rem 0 0; color: var(--muted, #66717c); font-size: .76rem; line-height: 1.45; }
 .story-reader-character { display: flex; align-items: center; gap: .8rem; margin: 1rem 0; padding: .65rem; background: #eee4d1; border-radius: 6px; }
 .story-reader-character img { width: 52px; height: 62px; object-fit: contain; background: #faf6ec; border-radius: 4px; }
 .story-reader-character span { display: grid; gap: .15rem; }

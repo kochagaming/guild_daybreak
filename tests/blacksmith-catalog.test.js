@@ -30,6 +30,7 @@ async function run() {
   assert.strictEqual(game.Blacksmith.status(swordRecipe), "locked");
 
   game.GameState.data.story.completed.push("prologue", "roadside");
+  game.GameState.data.story.readSceneIds.push("meadow_clear");
   game.GameState.data.gold = 9999;
   game.Items.add("iron_ore", 3, { source: "test" });
   assert.strictEqual(game.Blacksmith.status(swordRecipe), "ready");

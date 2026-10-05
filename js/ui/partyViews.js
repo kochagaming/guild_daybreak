@@ -112,7 +112,7 @@
     const trackedItem = result.trackedItemId ? window.GameData.items[result.trackedItemId] : null;
     const trackedProgress = Number.isInteger(result.trackedItemProgress) && result.trackedItemGoal ? `・累計 ${result.trackedItemProgress}/${result.trackedItemGoal}` : "";
     const tracked = trackedItem && result.trackedItemQuantity > 0 ? `<span class="tracked">目標 +${result.trackedItemQuantity} ${escape(trackedItem.name)}${trackedProgress}</span>` : "";
-    const companionGrowthNames = (result.companionAdvancements || []).map(entry => window.GameData.companions[entry.companionId]?.name).filter(Boolean);
+    const companionGrowthNames = (result.companionAdvancements || []).map(entry => window.Companions.definition(entry.companionId)?.name).filter(Boolean);
     const companionGrowth = companionGrowthNames.length ? `<span class="companion-growth">人物成長 ${escape(companionGrowthNames.join("・"))}</span>` : "";
     const learnedSkillCount = (result.levelUps || []).reduce((sum, entry) => sum + (entry.newSkillIds?.length || 0), 0);
     const skillGrowth = learnedSkillCount ? `<span class="skill-growth">新スキル ${learnedSkillCount}種</span>` : "";
@@ -496,7 +496,7 @@
       const selected = dungeon.id === selectedId;
       const partyRuleCheck = window.DungeonPartyRules.check(dungeon, window.Party.members(partyIndex));
       const restrictionCompanions = window.DungeonPartyRules.companionIds(dungeon)
-        .map(id => window.GameData.companions[id])
+        .map(id => window.Companions.definition(id))
         .filter(Boolean);
       const restrictionPortraits = restrictionCompanions.length
         ? `<div class="dungeon-restriction-companions">${restrictionCompanions.map(companion => {

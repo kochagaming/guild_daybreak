@@ -6,11 +6,11 @@ const scripts = Array.from(fs.readFileSync(path.join(root, "index.html"), "utf8"
 scripts.forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "utf8"), context, { filename: file }));
 const game = context.window, state = game.GameState.data;
 
-const companionIds = Object.keys(game.GameData.companions);
+const companionIds = Object.keys(game.GameData.companionProfiles);
 assert.strictEqual(game.GameData.config.companions.rosterLimit, 8);
 assert.strictEqual(companionIds.length, 8, "The initial story cast contains eight unique companions");
 companionIds.forEach(id => {
-  const companion = game.GameData.companions[id];
+  const companion = game.Companions.definition(id);
   const portrait = game.GameData.portraits[companion.portraitId];
   assert.strictEqual(portrait.companionId, id, `${id} uses its own story portrait`);
 });
@@ -54,7 +54,7 @@ assert(!Object.prototype.hasOwnProperty.call(noah, "base"), "Companion master st
 assert(!finalResult.newCompanionIds, "Clearing a chapter does not repeat a companion who joined at its opening");
 assert(state.story.joinedCompanionIds.includes("noah") && state.characters.filter(entry => entry.source?.companionId === "noah").length === 1);
 assert.strictEqual(state.characters.filter(entry => entry.source?.type === "companion").length, 8);
-companionIds.forEach(id => assert(game.Characters.learnedSkills(game.Companions.character(id)).filter(skill => skill.sources.includes(`${game.GameData.companions[id].name}固有`)).length >= 2, `${id} has at least two personal skills`));
+companionIds.forEach(id => assert(game.Characters.learnedSkills(game.Companions.character(id)).filter(skill => skill.sources.includes(`${game.Companions.definition(id).name}固有`)).length >= 2, `${id} has at least two personal skills`));
 assert(["mina", "elena", "garm", "shia", "tio", "rize", "kai", "noah"].every(id => Object.keys(game.GameData.relations.companionProgressions[id].stages).length >= 2), "Every story companion has a personal growth stage");
 
 [
@@ -84,7 +84,7 @@ function resolvePersonalExpedition({ companionId, dungeonId, stageId, originalSk
   game.Story.recordResult(result);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(result.companionAdvancements)), [{ companionId, stageId, previousStageId: "base" }], `${companionId} grows through ${dungeonId}`);
   assert.strictEqual(game.Companions.stageId(companionId), stageId);
-  const learned = game.Characters.learnedSkills(game.Companions.character(companionId)).filter(skill => skill.sources.includes(`${game.GameData.companions[companionId].name}固有`));
+  const learned = game.Characters.learnedSkills(game.Companions.character(companionId)).filter(skill => skill.sources.includes(`${game.Companions.definition(companionId).name}固有`));
   assert(learned.some(skill => skill.id === replacementSkillId) && learned.some(skill => skill.id === addedSkillId), `${companionId} gains the replacement and added personal skills`);
   assert(!learned.some(skill => skill.id === originalSkillId), `${companionId}'s original active skill is replaced`);
   assert.strictEqual(game.Story.dungeonEndingScene(game.GameData.dungeons[dungeonId]).protagonistId, companionId, `${dungeonId} records the featured companion as protagonist`);

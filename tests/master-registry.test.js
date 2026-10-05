@@ -170,14 +170,14 @@ contentFiles.forEach(file => {
   );
 });
 
-["data/items.js", "data/monsters.js", "data/dungeons.js", "data/shop.js", "data/dungeonStories.js", "data/companions.js", "data/skills.js", "data/progressionSkills.js"].forEach(file => {
+["data/items.js", "data/monsters.js", "data/dungeons.js", "data/shop.js", "data/dungeonStories.js", "data/storyCharacters.js", "data/companions.js", "data/skills.js", "data/progressionSkills.js"].forEach(file => {
   const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   assert(
-    !/(?:window\.)?(?:GameData|data)\.(?:items|monsters|dungeons|storyScenes|companions|skills)(?:\[[^\]]+\]|\.[A-Za-z0-9_]+)\s*=/.test(source),
+    !/(?:window\.)?(?:GameData|data)\.(?:items|monsters|dungeons|storyScenes|storyCharacters|companionProfiles|skills)(?:\[[^\]]+\]|\.[A-Za-z0-9_]+)\s*=/.test(source),
     `${file} must publish its base master only after construction is complete`
   );
   assert(
-    !/(?:window\.)?(?:GameData|data)\.(?:items|monsters|dungeons|storyScenes|companions|skills)(?:\[[^\]]+\]|\.[A-Za-z0-9_]+)\.[A-Za-z0-9_]+\s*=/.test(source),
+    !/(?:window\.)?(?:GameData|data)\.(?:items|monsters|dungeons|storyScenes|storyCharacters|companionProfiles|skills)(?:\[[^\]]+\]|\.[A-Za-z0-9_]+)\.[A-Za-z0-9_]+\s*=/.test(source),
     `${file} must not patch a published base entity`
   );
   assert(
@@ -187,7 +187,9 @@ contentFiles.forEach(file => {
 });
 
 for (const [file, expectedCall] of [
-  ["data/companions.js", "data.registry.entities(\"companions\""],
+  ["data/storyCharacters.js", "data.registry.entities(\"storyCharacters\""],
+  ["data/guildServices.js", "data.registry.config(\"guildServices\""],
+  ["data/companions.js", "data.registry.entities(\"companionProfiles\""],
   ["data/companionStories.js", "data.registry.relationList(\"storyTriggers\""],
   ["data/storyDialogues.js", "data.registry.relations(\"storySceneScripts\""],
   ["data/dungeonDifficulties.js", "data.registry.relations(\"monsterDifficultyDropOverrides\""],

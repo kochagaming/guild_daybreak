@@ -266,7 +266,7 @@
       else ["openingStoryId", "discoveryStoryId"].forEach(field => requireRef(master.storyScenes, links[field], `relations.dungeonStoryLinks.${dungeon.id}.${field}`));
       (master.relations.dungeonPartyRestrictions[dungeon.id] || []).forEach(rule => {
         (rule.raceIds || []).forEach(raceId => requireRef(master.races, raceId, `relations.dungeonPartyRestrictions.${dungeon.id}`));
-        (rule.companionIds || []).forEach(companionId => requireRef(master.companions, companionId, `relations.dungeonPartyRestrictions.${dungeon.id}`));
+        (rule.companionIds || []).forEach(companionId => requireRef(master.companionProfiles, companionId, `relations.dungeonPartyRestrictions.${dungeon.id}`));
       });
     });
     const visitingDungeons = new Set();
@@ -933,7 +933,7 @@
       });
     }
 
-    if (!Number.isInteger(master.config.companions.rosterLimit) || master.config.companions.rosterLimit < Object.keys(master.companions).length) errors.push("config.companions.rosterLimit は定義済みNPC数以上の整数で指定してください");
+    if (!Number.isInteger(master.config.companions.rosterLimit) || master.config.companions.rosterLimit < Object.keys(master.companionProfiles).length) errors.push("config.companions.rosterLimit は定義済み加入NPC数以上の整数で指定してください");
     const companionBondReward = master.config.explorationEvents?.companionBondReward;
     if (!companionBondReward || !Number.isInteger(companionBondReward.quantity) || companionBondReward.quantity < 1) errors.push("config.explorationEvents.companionBondReward.quantity は1以上の整数で指定してください");
     requireRef(master.items, companionBondReward?.itemId, "config.explorationEvents.companionBondReward.itemId");
@@ -1005,26 +1005,31 @@
       companionMomentIds.add(moment.id);
       if (typeof moment.title !== "string" || !moment.title.trim()) errors.push(`${source}.title がありません`);
       if (!Array.isArray(moment.companionIds) || !moment.companionIds.length || moment.companionIds.length > 2 || new Set(moment.companionIds).size !== moment.companionIds.length) errors.push(`${source}.companionIds が空、不正、または重複しています`);
-      (moment.companionIds || []).forEach(companionId => requireRef(master.companions, companionId, `${source}.companionIds`));
+      (moment.companionIds || []).forEach(companionId => requireRef(master.companionProfiles, companionId, `${source}.companionIds`));
       if (moment.requiredStages != null && (!moment.requiredStages || typeof moment.requiredStages !== "object" || Array.isArray(moment.requiredStages))) errors.push(`${source}.requiredStages が不正です`);
       Object.entries(moment.requiredStages || {}).forEach(([companionId, stageId]) => {
         if (!(moment.companionIds || []).includes(companionId)) errors.push(`${source}.requiredStages.${companionId} は登場人物に含まれていません`);
-        requireRef(master.companions, companionId, `${source}.requiredStages`);
+        requireRef(master.companionProfiles, companionId, `${source}.requiredStages`);
         requireRef(master.relations.companionProgressions?.[companionId]?.stages, stageId, `${source}.requiredStages.${companionId}`);
       });
       if (!Array.isArray(moment.lines) || !moment.lines.length || moment.lines.some(line => typeof line !== "string" || !line.trim())) errors.push(`${source}.lines がありません`);
     });
-    Object.keys(master.relations.companionSkillGrants).forEach(companionId => requireRef(master.companions, companionId, `relations.companionSkillGrants.${companionId}`));
-    Object.keys(master.relations.companionProgressions).forEach(companionId => requireRef(master.companions, companionId, `relations.companionProgressions.${companionId}`));
-    Object.values(master.companions).forEach(companion => {
-      const source = `companions.${companion.id}`;
-      requireRef(master.jobs, companion.jobId, `companions.${companion.id}.jobId`);
-      requireRef(master.races, companion.raceId, `companions.${companion.id}.raceId`);
-      requireRef(master.births, companion.birthId, `companions.${companion.id}.birthId`);
-      requireRef(master.portraits, companion.portraitId, `companions.${companion.id}.portraitId`);
-      (companion.previousPortraitIds || []).forEach(portraitId => requireRef(master.portraits, portraitId, `companions.${companion.id}.previousPortraitIds`));
-      ["name", "title", "description"].forEach(field => {
-        if (typeof companion[field] !== "string" || !companion[field].trim()) errors.push(`${source}.${field} がありません`);
+    Object.keys(master.relations.companionSkillGrants).forEach(companionId => requireRef(master.companionProfiles, companionId, `relations.companionSkillGrants.${companionId}`));
+    Object.keys(master.relations.companionProgressions).forEach(companionId => requireRef(master.companionProfiles, companionId, `relations.companionProgressions.${companionId}`));
+    Object.entries(master.companionProfiles).forEach(([profileId, companion]) => {
+      const source = `companionProfiles.${profileId}`;
+      if (companion.id !== profileId) errors.push(`${source}.id が一致しません`);
+      if (companion.characterId !== profileId) errors.push(`${source}.characterId は加入後も同じ人物IDを指定してください`);
+      requireRef(master.storyCharacters, companion.characterId, `${source}.characterId`);
+      requireRef(master.jobs, companion.jobId, `${source}.jobId`);
+      requireRef(master.races, companion.raceId, `${source}.raceId`);
+      requireRef(master.births, companion.birthId, `${source}.birthId`);
+      const identity = master.storyCharacters[companion.characterId];
+      if (identity?.portraitId) requireRef(master.portraits, identity.portraitId, `storyCharacters.${identity.id}.portraitId`);
+      else errors.push(`storyCharacters.${companion.characterId}.portraitId がありません`);
+      (companion.previousPortraitIds || []).forEach(portraitId => requireRef(master.portraits, portraitId, `${source}.previousPortraitIds`));
+      ["name", "title", "description", "portraitId"].forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(companion, field)) errors.push(`${source}.${field} はstoryCharacters側だけに定義してください`);
       });
       if (!Number.isInteger(companion.initialLevel) || companion.initialLevel < 1) errors.push(`${source}.initialLevel は1以上の整数で指定してください`);
       ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing"].forEach(stat => {
@@ -1069,7 +1074,7 @@
       if (master.relations.companionStoryArcs[arcId]?.id !== arcId) errors.push(`relations.companionStoryArcs.${arcId}.id が一致しません`);
     });
     Object.values(master.relations.companionStoryArcs).forEach(arc => {
-      requireRef(master.companions, arc.companionId, `relations.companionStoryArcs.${arc.id}.companionId`);
+      requireRef(master.companionProfiles, arc.companionId, `relations.companionStoryArcs.${arc.id}.companionId`);
       requireRef(chapters, arc.joinChapterId, `relations.companionStoryArcs.${arc.id}.joinChapterId`);
       if (typeof arc.theme !== "string" || !arc.theme.trim()) errors.push(`relations.companionStoryArcs.${arc.id}.theme がありません`);
       if (!Array.isArray(arc.featuredChapterIds) || !arc.featuredChapterIds.length || new Set(arc.featuredChapterIds).size !== arc.featuredChapterIds.length) errors.push(`relations.companionStoryArcs.${arc.id}.featuredChapterIds が空または重複しています`);
@@ -1077,10 +1082,41 @@
       const hasJoinTrigger = master.relations.storyTriggers.some(trigger => trigger.when?.type === "chapterActive" && trigger.when.chapterId === arc.joinChapterId && (trigger.effects || []).some(effect => effect.type === "joinCompanion" && effect.companionId === arc.companionId));
       if (!hasJoinTrigger) errors.push(`relations.companionStoryArcs.${arc.id} の加入イベントがありません`);
     });
+    Object.entries(master.storyCharacters).forEach(([characterId, character]) => {
+      const source = `storyCharacters.${characterId}`;
+      if (character.id !== characterId) errors.push(`${source}.id が一致しません`);
+      ["name", "title", "description"].forEach(field => {
+        if (typeof character[field] !== "string" || !character[field].trim()) errors.push(`${source}.${field} がありません`);
+      });
+      if (character.portraitId) requireRef(master.portraits, character.portraitId, `${source}.portraitId`);
+      ["joinable", "jobId", "raceId", "birthId", "initialLevel", "baseStats"].forEach(field => {
+        if (Object.prototype.hasOwnProperty.call(character, field)) errors.push(`${source}.${field} は人物の身元ではなくcompanionProfiles側に定義してください`);
+      });
+    });
+    const servicePages = master.config.guildServices?.pages || {};
+    const servicePageIds = new Set(["home", "characters", "party", "inventory", "shop", "blacksmith", "archives", "guild", "settings"]);
+    if (new Set(master.config.guildServices?.order || []).size !== (master.config.guildServices?.order || []).length) errors.push("config.guildServices.order に重複があります");
+    Object.entries(servicePages).forEach(([pageId, service]) => {
+      const source = `config.guildServices.pages.${pageId}`;
+      if (!servicePageIds.has(pageId)) errors.push(`${source} は未定義の画面です`);
+      if (Object.prototype.hasOwnProperty.call(service, "npcId")) errors.push(`${source}.npcId は廃止済みです。keeperCharacterIdを使用してください`);
+      if (service.keeperCharacterId) requireRef(master.storyCharacters, service.keeperCharacterId, `${source}.keeperCharacterId`);
+      if (!service.initiallyAvailable) {
+        if (typeof service.keeperCharacterId !== "string" || !service.keeperCharacterId.trim()) errors.push(`${source}.keeperCharacterId がありません`);
+        if (service.unlock?.type === "sceneRead") requireRef(master.storyScenes, service.unlock.sceneId, `${source}.unlock.sceneId`);
+        else if (service.unlock?.type === "chapterCompleted") requireRef(chapters, service.unlock.chapterId, `${source}.unlock.chapterId`);
+        else errors.push(`${source}.unlock.type が不正です`);
+        if (typeof service.unlockMessage !== "string" || !service.unlockMessage.trim()) errors.push(`${source}.unlockMessage がありません`);
+      }
+    });
+    (master.config.guildServices?.order || []).forEach(pageId => {
+      if (!servicePages[pageId]) errors.push(`config.guildServices.order -> ${pageId}`);
+    });
+
     Object.entries(master.relations.storySceneOverlays).forEach(([sceneId, overlay]) => {
       requireRef(master.storyScenes, sceneId, `relations.storySceneOverlays.${sceneId}`);
-      if (overlay.protagonistId) requireRef(master.companions, overlay.protagonistId, `relations.storySceneOverlays.${sceneId}.protagonistId`);
-      (overlay.castIds || []).forEach(companionId => requireRef(master.companions, companionId, `relations.storySceneOverlays.${sceneId}.castIds`));
+      if (overlay.protagonistId) requireRef(master.storyCharacters, overlay.protagonistId, `relations.storySceneOverlays.${sceneId}.protagonistId`);
+      (overlay.castIds || []).forEach(characterId => requireRef(master.storyCharacters, characterId, `relations.storySceneOverlays.${sceneId}.castIds`));
       if (overlay.castIds && (!Array.isArray(overlay.castIds) || new Set(overlay.castIds).size !== overlay.castIds.length)) errors.push(`relations.storySceneOverlays.${sceneId}.castIds が不正または重複しています`);
       if (overlay.protagonistId && Array.isArray(overlay.castIds) && !overlay.castIds.includes(overlay.protagonistId)) errors.push(`relations.storySceneOverlays.${sceneId}.castIds に主人公が含まれていません`);
       ["name", "text"].forEach(field => {
@@ -1103,6 +1139,7 @@
         if (typeof block.speakerId !== "string" || !block.speakerId.trim()) errors.push(`${blockSource}.speakerId がありません`);
         if (typeof block.speakerName !== "string" || !block.speakerName.trim()) errors.push(`${blockSource}.speakerName がありません`);
         if (typeof block.speakerRole !== "string" || !block.speakerRole.trim()) errors.push(`${blockSource}.speakerRole がありません`);
+        if (block.speakerId !== "guild_owner" && !has(master.storyCharacters, block.speakerId)) errors.push(`${blockSource}.speakerId -> ${block.speakerId}`);
       });
     });
     Object.keys(master.storyScenes).forEach(sceneId => {
@@ -1119,7 +1156,7 @@
       (trigger.effects || []).forEach((effect, index) => {
         const effectSource = `${source}.effects.${index}`;
         if (!["joinCompanion", "advanceCompanion"].includes(effect.type)) errors.push(`${effectSource}.type -> ${effect.type ?? "(未指定)"}`);
-        requireRef(master.companions, effect.companionId, `${effectSource}.companionId`);
+        requireRef(master.companionProfiles, effect.companionId, `${effectSource}.companionId`);
         if (effect.type === "advanceCompanion" && effect.companionId) requireRef(master.relations.companionProgressions[effect.companionId]?.stages, effect.stageId, `${effectSource}.stageId`);
       });
     });

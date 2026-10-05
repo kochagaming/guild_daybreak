@@ -3,30 +3,36 @@
 
   const data = window.GameData;
   const scripts = {};
+  const storyCharacter = id => {
+    const entry = data.storyCharacters[id];
+    return entry ? { speakerId: id, speakerName: entry.name, speakerRole: entry.title } : { speakerId: id, speakerName: id, speakerRole: "町の人" };
+  };
   const actors = {
-    rina: { speakerId: "receptionist_rina", speakerName: "リナ", speakerRole: "受付係" },
+    rina: storyCharacter("receptionist_rina"),
     owner: { speakerId: "guild_owner", speakerName: "ギルドオーナー", speakerRole: "あなた" },
-    leader: { speakerId: "expedition_leader", speakerName: "遠征隊長", speakerRole: "冒険者" },
-    cook: { speakerId: "inn_cook", speakerName: "ベルタ", speakerRole: "宿の料理番" },
-    child: { speakerId: "town_child", speakerName: "ネネ", speakerRole: "町の子ども" }
+    cook: storyCharacter("inn_cook"), child: storyCharacter("town_child"),
+    marta: storyCharacter("merchant_marta"), karl: storyCharacter("road_warden_karl"),
+    gregor: storyCharacter("blacksmith_gregor"), else: storyCharacter("archivist_else"),
+    rolf: storyCharacter("brigand_rolf"), johann: storyCharacter("stationmaster_johann"),
+    etta: storyCharacter("merchant_etta"), oskar: storyCharacter("foreman_oskar")
   };
   const witnesses = {
-    prologue: { speakerId: "miller_judit", speakerName: "ユーディト", speakerRole: "粉屋" },
-    roadside: { speakerId: "merchant_marta", speakerName: "マルタ", speakerRole: "荷馬車商" },
-    seal: { speakerId: "foreman_oskar", speakerName: "オスカー", speakerRole: "坑道頭" },
-    starfall: { speakerId: "copyist_cecil", speakerName: "セシル", speakerRole: "町の写本師" },
-    ember_crown: { speakerId: "refugee_frieda", speakerName: "フリーダ", speakerRole: "灰の国の避難民" },
-    mirror_tide: { speakerId: "fisher_nils", speakerName: "ニルス", speakerRole: "老漁師" },
-    clockwork_desert: { speakerId: "caravan_zara", speakerName: "ザラ", speakerRole: "砂路の隊商主" },
-    blackwood_pilgrimage: { speakerId: "herbalist_olga", speakerName: "オルガ", speakerRole: "森辺の薬師" },
-    thunder_snow_peaks: { speakerId: "pilgrim_hein", speakerName: "ハイン", speakerRole: "山麓の巡礼者" },
-    falling_sky_castle: { speakerId: "watcher_lutz", speakerName: "ルッツ", speakerRole: "町の鐘守" },
-    black_moon_prison: { speakerId: "dreamer_irma", speakerName: "イルマ", speakerRole: "夢を失った旅人" },
-    primordial_forest: { speakerId: "woodcutter_bram", speakerName: "ブラム", speakerRole: "木樵" },
-    starsea_corridor: { speakerId: "boatman_ren", speakerName: "レン", speakerRole: "渡し守" },
-    northern_star_tomb: { speakerId: "astronomer_adel", speakerName: "アデル", speakerRole: "王都の天文官" },
-    returnless_capital: { speakerId: "refugee_marek", speakerName: "マレク", speakerRole: "旧王都の住民" },
-    end_of_starless_night: { speakerId: "bell_keeper_anna", speakerName: "アンナ", speakerRole: "町の鐘楼守" }
+    prologue: storyCharacter("miller_judit"),
+    roadside: actors.marta,
+    seal: actors.oskar,
+    starfall: storyCharacter("copyist_cecil"),
+    ember_crown: storyCharacter("refugee_frieda"),
+    mirror_tide: storyCharacter("fisher_nils"),
+    clockwork_desert: storyCharacter("caravan_zara"),
+    blackwood_pilgrimage: storyCharacter("herbalist_olga"),
+    thunder_snow_peaks: storyCharacter("pilgrim_hein"),
+    falling_sky_castle: storyCharacter("watcher_lutz"),
+    black_moon_prison: storyCharacter("dreamer_irma"),
+    primordial_forest: storyCharacter("woodcutter_bram"),
+    starsea_corridor: storyCharacter("boatman_ren"),
+    northern_star_tomb: storyCharacter("astronomer_adel"),
+    returnless_capital: storyCharacter("refugee_marek"),
+    end_of_starless_night: storyCharacter("bell_keeper_anna")
   };
   const chapterCompanions = {
     seal: "mina", starfall: "elena", ember_crown: "garm", mirror_tide: "shia",
@@ -40,8 +46,8 @@
   const narration = text => ({ kind: "narration", text });
   const dialogue = (actor, text) => ({ kind: "dialogue", ...actor, text });
   const companion = id => {
-    const entry = data.companions[id];
-    return entry ? { speakerId: id, speakerName: entry.name, speakerRole: entry.title } : actors.leader;
+    const entry = data.storyCharacters[id];
+    return entry ? { speakerId: id, speakerName: entry.name, speakerRole: entry.title } : actors.rina;
   };
   const resolvedScene = id => Object.assign({}, data.storyScenes[id], data.relations.storySceneOverlays[id] || {});
   const add = (sceneId, blocks) => {
@@ -54,11 +60,15 @@
     narration("軋む扉の上へ、冒険者ギルドの看板が掛けられた。立派な紋章も、大勢の英雄もいない。あるのは借りた机と、帳簿と、これから名前を書き込む余白だけだった。"),
     dialogue(actors.rina, "看板、少し右です。……そこ。これで道の向こうからでも読めます。たぶん、ですけど。"),
     dialogue(actors.cook, "昨夜まで雨漏りの桶を置いてた場所が受付台になるとはね。客が来なくても、鍋だけは焦がさないでおくよ。"),
-    narration("最初に扉を叩いたのは、鎧を着た英雄ではなかった。粉で白くなった前掛けを握る、町外れの粉屋だった。"),
+    narration("最初に扉を叩いたのは、鎧を着た英雄ではなかった。粉で白くなった前掛けを握る、町外れの粉屋ユーディトだった。"),
     dialogue(witnesses.prologue, "草原の道が塞がれて、麦を運ぶ荷車が三日も戻りません。大きな依頼料は出せないけれど……あの道が閉じたままでは、町のパンが先になくなります。"),
     dialogue(actors.owner, "依頼を預かります。まず、帰ってこられる仲間を集めましょう。"),
-    dialogue(actors.rina, "はい、オーナー。最初の一枚は、目立つ場所へ貼ります。ここから私たちの記録を始めましょう。"),
-    narration("真新しい依頼書の端が、開いた窓から入る風に揺れた。小さなギルドの最初の仕事は、世界を救うことではなく、町の朝食を守ることから始まった。")
+    dialogue(actors.rina, "はい。最初の一枚は目立つ場所へ――と言いたいところですが、掲示板の前に荷箱が届いています。"),
+    narration("話を聞いていたように、半開きの扉から赤茶色の髪の商人が顔を出した。背後の荷車には、鞘に入った剣や旅靴、包帯の箱が隙間なく積まれている。"),
+    dialogue(actors.marta, "届いたんじゃなくて、道が危なくて先へ行けないの。私はマルタ。空いている壁を貸してくれるなら、店が動けるまで冒険者の旅支度をここで売らせて。"),
+    dialogue(actors.rina, "依頼書の隣が値札だらけになりますよ。……でも、何も持たずに草原へ行かせるよりは良さそうです。オーナー、棚を一つ貸しましょう。"),
+    dialogue(actors.owner, "決まりだ。マルタは道具を、私たちは道を取り戻す。互いに帰ってきた時の場所も、ここに作ろう。"),
+    narration("依頼書の横へ、小さな店棚が並んだ。小さなギルドの最初の仕事は、世界を救うことではなく、町の朝食と一本の街道を守ることから始まった。")
   ]);
 
   add("prologue_clear", [
@@ -66,29 +76,166 @@
     narration("立派とは言えない一隊だった。それでも、掲示板から依頼書を外して歩き出す背中は、昨日まで空っぽだった宿に確かな役目を与えた。"),
     dialogue(actors.child, "ねえ、本当に魔物をやっつけてくるの？　帰ってきたら、草原の向こうの話を聞かせて。"),
     dialogue(actors.cook, "土産話の前に全員で帰っておいで。冷めた煮込みでも、帰らない連中には食べさせられないからね。"),
-    dialogue(actors.rina, "道中の記録袋と、素材を入れる麻袋です。傷んだ装備も捨てずに持ち帰ってください。鍛冶場の準備をして待っています。"),
+    dialogue(actors.marta, "道中の記録袋と、拾った物を入れる麻袋。どちらも代金は帰ってからでいいわ。空のまま返すのは禁止よ。"),
+    dialogue(actors.rina, "マルタ、それでは贈り物です。……けれど助かります。勝敗にかかわらず、見たものを記して持ち帰ってください。"),
     dialogue(actors.owner, "最初の約束は、勝つことではなく帰ることにしよう。行ってらっしゃい。"),
     narration("一隊が角を曲がって見えなくなっても、リナはしばらく戸口に立っていた。やがて受付へ戻り、帰還者の名を書く欄を、帳簿に人数分だけ用意した。")
   ]);
 
   add("roadside_opening", [
-    setting("夕刻の食堂。濡れた外套を着た商人たちが暖炉を囲み、卓上には草原から持ち帰られた黒い杭と、泥に汚れた荷札が置かれていた。"),
-    narration("街道を荒らすものは、飢えた魔物だけではないらしい。草原、小川、峠、朽ちた宿場。途切れた轍をつなぐほど、誰かが獣と人の流れを意図して変えている形跡が見えてきた。"),
-    dialogue(witnesses.roadside, "護衛を増やしても駄目でした。獣はまるで、逃げ道まで知っているみたいに荷車を追い込むんです。峠では、人影を見た者もいます。"),
-    dialogue(actors.rina, "一度の討伐では街道は戻りません。残された痕跡を拾いながら、道を一つずつ確かめる必要があります。"),
-    dialogue(actors.owner, "依頼を五つに分けよう。無理に先へ進まず、得た情報を次の隊へ渡せる形で残す。"),
-    dialogue(witnesses.roadside, "それなら私たちも、戻った荷車の時刻を記録します。戦うことはできなくても、道の癖なら商人の方が詳しい。"),
-    narration("冒険者だけでなく、商人や御者も地図を囲んだ。ギルドの仕事は剣を振るう者だけで成り立たない。その夜、街道の地図には初めて、町の人々の言葉で印が増えていった。")
+    setting("最初の一隊が草原へ向かう朝、宿の前には灰色の外套を着た男が立っていた。胸元には、町役場の街道監察章が光っている。"),
+    dialogue(actors.karl, "街道監察官カールだ。町長から、新設ギルドが問題を増やさないか見届けろと言われた。私は君たちの仲間ではない。現場と報告書が食い違えば、遠慮なく止める。"),
+    dialogue(actors.rina, "歓迎の言葉としては、ずいぶん固いですね。ですが、街道の古い記録を持つ人が同行してくれるなら助かります。"),
+    dialogue(actors.karl, "同行ではない。監察だ。草原の狼を何頭倒しても、商隊が戻らなければ仕事を果たしたことにはならん。"),
+    dialogue(actors.marta, "その点だけは賛成。私の仲間は荷車ごと消えたの。魔物退治の数ではなく、轍の行き先を見つけて。"),
+    dialogue(actors.owner, "ならば目的は同じだ。カールは事実を、マルタは街道の癖を、私たちは現地を確かめる。得た情報は必ずここへ持ち帰る。"),
+    narration("カールは返事の代わりに地図を広げ、草原、小川、峠、街道駅、そして月牙狼の巣へ細い線を引いた。疑い深い監察官の鉛筆が、第1章の道筋を初めて一枚につないだ。")
+  ]);
+
+  add("meadow_opening", [
+    setting("町門を出ると、風鳴りの草原は一面の銀緑に波打っていた。美しい景色とは裏腹に、街道には新しい車輪の跡が一つもない。"),
+    dialogue(actors.karl, "三日前までは、日の出ごとに二台は通った。静かすぎる。狼が居着いたなら、鳥まで消える理由がない。"),
+    dialogue(actors.marta, "荷車は風上を通るわ。獣に匂いを拾われにくいから。南の轍ばかり見ていたら、何も見つからない。"),
+    dialogue(actors.karl, "商人の勘か。"),
+    dialogue(actors.marta, "何度も無事に帰った人間の知恵よ。役所の地図よりは、今日の道を知ってる。"),
+    dialogue(actors.owner, "両方確かめよう。古い道筋と、いま使われている道筋。違いがあれば、そこに何かがある。"),
+    narration("冒険者たちは二手に分かれず、互いの姿が見える距離で草をかき分けた。初めての探索は、敵を探すより先に、消えた日常の跡を探すことから始まった。")
+  ]);
+
+  add("meadow_discovery", [
+    setting("草原の中央で、土へ斜めに打ち込まれた黒い杭が見つかった。表面には獣の毛が絡み、先端だけが不自然に街道の外を向いている。"),
+    dialogue(actors.karl, "牧童が狼を遠ざけるための忌避杭だ。古い型だが、町でも使う。これだけなら事件とは言えない。"),
+    dialogue(actors.marta, "遠ざける？　向きが逆よ。これは獣を街道から追い払うんじゃない。街道へ追い込むように並べてある。"),
+    dialogue(actors.karl, "……確かに、風下側だけ煤が新しい。誰かが置き直したのか。"),
+    dialogue(actors.marta, "私の御者なら、こんな場所で荷を止めない。轍が小川へ逸れた理由は、この先にあるわ。"),
+    narration("カールは杭を引き抜かず、角度と間隔を帳面へ写した。先ほどまで『商人の勘』と呼んでいた話の横へ、彼は初めて『有力』と記した。")
+  ]);
+
+  add("meadow_clear", [
+    setting("草原から戻った夜、宿の長机には黒い杭と欠けた刃が並べられた。鉄臭さに気づいた大柄な男が、食事の盆を置いて足を止める。"),
+    dialogue(actors.karl, "町の備品台帳に、この杭はない。野盗の仕事にしては数が多く、同じ長さに切りそろえられている。"),
+    dialogue(actors.gregor, "そいつは武器じゃない。荷箱の留め金を延ばして尖らせた粗仕事だ。炉を急いで使った痕がある。十本や二十本じゃ済まんだろう。"),
+    dialogue(actors.rina, "グレゴールさん。農具の修理を頼んだ時は、冒険者の仕事には関わらないと言っていませんでしたか。"),
+    dialogue(actors.gregor, "関わる気はないさ。ただ、こんな鉄屑を証拠の隣に積まれたら鍛冶屋として眠れん。裏の馬房を片づけろ。拾った武具と素材を持ってくれば、直すか作り直すか見てやる。"),
+    dialogue(actors.owner, "炉と作業台はこちらで用意する。代わりに、この杭を作った炉の癖も探してほしい。"),
+    dialogue(actors.gregor, "交渉成立だ。明日の朝には火を入れる。まずはその欠けた刃から、鉄がどこを通ってきたか聞いてみよう。"),
+    narration("古い馬房の窓に、夜遅くまで橙色の火が揺れた。ギルドに鍛冶屋が開かれ、黒い杭の向こうにある小川へ、新しい調査の道が続いた。")
+  ]);
+
+  add("whispering_brook_opening", [
+    setting("翌朝。マルタが濡れた地図を受付台へ広げ、カールは草原で写した杭の配置を重ねた。二つの線は、囁きの小川で交わっている。"),
+    dialogue(actors.marta, "ここは浅いけれど、雨の後は荷車で渡れない。エッダなら北の飛び石へ回ったはず。あの子は水を怖がる馬を使っていたから。"),
+    dialogue(actors.karl, "消えた商隊の御者を、名前まで覚えているのか。"),
+    dialogue(actors.marta, "同じ道で稼ぐ人の顔を忘れたら、商人は値札しか見ていないのと同じよ。"),
+    dialogue(actors.rina, "では北岸を重点的に。ただし、精霊を追い払うことだけを目的にしないでください。彼らが騒ぐ理由も記録を。"),
+    dialogue(actors.owner, "荷車の跡と、そこに住むものの変化を一緒に追う。小川で何が道を曲げたのか確かめよう。"),
+    narration("カールは地図の『荷車三台』という記述を消し、『エッダたち』と書き直した。数字だった行方不明者に、初めて名前が戻った。")
+  ]);
+
+  add("whispering_brook_discovery", [
+    setting("北岸の葦の間から、真鍮の荷札と切れた馬具が見つかった。荷札には、マルタと同じ商会印が刻まれている。"),
+    dialogue(actors.marta, "エッダの札よ。裏の傷は、荷を受け取るたび自分で数えた跡。ここまで来ていた。"),
+    dialogue(actors.karl, "馬具は噛み切られていない。刃で切って馬を逃がしている。襲われる前に、誰かが荷車を捨てる決断をしたんだ。"),
+    dialogue(actors.marta, "それなら、生きて歩いた人がいる。峠まで行けば、まだ追いつけるかもしれない。"),
+    dialogue(actors.karl, "希望だけで追うつもりはない。だが、この切り口は逃走の証拠だ。急ぐ根拠にはなる。"),
+    narration("冒険者たちは荷札を布で包み、馬具が落ちていた向きを記した。小川の音にかき消されそうな痕跡が、次の道をはっきり峠へ向けた。")
+  ]);
+
+  add("whispering_brook_clear", [
+    setting("小川の記録が増え、受付台は濡れた紙と古い地図で埋まった。閉鎖された町文庫から来たエルゼが、その山を見て眉をひそめた。"),
+    dialogue(actors.else, "黒い杭は鍛冶の記録、荷札は商会の記録、精霊の騒ぎは土地の記録。別々に積めば、同じ事件が三つあるように見えます。"),
+    dialogue(actors.rina, "私は今の依頼と帰還時刻を扱うだけで手いっぱいです。古い記録まで同じ帳簿へ入れると、今日の仕事を見失います。"),
+    dialogue(actors.else, "だから分けましょう。あなたは現在を、私は積み重なった事実を預かる。空いている二階の部屋と棚を貸してください。図鑑も依頼の控えも、調べ直せる資料にします。"),
+    dialogue(actors.owner, "資料は隠さず、冒険者がいつでも確かめられる形に。噂と確認済みの事実も分けてほしい。"),
+    dialogue(actors.else, "それが司書の仕事です。答えを書くのではなく、次に考える人が辿れる順番を作ります。"),
+    narration("二階の一室に『冒険者資料室』の札が掛かった。エルゼが整理した最初の頁には、峠へ逃げた商隊と、獣を操る笛の可能性が並べて記された。")
+  ]);
+
+  add("brigand_pass_opening", [
+    setting("追い剥ぎの峠には、雨で消えかけた焚き火跡と、荷車を横倒しにした即席の柵が残っていた。遠くで短い笛の音がし、森の獣が一斉に向きを変える。"),
+    dialogue(actors.karl, "野盗が獣を避けているのではない。音で動かして、逃げ道を塞いでいる。草原の杭と同じ発想だ。"),
+    dialogue(actors.marta, "でも、荷は全部奪われていない。食料と灯油だけがなくなってる。金目当てなら変よ。"),
+    dialogue(actors.karl, "なら、峠に留まるためではなく、どこかへ運ぶための略奪か。見張りを生け捕りにできれば話を聞ける。"),
+    dialogue(actors.owner, "降伏した者は討たない。荷の行方と、街道駅にいる人間のことを優先する。"),
+    narration("剣を抜く前に、帰路と捕縛の手順が決められた。冒険者たちは笛の間隔を数えながら、崩れた柵の陰へ進んだ。")
+  ]);
+
+  add("brigand_pass_discovery", [
+    setting("峠の見張り台で、骨笛と数枚の配給札が見つかった。笛には獣の牙が埋め込まれ、札には朽ちた街道駅の印がある。"),
+    dialogue(actors.karl, "笛は狼を呼ぶためじゃない。嫌う音を出して追い立てる道具だ。だが、なぜ街道駅の配給札を野盗が持っている。"),
+    dialogue(actors.marta, "襲った相手から奪ったとは限らないわ。食料と交換したのかもしれない。駅にはまだ人がいる。"),
+    dialogue(actors.karl, "野盗と避難民が手を組んだ、と？"),
+    dialogue(actors.marta, "決めつけるには早いって、あなたが草原で教えたでしょう。笛を持って帰って、使っていた本人に聞きましょう。"),
+    narration("カールは小さく息を吐き、配給札を証拠袋へ入れた。監察官の報告書には『共謀』ではなく、『関係未確認』と書かれた。")
+  ]);
+
+  add("brigand_pass_clear", [
+    setting("戦いの後、捕らえられた若い男が見張り台の壁にもたれていた。名をロルフといい、傷ついた手で空になった食料袋を握っている。"),
+    dialogue(actors.rolf, "俺たちが荷を奪ったのは認める。だが街道駅の連中からじゃない。あそこへ逃げ込んだ旅人に食わせるためだ。月牙狼が道を塞いで、町へ助けを呼びに行けなかった。"),
+    dialogue(actors.karl, "助けるためなら商隊を襲っていい、とはならない。笛で獣を街道へ追いやったせいで、別の誰かが死ぬところだった。"),
+    dialogue(actors.rolf, "分かってる。最初は追い払うだけのつもりだった。群れがでかくなって、俺たちにも止められなくなったんだ。"),
+    dialogue(actors.marta, "エッダという若い商人を見なかった？　この荷札の持ち主よ。"),
+    dialogue(actors.rolf, "駅務長のヨハンが匿ってる。まだ生きてるはずだ。俺を縛ったままでいい。先にあいつらへ食料を届けてくれ。"),
+    narration("カールはロルフの縄を確かめると、冒険者へ街道駅の鍵を渡した。罪の裁きは町へ戻ってから。今は、生きている者へ間に合うことが先だった。")
+  ]);
+
+  add("abandoned_station_opening", [
+    setting("朽ちた街道駅へ近づくにつれ、道端には狼を遠ざける火と、旅人が残した白い布の目印が増えた。だが煙突から煙は上がっていない。"),
+    dialogue(actors.karl, "ヨハンは元衛兵だ。避難者がいるなら、食料が尽きても駅を空にはしない。煙を止めたのは、見つからないためだろう。"),
+    dialogue(actors.marta, "それなら、大声で呼ぶのも危ないわね。エッダは荷車の鈴を三回鳴らして、仲間だと知らせる癖がある。"),
+    dialogue(actors.owner, "鈴を使おう。返事があるまで扉へ近づかない。中の人間にも、こちらを見極める時間が必要だ。"),
+    dialogue(actors.karl, "了解した。……監察対象の指示に従うのは癪だが、筋は通っている。"),
+    narration("三度の鈴が、灯の消えた宿場へ響いた。長い沈黙の後、板で塞がれた二階の窓が、指一本ほど静かに開いた。")
+  ]);
+
+  add("abandoned_station_discovery", [
+    setting("駅の裏手で、破られた駅務日誌の頁が風に張りついていた。月の欠ける夜ごとに、巨大な狼が群れを東へ追うと記されている。"),
+    dialogue(actors.karl, "黒い杭も野盗の笛も、元は群狼王から逃れるために作られた。対処が別の土地へ被害を押しつけ、街道全体を壊したんだ。"),
+    dialogue(actors.marta, "誰か一人が全部を企んだわけじゃない。怖くて選んだことが、次の人を追い詰めていったのね。"),
+    dialogue(actors.karl, "だからこそ、最後の原因を倒せば終わりだと決めつけるな。群狼王が何から逃げているかも確かめる。"),
+    narration("冒険者たちは日誌の頁を乾いた布へ挟んだ。扉の向こうから、同じ鈴が今度は二度鳴り、内側の閂が外された。")
+  ]);
+
+  add("abandoned_station_clear", [
+    setting("街道駅の食堂には、痩せた旅人たちが毛布を分け合っていた。駅務長ヨハンの隣で、腕に包帯を巻いたエッダがマルタの荷札を握っている。"),
+    dialogue(actors.etta, "マルタさん……荷を捨てたから、商会には戻れないと思っていました。馬だけは逃がせたけど、品物は何一つ守れなくて。"),
+    dialogue(actors.marta, "荷は仕入れ直せる。あなたの名前は仕入れ直せないの。帰って叱られるところまでが仕事よ。"),
+    dialogue(actors.johann, "月牙狼はここを襲うために群れを集めているのではない。地下から青い光が漏れる夜だけ、巣の周りを掘り返して吠える。何かを外へ出すまいとしているように見えた。"),
+    dialogue(actors.karl, "街道を守るためには群狼王を止める必要がある。だが、警告まで消してはならない。巣の奥を調べる隊と、避難者を町へ送る隊を分けよう。"),
+    dialogue(actors.owner, "ヨハンとエッダたちは先に町へ。ロルフの仲間にも運搬を手伝わせる。償いは、生きた人間を帰すところから始めてもらう。"),
+    narration("止まっていた街道駅の鐘が一度だけ鳴った。救出された人々の列が町へ向かい、その逆を冒険者たちが月牙狼の巣へ歩き始めた。")
+  ]);
+
+  add("moonfang_den_opening", [
+    setting("出発前夜。宿の地図には、草原の杭、小川の荷札、峠の笛、街道駅の日誌が一本の赤い糸で結ばれていた。その終点が月牙狼の巣だった。"),
+    dialogue(actors.karl, "群狼王を放置すれば街道は戻らない。だが討ち取ることだけを命令にはしない。ヨハンの証言どおり、地下の異変を抑えている可能性がある。"),
+    dialogue(actors.rolf, "俺にも行かせてくれ。笛で追いやった群れの数は俺が一番知ってる。逃げ道を塞ぐ場所も分かる。"),
+    dialogue(actors.karl, "お前は町で避難者の荷を運べ。責任を取る場所は戦場だけじゃない。知っている道は地図へ全部書け。"),
+    dialogue(actors.marta, "カール、ずいぶんギルドらしい言い方になったじゃない。"),
+    dialogue(actors.karl, "まだ監察中だ。結論は、全員が帰ってから書く。"),
+    dialogue(actors.owner, "群狼王と戦う時も、巣の傷と青い光を見落とさない。街道を取り戻し、その先にある異変を持ち帰ろう。"),
+    narration("夜明け前、カールは監察章を外套の内側へしまった。先頭に立つことも、冒険者を名乗ることもなく、彼は証人として一行と同じ道を歩いた。")
+  ]);
+
+  add("moonfang_den_discovery", [
+    setting("巣の最深部。岩壁には巨大な爪痕が幾重にも刻まれ、その隙間から青い脈動が漏れていた。群狼王の前脚には、鉱石で焼けた古い傷がある。"),
+    dialogue(actors.karl, "ヨハンの見立てが正しい。こいつは町を狙って群れを集めたんじゃない。地下から上がるものを恐れ、縄張りの外へ獣を押し出した。"),
+    dialogue(actors.owner, "それでも人を襲った事実は変わらない。だが倒した後、この亀裂を放置すれば同じことが起きる。位置と脈動の間隔を記録しよう。"),
+    narration("崩れた岩陰には、青い鉱石を調べに来た坑道頭オスカーの道具箱が残されていた。街道の終点は、地の底へ続く次の事件の入口でもあった。")
   ]);
 
   add("roadside_clear", [
     setting("月牙狼の遠吠えが消えた翌朝、止まっていた荷車が列をなして町門をくぐった。宿の前には乾いた麦の匂いと、久しぶりに聞く車輪の音が満ちた。"),
-    narration("街道は戻った。しかし、群れを追い立てていた黒い杭と、荷に紛れていた青い鉱石は、騒ぎが一つの巣穴だけで終わらないことを告げていた。"),
-    dialogue(witnesses.roadside, "約束の荷を全部届けられました。これは報酬とは別です。洞窟から逃げてきた鉱夫に託された地図で……あの人たちは、まだ地下に仲間を残しています。"),
-    dialogue(actors.cook, "町じゃもう、あんたたちの宿じゃなくて『冒険者の宿』って呼ばれてるよ。看板に負けないくらい、床も賑やかになったね。"),
-    dialogue(actors.rina, "喜ぶのは、戻った人たちへ食事を出してからにしましょう。次の依頼人は、泥ではなく煤をかぶって待っています。"),
-    dialogue(actors.owner, "街道の記録を閉じる。次は、地下で止まった時間を迎えに行こう。"),
-    narration("掲示板から街道の依頼書が外され、その隣へ坑道の地図が留められた。町に覚えられたギルドの名は、今度は地の底へ届こうとしていた。")
+    narration("広間では、町役場の書記、救出された商人、峠から連行された者までが同じ長机を囲んだ。勝利を祝う宴の前に、カールの監察報告が読み上げられる。"),
+    dialogue(actors.karl, "このギルドは討伐数だけで依頼を終わらせず、証言の食い違いを残し、救助と調査を優先した。街道復旧への寄与を認め、町の正式な依頼仲介所として推薦する。"),
+    dialogue(actors.rina, "最初に宿へ来た時は、問題を増やさないか見届けるとおっしゃっていましたね。"),
+    dialogue(actors.karl, "増えたのは問題ではなく帳簿だ。未整理のまま積めば、エルゼに叱られる。"),
+    dialogue(actors.else, "もう叱る準備はできています。監察報告も資料室へ一部ください。都合の悪い行まで省かずに。"),
+    dialogue(actors.gregor, "鍛冶場には黒い杭を一本残すぞ。何のために作った道具か忘れると、また同じ使い方をする。"),
+    dialogue(actors.marta, "店棚は正式に借りるわ。エッダも戻ったし、止まっていた仕入れを再開できる。報酬とは別に、次の依頼人も連れてきたけれど。"),
+    dialogue(actors.oskar, "坑道頭のオスカーだ。月牙狼の巣で見つかった青い鉱石は、封鎖された採掘場から出たものに違いない。地下には、まだ仲間が残っている。"),
+    dialogue(actors.owner, "街道の記録を閉じよう。ただし、そこで見つけた青い脈動は次の頁へ移す。ギルドを、帰還を待つだけの宿から、帰還を支える場所へ育てていく。"),
+    narration("掲示板から街道の依頼書が外され、その隣へ坑道の地図が留められた。受付、商店、鍛冶場、資料室を持つ小さなギルドは、今度は地の底へ続く声を受け取った。")
   ]);
 
   add("seal_opening", [
@@ -157,7 +304,8 @@
   });
 
   function chapterSpeaker(chapterId) {
-    return chapterCompanions[chapterId] ? companion(chapterCompanions[chapterId]) : actors.leader;
+    if (chapterCompanions[chapterId]) return companion(chapterCompanions[chapterId]);
+    return chapterId === "roadside" ? actors.karl : actors.rina;
   }
 
   function contextualBlocks(sceneId, context) {
@@ -202,7 +350,7 @@
         setting(`${dungeon.name}の探索中。足を止めた一行の周囲には、戦いの跡だけでは説明できない生活と移動の痕跡が残されていた。`),
         narration(scene.text),
         dialogue(hero, "ここに残っているのは、敵が通った跡だけじゃない。運んだもの、守ったもの、戻れなかった者の順まで読み取れる。"),
-        dialogue(actors.leader, "印を写しておこう。先へ急げても、見落とした意味は帰り道で拾えない。"),
+        narration("一行は足跡と印の位置を写し、断定できない部分には空欄を残した。先へ急げても、見落とした意味は帰り道では拾えない。"),
         narration("一行は見つけたものへ勝手な名前を付けず、形と位置と言葉をそのまま記した。後に宿で読み返した時、その慎重な余白が別の証言と結びつくことになる。")
       ];
     }

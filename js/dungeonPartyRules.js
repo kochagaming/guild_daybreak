@@ -12,7 +12,7 @@
     return Array.from(new Set(rules(source).flatMap(rule => rule.companionIds || [])));
   }
   function raceNames(ids) { return ids.map(id => window.GameData.races[id]?.name || id); }
-  function companionNames(ids) { return ids.map(id => window.GameData.companions[id]?.name || id); }
+  function companionNames(ids) { return ids.map(id => window.Companions.definition(id)?.name || id); }
   function describeRule(rule) {
     if (rule.type === "allowedRaces") return `${raceNames(rule.raceIds).join("・")}のみ編成可能`;
     if (rule.type === "onlyCompanions") return `${companionNames(rule.companionIds).join("・")}のみ出撃可能`;

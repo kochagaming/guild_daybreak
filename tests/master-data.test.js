@@ -6,9 +6,9 @@ scripts.forEach(file => vm.runInContext(fs.readFileSync(path.join(root, file), "
 const game = context.window, data = game.GameData;
 const has = (table, id) => Object.prototype.hasOwnProperty.call(table || {}, id);
 const validStoryEffect = effect => effect?.type === "joinCompanion"
-  ? has(data.companions, effect.companionId)
+  ? has(data.companionProfiles, effect.companionId)
   : effect?.type === "advanceCompanion"
-    && has(data.companions, effect.companionId)
+    && has(data.companionProfiles, effect.companionId)
     && has(data.relations.companionProgressions?.[effect.companionId]?.stages, effect.stageId);
 const growth = data.config.characterGrowth;
 const actualAverageWeight = growth.averageEquipmentWeight;
@@ -29,7 +29,7 @@ assert.strictEqual(game.Characters.equipmentWeightUnitAtLevel(200), actualAverag
 assert(game.Characters.baseMaxWeight(1) < actualAverageWeight && game.Characters.baseMaxWeight(20) < 7 * actualAverageWeight, "Early weight capacity should no longer use the all-tier average");
 assert.strictEqual(game.Characters.equipmentCapacityAtLevel(285), 28);
 assert.strictEqual(game.Characters.equipmentCapacityAtLevel(1000), 28, "Post-200 capacity is capped at 28 average items");
-const namedTables = [data.items, data.skills, data.jobs, data.races, data.births, data.monsters, data.dungeons, data.equipmentTypes, data.elements, data.statusEffects, data.storyScenes, data.companions];
+const namedTables = [data.items, data.skills, data.jobs, data.races, data.births, data.monsters, data.dungeons, data.equipmentTypes, data.elements, data.statusEffects, data.storyScenes, data.storyCharacters];
 
 for (const table of namedTables) for (const [key, entry] of Object.entries(table)) {
   assert.strictEqual(entry.id, key, `object key and id differ: ${key}`);
@@ -220,7 +220,7 @@ for (const dungeon of Object.values(data.dungeons)) {
   (data.relations.dungeonPartyRestrictions[dungeon.id] || []).forEach(rule => {
     assert(["allowedRaces", "onlyCompanions", "requiredCompanions"].includes(rule.type), `${dungeon.id} has an unknown party restriction`);
     if (rule.type === "allowedRaces") assert(Array.isArray(rule.raceIds) && rule.raceIds.length && rule.raceIds.every(id => has(data.races, id)), `${dungeon.id} has invalid allowed races`);
-    if (["onlyCompanions", "requiredCompanions"].includes(rule.type)) assert(Array.isArray(rule.companionIds) && rule.companionIds.length && rule.companionIds.every(id => has(data.companions, id)), `${dungeon.id} has invalid companion restrictions`);
+    if (["onlyCompanions", "requiredCompanions"].includes(rule.type)) assert(Array.isArray(rule.companionIds) && rule.companionIds.length && rule.companionIds.every(id => has(data.companionProfiles, id)), `${dungeon.id} has invalid companion restrictions`);
     if (rule.type === "requiredCompanions") assert([undefined, "all", "any"].includes(rule.match), `${dungeon.id} has an invalid companion match mode`);
   });
 }
@@ -231,8 +231,11 @@ data.storyChapters.forEach((chapter, index) => {
   assert(Array.isArray(chapter.entryRequirements) && chapter.rewards && Number.isFinite(chapter.rewards.gold) && chapter.rewards.materials, `${chapter.id} needs progression and reward data`);
   assert(!Object.prototype.hasOwnProperty.call(chapter, "entryEffects") && !Object.prototype.hasOwnProperty.call(chapter, "effects"), `${chapter.id} must not mix story triggers into its chapter record`);
 });
-for (const [id, companion] of Object.entries(data.companions)) {
-  assert(has(data.jobs, companion.jobId) && has(data.races, companion.raceId) && has(data.births, companion.birthId) && has(data.portraits, companion.portraitId), `${id} has invalid identity references`);
+for (const [id, companion] of Object.entries(data.companionProfiles)) {
+  const identity = data.storyCharacters[companion.characterId];
+  assert(companion.id === id && companion.characterId === id && identity, `${id} has an invalid stable character identity`);
+  assert(has(data.jobs, companion.jobId) && has(data.races, companion.raceId) && has(data.births, companion.birthId) && has(data.portraits, identity.portraitId), `${id} has invalid combat profile references`);
+  assert(["name", "title", "description", "portraitId"].every(field => !Object.prototype.hasOwnProperty.call(companion, field)), `${id} must not duplicate story identity fields in its combat profile`);
   assert(Number.isInteger(companion.initialLevel) && companion.initialLevel >= 1 && companion.baseStats.hp > 0, `${id} has invalid initial ability data`);
   const grants = data.relations.companionSkillGrants[id];
   assert(Array.isArray(grants) && grants.length && grants.every(grant => grant.initial && grant.level === 1 && has(data.skills, grant.skillId)), `${id} has invalid personal skill grants`);
@@ -245,7 +248,13 @@ for (const [id, companion] of Object.entries(data.companions)) {
     assert(Object.entries(stage.replacements || {}).every(([fromId, toId]) => has(data.skills, fromId) && has(data.skills, toId)), `${id}:${stageId} has invalid skill replacements`);
   }
 }
-assert.strictEqual(data.masterMeta.schemaVersion, 42, "The master schema version is explicit");
+assert.strictEqual(data.masterMeta.schemaVersion, 44, "The master schema version is explicit");
+assert(data.storyCharacters.road_warden_karl && !data.companionProfiles.road_warden_karl, "A named story character may exist before receiving a recruitable combat profile");
+assert.strictEqual(game.Companions.definition("mina").name, data.storyCharacters.mina.name, "Recruitable definitions merge identity and combat profile through one stable character ID");
+assert.strictEqual(data.config.guildServices.pages.blacksmith.unlock.sceneId, "meadow_clear", "Facility availability is driven by story readership");
+assert(game.GuildServices.unlocked("home") && !game.GuildServices.unlocked("shop"), "Only core navigation is available before the story introduces staff");
+game.GameState.data.story.readSceneIds.push("prologue_opening", "meadow_clear", "whispering_brook_clear", "roadside_clear");
+assert.deepStrictEqual(Array.from(game.GuildServices.unlockedIds()).filter(id => ["shop", "blacksmith", "archives", "guild"].includes(id)), ["shop", "blacksmith", "archives", "guild"], "Reading staff introductions unlocks each matching facility");
 assert.strictEqual(Object.keys(data.equipmentSets).length, 17, "Crafted equipment families through the postgame publish data-driven set bonuses");
 for (const definition of Object.values(data.equipmentSets)) {
   assert(definition.itemIds.length === 3 && definition.itemIds.every(id => has(data.items, id)), `${definition.id} references three equipment templates`);
@@ -257,7 +266,7 @@ for (const addition of data.relations.chapterUnlockAdditions) {
   assert(typeof addition.text === "string" && addition.text.trim());
 }
 assert.strictEqual(data.config.companions.rosterLimit, 8, "The current story companion roster limit is explicit");
-assert(Object.keys(data.companions).length <= data.config.companions.rosterLimit, "Story companion definitions fit the current roster limit");
+assert(Object.keys(data.companionProfiles).length <= data.config.companions.rosterLimit, "Story companion definitions fit the current roster limit");
 assert.strictEqual(data.config.explorationEvents.companionBondReward.itemId, "guild_seal", "Completed travel bonds grant the shared guild currency");
 assert(Number.isInteger(data.config.explorationEvents.companionBondReward.quantity) && data.config.explorationEvents.companionBondReward.quantity > 0, "Travel bond rewards use a positive quantity");
 assert.strictEqual(data.config.explorationEvents.routeMastery.successes, 3, "Three successful observations establish reusable route knowledge");
@@ -300,17 +309,17 @@ assert.deepStrictEqual(Array.from(routeObservationNotes, note => note.unlock.rou
 const practicedRouteObservationNotes = data.observationNotes.filter(note => note.unlock?.type === "routeEventMastered");
 assert.deepStrictEqual(Array.from(practicedRouteObservationNotes, note => note.unlock.routeEventId).sort(), Array.from(data.config.explorationEvents.routeEvents, event => event.id).sort(), "Every route event has one deeper field-practice entry");
 assert(practicedRouteObservationNotes.every(note => Number.isInteger(note.unlock.successes) && note.unlock.successes >= 2), "Field-practice entries require repeated successful observations");
-assert(Array.isArray(data.config.explorationEvents.companionMoments) && data.config.explorationEvents.companionMoments.length >= Object.keys(data.companions).length, "Every companion can have a travel moment");
+assert(Array.isArray(data.config.explorationEvents.companionMoments) && data.config.explorationEvents.companionMoments.length >= Object.keys(data.companionProfiles).length, "Every companion can have a travel moment");
 for (const moment of data.config.explorationEvents.companionMoments) {
   assert(typeof moment.id === "string" && moment.id && typeof moment.title === "string" && moment.title, "Companion moments have stable IDs and readable titles");
   assert(moment.companionIds.length >= 1 && moment.companionIds.length <= 2 && new Set(moment.companionIds).size === moment.companionIds.length, "Companion moment casts are compact and unique");
-  assert(moment.companionIds.every(id => has(data.companions, id)), "Companion moments only reference known companions");
+  assert(moment.companionIds.every(id => has(data.companionProfiles, id)), "Companion moments only reference known companions");
   assert(Object.entries(moment.requiredStages || {}).every(([companionId, stageId]) => moment.companionIds.includes(companionId) && has(data.relations.companionProgressions[companionId].stages, stageId)), "Companion moment growth requirements reference its cast and known stages");
   assert(moment.lines.length && moment.lines.every(line => typeof line === "string" && line.trim()), "Companion moments contain readable lines");
 }
 for (const [id, arc] of Object.entries(data.relations.companionStoryArcs)) {
   assert.strictEqual(id, arc.id);
-  assert(has(data.companions, arc.companionId), `${id} references a known companion`);
+  assert(has(data.companionProfiles, arc.companionId), `${id} references a known companion`);
   const joinChapter = data.storyChapters.find(chapter => chapter.id === arc.joinChapterId);
   assert(joinChapter && data.relations.storyTriggers.some(trigger => trigger.when.type === "chapterActive" && trigger.when.chapterId === joinChapter.id && trigger.effects.some(effect => effect.type === "joinCompanion" && effect.companionId === arc.companionId)), `${id} has a valid chapter-active join trigger`);
   arc.featuredChapterIds.forEach(chapterId => assert(data.storyChapters.some(chapter => chapter.id === chapterId), `${id} references a known featured chapter`));
@@ -318,14 +327,20 @@ for (const [id, arc] of Object.entries(data.relations.companionStoryArcs)) {
 for (const [sceneId, overlay] of Object.entries(data.relations.storySceneOverlays)) {
   assert(has(data.storyScenes, sceneId), `${sceneId} overlay references a known story scene`);
   const scene = Object.assign({}, data.storyScenes[sceneId], overlay);
-  if (scene.protagonistId) assert(has(data.companions, scene.protagonistId), `${scene.id} has a known companion protagonist`);
-  if (scene.castIds) assert(Array.isArray(scene.castIds) && new Set(scene.castIds).size === scene.castIds.length && scene.castIds.every(id => has(data.companions, id)), `${scene.id} has a valid companion cast`);
+  if (scene.protagonistId) assert(has(data.storyCharacters, scene.protagonistId), `${scene.id} has a known named protagonist`);
+  if (scene.castIds) assert(Array.isArray(scene.castIds) && new Set(scene.castIds).size === scene.castIds.length && scene.castIds.every(id => has(data.storyCharacters, id)), `${scene.id} has a valid named cast`);
 }
 for (const [sceneId, script] of Object.entries(data.relations.storySceneScripts)) {
   assert(has(data.storyScenes, sceneId) && script.sceneId === sceneId, `${sceneId} script references its story scene`);
   assert(Array.isArray(script.blocks) && script.blocks.length >= 3, `${sceneId} has a substantial story script`);
   assert(script.blocks.every(block => ["setting", "narration", "dialogue"].includes(block.kind) && typeof block.text === "string" && block.text.trim()), `${sceneId} has valid story blocks`);
   assert(script.blocks.filter(block => block.kind === "dialogue").every(block => block.speakerId && block.speakerName && block.speakerRole), `${sceneId} dialogue identifies its speaker`);
+}
+const allStoryDialogue = Object.values(data.relations.storySceneScripts).flatMap(script => script.blocks.filter(block => block.kind === "dialogue"));
+assert(!allStoryDialogue.some(block => block.speakerId === "expedition_leader"), "Story dialogue never substitutes an unnamed expedition leader for player adventurers");
+assert(allStoryDialogue.every(block => block.speakerId === "guild_owner" || has(data.storyCharacters, block.speakerId)), "Every speaking character has one shared story-character identity record");
+for (const sceneId of ["meadow_opening", "meadow_discovery", "meadow_clear", "whispering_brook_opening", "whispering_brook_discovery", "whispering_brook_clear", "brigand_pass_opening", "brigand_pass_discovery", "brigand_pass_clear", "abandoned_station_opening", "abandoned_station_discovery", "abandoned_station_clear", "moonfang_den_opening", "moonfang_den_discovery", "roadside_clear"]) {
+  assert(data.relations.storySceneScripts[sceneId].blocks.filter(block => block.kind === "dialogue").length >= 2, `${sceneId} advances through an actual named-character exchange`);
 }
 assert.deepStrictEqual(new Set(Object.keys(data.relations.storySceneScripts)), new Set(Object.keys(data.storyScenes)), "Every story scene has a reader script");
 const storyTriggerIds = data.relations.storyTriggers.map(trigger => trigger.id);

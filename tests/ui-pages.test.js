@@ -24,7 +24,7 @@ async function run() {
   assert.strictEqual(node("status-gold").textContent, "500 G");
   assert.strictEqual(node("status-seals").textContent, "4");
   assert(/^\d{2}:\d{2}:\d{2}$/.test(node("status-clock").textContent), "Persistent status bar shows the current clock");
-  assert(node("main-nav").innerHTML.includes("冒険者資料室") && node("main-nav").innerHTML.includes("ギルド運営") && node("main-nav").innerHTML.includes("設定"));
+  assert(node("main-nav").innerHTML.includes("設定") && !node("main-nav").innerHTML.includes("商店") && !node("main-nav").innerHTML.includes("鍛冶屋") && !node("main-nav").innerHTML.includes("冒険者資料室") && !node("main-nav").innerHTML.includes("ギルド運営"), "Story staff introduce secondary facilities before their tabs appear");
   assert(node("main-nav").innerHTML.includes("mobile-primary") && node("main-nav").innerHTML.includes("mobile-secondary") && node("main-nav").innerHTML.includes("mobile-menu-button"));
   assert(node("main-nav").innerHTML.includes('data-page="home" aria-label="ホーム・続きの物語があります"') && node("main-nav").innerHTML.includes('nav-notice story') && node("main-nav").innerHTML.includes('data-page="party" aria-label="パーティ"'), "Responsive tabs expose concise accessible labels and announce unread story scenes");
   const styles = fs.readFileSync(path.join(root, "css/style.css"), "utf8");
@@ -35,10 +35,19 @@ async function run() {
   assert(!node("main-nav").innerHTML.includes('data-page="dungeons"'));
   for (const text of ["facilities-panel", "セーブのバックアップ", "現在の探索", "LATEST REPORT", "ギルド記録", "commission-grid"]) assert(!html().includes(text), text);
   assert(!fs.readFileSync(path.join(root, "index.html"), "utf8").includes('data-action="reset-save"'), "Reset is not a global sidebar action");
+  game.GameState.data.story.readSceneIds.push("prologue_opening"); game.UI.render();
+  assert(node("main-nav").innerHTML.includes("商店") && !node("main-nav").innerHTML.includes("鍛冶屋"), "Meeting Marta unlocks only the shop");
+  game.GameState.data.story.readSceneIds.push("meadow_clear"); game.UI.render();
+  assert(node("main-nav").innerHTML.includes("鍛冶屋"), "Meeting Gregor unlocks the blacksmith");
+  game.GameState.data.story.readSceneIds.push("whispering_brook_clear"); game.UI.render();
+  assert(node("main-nav").innerHTML.includes("冒険者資料室"), "Meeting Else unlocks the archives");
+  game.GameState.data.story.readSceneIds.push("roadside_clear"); game.UI.render();
+  assert(node("main-nav").innerHTML.includes("ギルド運営"), "Town recognition unlocks guild management");
   await game.GameClient.execute("progress.sync");
   game.UI.render();
   await click("mobile-nav", { page: "shop" });
   assert.strictEqual(node("page-title").textContent, "商店");
+  assert(html().includes("荷馬車商") && html().includes("マルタ"), "The shop keeps its story NPC visible as the proprietor");
   assert(html().includes('data-detail="daily-shop-equipment-type-') && html().includes('data-detail="standard-shop-equipment-type-'), "Daily and standard shop categories keep independent open states");
   game.UI.navigate("home");
   now += 60 * 60 * 1000;

@@ -239,7 +239,7 @@
 
   function companionGrowthSummary(entry, context) {
     const { escape } = context;
-    const companion = window.GameData.companions[entry.companionId];
+    const companion = window.Companions.definition(entry.companionId);
     const stage = window.GameData.relations.companionProgressions[entry.companionId]?.stages?.[entry.stageId];
     const replacements = Object.entries(stage?.replacements || {}).map(([fromId, toId]) => {
       const from = window.GameData.skills[fromId];

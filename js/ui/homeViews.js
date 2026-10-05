@@ -17,10 +17,10 @@
   }
 
   function companionStoryFocus(context, scene, compact = false) {
-    const protagonist = window.GameData.companions?.[scene?.protagonistId];
+    const protagonist = window.GameData.storyCharacters?.[scene?.protagonistId];
     if (!protagonist) return "";
     const portrait = window.GameData.portraits?.[protagonist.portraitId];
-    const cast = (scene.castIds || []).filter(id => id !== protagonist.id).map(id => window.GameData.companions?.[id]?.name).filter(Boolean);
+    const cast = (scene.castIds || []).filter(id => id !== protagonist.id).map(id => window.GameData.storyCharacters?.[id]?.name).filter(Boolean);
     return `<div class="story-companion-focus ${compact ? "compact" : ""}">${portrait ? `<img src="${context.escape(portrait.image)}" alt="">` : ""}<span><small>${compact ? "物語の視点" : "この記録の主人公"}</small><strong>${context.escape(protagonist.name)} · ${context.escape(protagonist.title)}</strong>${cast.length ? `<em>同行：${context.escape(cast.join("、"))}</em>` : ""}</span></div>`;
   }
 

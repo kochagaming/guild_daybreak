@@ -267,11 +267,11 @@
     });
     const relationships = [...relationshipMap.values()];
     const relationshipHistory = relationships.length ? `<section class="companion-relationships"><div class="section-heading compact"><div><span class="label">TRAVEL COMPANIONS</span><h4>同行の記録</h4></div><strong>${relationships.length}組</strong></div><p>共に歩いた旅の中で、初めて見えた人物同士のつながりです。</p><div class="companion-relationship-list">${relationships.map(record => {
-      const people = record.ids.map(id => window.GameData.companions[id]).filter(Boolean);
+      const people = record.ids.map(id => window.Companions.definition(id)).filter(Boolean);
       return `<article class="${record.bonds ? "is-bonded" : ""}"><span class="companion-relationship-portraits">${people.map(person => `<img src="${context.escape(window.GameData.portraits[person.portraitId]?.image || "")}" alt="">`).join("")}</span><span><strong>${context.escape(people.map(person => person.name).join("と"))}</strong><small>${context.escape(record.titles.join("・"))}</small></span><em>${record.bonds ? "縁が結ばれた" : `${record.memories}篇`}</em></article>`;
     }).join("")}</div></section>` : "";
     const cards = known.map((arc, index) => {
-      const companion = window.GameData.companions[arc.companionId], portrait = window.GameData.portraits[companion.portraitId];
+      const companion = window.Companions.definition(arc.companionId), portrait = window.GameData.portraits[companion.portraitId];
       const joinedCharacter = window.Companions.character(companion.id), isJoined = joined.has(companion.id) && Boolean(joinedCharacter);
       const joiningChapter = window.GameData.storyChapters.find(chapter => chapter.id === arc.joinChapterId);
       const recordedChapters = arc.featuredChapterIds.map(id => window.GameData.storyChapters.find(chapter => chapter.id === id)).filter(chapter => chapter && (story.completed.includes(chapter.id) || currentChapter?.id === chapter.id));
@@ -284,7 +284,7 @@
         return moment && moment.companionIds.includes(companion.id) ? { moment, line: moment.lines[lineIndex] } : null;
       }).filter(Boolean);
       const memoryHistory = memories.length ? `<h5>旅の記憶 <small>${memories.length}件</small></h5><ol class="companion-memory-list">${memories.map(memory => {
-        const partners = memory.moment.companionIds.filter(id => id !== companion.id).map(id => window.GameData.companions[id]?.name).filter(Boolean);
+        const partners = memory.moment.companionIds.filter(id => id !== companion.id).map(id => window.Companions.definition(id)?.name).filter(Boolean);
         return `<li><strong>${context.escape(memory.moment.title)}</strong>${partners.length ? `<small>${context.escape(partners.join("・"))}と同行</small>` : ""}<p>${context.escape(memory.line)}</p></li>`;
       }).join("")}</ol>` : "";
       return `<details class="companion-ledger-card ${isJoined ? "is-joined" : "is-traveling"}" ${index === known.length - 1 ? "open" : ""}><summary><img src="${context.escape(portrait?.image || "")}" alt=""><span><small>${isJoined ? "物語加入" : "物語に登場"}</small><strong>${context.escape(companion.name)}</strong><em>${context.escape(companion.title)}</em></span><b class="badge ${isJoined ? "good" : ""}">${isJoined ? `Lv.${joinedCharacter.level}` : "登場"}</b><i aria-hidden="true">›</i></summary><div class="companion-ledger-detail"><p>${context.escape(companion.description)}</p><blockquote>${context.escape(arc.theme)}</blockquote><div class="companion-ledger-facts"><span>初登場・加入<strong>${context.escape(joiningChapter.title)}</strong></span><span>種族・職業<strong>${context.escape(window.GameData.races[companion.raceId].name)}・${context.escape(window.GameData.jobs[companion.jobId].name)}</strong></span>${growthStage ? `<span>物語成長段階<strong>${context.escape(growthStage.name)}</strong></span>` : ""}</div>${growthHistory}<h5>人物が関わった記録</h5><div class="companion-story-chips">${recordedChapters.map(chapter => `<span>${context.escape(chapter.title)}</span>`).join("") || '<span>物語はまだ始まったばかり</span>'}</div>${memoryHistory}${isJoined ? `<h5>現在の固有スキル</h5><ul class="companion-skill-summary">${skills.map(skill => `<li><strong>${context.escape(skill.name)}</strong><small>${context.escape(skill.description)}</small></li>`).join("")}</ul>` : `<p class="companion-travel-note">初登場時の物語効果が同期されると、その場でギルドへ加わります。</p>`}</div></details>`;

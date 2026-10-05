@@ -4,9 +4,9 @@
   const data = window.GameData = window.GameData || {};
   const freezeNames = names => Object.freeze(names.slice());
   const tableManifest = Object.freeze({
-    entities: freezeNames(["items", "monsters", "dungeons", "storyScenes", "companions", "skills", "jobs", "races", "births", "equipmentTypes", "elements", "statusEffects", "creatureFamilies", "portraits", "qualities", "equipmentSkills", "equipmentSets", "monsterSkills", "ultraRareTitles", "accessCodes", "dungeonDifficulties", "recruitmentTalents", "facilities"]),
+    entities: freezeNames(["items", "monsters", "dungeons", "storyScenes", "storyCharacters", "companionProfiles", "skills", "jobs", "races", "births", "equipmentTypes", "elements", "statusEffects", "creatureFamilies", "portraits", "qualities", "equipmentSkills", "equipmentSets", "monsterSkills", "ultraRareTitles", "accessCodes", "dungeonDifficulties", "recruitmentTalents", "facilities"]),
     entityLists: freezeNames(["recipes", "storyChapters", "commissions", "achievements", "adventurerMilestones", "expeditionRumors", "observationNotes"]),
-    configs: freezeNames(["equipmentBalance", "characterGrowth", "combatRules", "monsterLoot", "ultraRare", "classChanges", "partyProgression", "upgrades", "recruitment", "facilities", "companions", "affixes", "explorationEvents", "qualityTables", "recurringMissions", "shop", "skillCategories"]),
+    configs: freezeNames(["equipmentBalance", "characterGrowth", "combatRules", "monsterLoot", "ultraRare", "classChanges", "partyProgression", "upgrades", "recruitment", "facilities", "companions", "affixes", "explorationEvents", "qualityTables", "recurringMissions", "shop", "skillCategories", "guildServices"]),
     relations: freezeNames([
       "companionSkillGrants", "companionProgressions", "companionStoryArcs",
       "itemSkillGrants", "monsterDifficultySkillGrants", "monsterDifficultyDropOverrides",
@@ -23,7 +23,7 @@
   // config: システム全体の上限や既定値
   // relations: ID同士を結ぶ付与・発火・制限条件
   // derived: 元の定義を変更せず、共通ルールで補完した参照用データ
-  data.masterMeta = Object.freeze({ schemaVersion: 42, tables: tableManifest, validators: validatorManifest });
+  data.masterMeta = Object.freeze({ schemaVersion: 44, tables: tableManifest, validators: validatorManifest });
   data.config = data.config || {};
   data.relations = data.relations || {};
   data.derived = data.derived || {};
