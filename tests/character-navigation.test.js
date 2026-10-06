@@ -30,6 +30,10 @@ async function run() {
   await click("open-character", { character: character.id });
   html = node("app").innerHTML;
   assert(html.includes("冒険者一覧へ戻る") && html.includes("導線確認の戦士") && html.includes("character-detail-card"));
+  const statOrder = ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "criticalRate", "speed", "attackCount", "physicalPower", "magicPower", "skillPower", "healingPower", "maxWeight"];
+  assert(html.includes("data-character-stats") && html.includes('class="skill-chip-detail'), "Character details use the common stat list and tappable skills");
+  statOrder.slice(1).forEach((key, index) => assert(html.indexOf(`data-stat="${statOrder[index]}"`) < html.indexOf(`data-stat="${key}"`), `Character stat order keeps ${statOrder[index]} before ${key}`));
+  assert(html.includes("skill-chip-description") && html.includes("スキル名を押すと効果を確認できます。"));
   assert(html.includes("遠征の足跡") && html.includes("まだ出撃記録はありません"), "A new adventurer starts with a compact empty expedition ledger");
   assert(html.includes("装備を変更") && html.includes("転職先を確認"));
 

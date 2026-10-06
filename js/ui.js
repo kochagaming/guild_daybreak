@@ -102,6 +102,38 @@
     return `<div class="bonus-chips">${fields.map(([key, label]) => `<span>${label} <strong>${stats[key] || 0}</strong>${previous ? statDiff((stats[key] || 0) - (previous[key] || 0)) : ""}</span>`).join("")}${stats.physicalPower == null ? "" : `<span>物理威力 <strong>${Math.round(stats.physicalPower * 100)}%</strong>${previous ? statDiff(Math.round((stats.physicalPower - (previous.physicalPower || 1)) * 100)) + "pt" : ""}</span><span>魔法威力 <strong>${Math.round(stats.magicPower * 100)}%</strong>${previous ? statDiff(Math.round((stats.magicPower - (previous.magicPower || 1)) * 100)) + "pt" : ""}</span>`}${stats.hitRate == null ? "" : `<span>命中精度 ${Math.round(stats.hitRate * 100)}%${previous ? statDiff(Math.round((stats.hitRate - (previous.hitRate || 0)) * 100)) + "pt" : ""}</span><span>回避 ${Math.round((stats.evasionRate || 0) * 100)}%${previous ? statDiff(Math.round(((stats.evasionRate || 0) - (previous.evasionRate || 0)) * 100)) + "pt" : ""}</span>`}${stats.speed == null ? "" : `<span>速度 ${stats.speed}${previous ? statDiff(stats.speed - (previous.speed || 0)) : ""}</span>`}${stats.attackCount == null ? "" : `<span>攻撃回数 <strong>${stats.attackCount}</strong>${previous ? statDiff(stats.attackCount - (previous.attackCount || 1)) : ""}</span>`}</div>`;
   }
 
+  // Character screens share one familiar order so hiring, details and reveal views do not drift apart.
+  function characterStatEntries(stats, maxWeight) {
+    const definitions = [
+      ["hp", "HP", "HP"], ["attack", "物理攻撃", "物攻"], ["defense", "物理防御", "物防"],
+      ["magicAttack", "魔法攻撃", "魔攻"], ["magicDefense", "魔法防御", "魔防"], ["magicHealing", "魔法回復", "魔回"],
+      ["hitRate", "命中精度", "命中", "percent"], ["evasionRate", "回避", "回避", "percent"], ["criticalRate", "会心率", "会心", "percent"],
+      ["speed", "速度", "速度"], ["attackCount", "攻撃回数", "回数"],
+      ["physicalPower", "物理威力", "物威力", "percent"], ["magicPower", "魔法威力", "魔威力", "percent"],
+      ["skillPower", "スキル威力", "技威力", "percent"], ["healingPower", "回復威力", "回復力", "percent"],
+      ["maxWeight", "重量上限", "重量"]
+    ];
+    return definitions.map(([key, label, compactLabel, format]) => {
+      const raw = key === "maxWeight" ? maxWeight : stats?.[key];
+      if (raw == null) return null;
+      const numeric = Number(raw) || 0;
+      return { key, label, compactLabel, value: format === "percent" ? `${Math.round(numeric * 100)}%` : numeric };
+    }).filter(Boolean);
+  }
+
+  function characterStatChips(stats, maxWeight) {
+    return `<div class="bonus-chips character-stat-chips" data-character-stats>${characterStatEntries(stats, maxWeight).map(entry => `<span data-stat="${entry.key}">${entry.label} <strong>${entry.value}</strong></span>`).join("")}</div>`;
+  }
+
+  function skillDisclosure(skill, options = {}) {
+    const acquired = options.acquired !== false;
+    const category = window.GameData.config.skillCategories[skill.category] || "スキル";
+    const timing = skill.initial ? "初期" : acquired ? "習得" : `Lv.${skill.level}`;
+    const cooldown = skill.activation?.type === "active" ? ` 再使用：${skill.activation.cooldownTurns}ターン。` : "";
+    const source = options.sources !== false && skill.sources?.length ? `<small>習得元：${escape(skill.sources.join("・"))}</small>` : "";
+    return `<details class="skill-chip-detail ${acquired ? "learned" : "locked"}"><summary class="skill-chip ${acquired ? "learned" : "locked"}"><span>${escape(timing)}</span>${escape(category)} · <strong>${escape(skill.name)}</strong><i aria-hidden="true">›</i></summary><div class="skill-chip-description"><p>${escape(skill.description + cooldown)}</p>${source}</div></details>`;
+  }
+
   function resultCard(result) {
     if (!result) return `<div class="notice muted"><span class="notice-icon">◇</span><div><strong>まだ探索記録はありません</strong><p>パーティを編成し、最初の探索へ送り出しましょう。</p></div></div>`;
     const dungeon = window.DungeonDifficulty.variant(result.dungeonId, result.difficultyId || "normal");
@@ -324,7 +356,7 @@
   }
 
   function characterViewContext() {
-    return { applicantCard, characterView, empty, equipmentSkillBadges, escape, extraStats, portraitImage, recruitmentRequirementPreview, recruitmentSummary, statBar };
+    return { applicantCard, characterStatChips, characterStatEntries, characterView, empty, equipmentSkillBadges, escape, portraitImage, recruitmentRequirementPreview, recruitmentSummary, skillDisclosure, statBar };
   }
 
   function openClassChangeModal(characterId) {
@@ -348,7 +380,7 @@
   }
 
   function recruitmentViewContext() {
-    return { escape, extraStats, navigate, originBonuses, portraitImage, toast };
+    return { characterStatChips, characterStatEntries, escape, navigate, originBonuses, portraitImage, skillDisclosure, toast };
   }
 
   function charactersPage() {
@@ -1008,7 +1040,7 @@
     const portrait = character?.portraitId ? window.GameData.portraits?.[character.portraitId] : null;
     const name = character?.name || block.speakerName;
     const role = character?.title || block.speakerRole;
-    const mark = name === "ギルドオーナー" ? "主" : String(name || "語").slice(0, 1);
+    const mark = block.speakerId === "guild_leader" ? "マ" : String(name || "語").slice(0, 1);
     return `<section class="story-reader-dialogue" data-story-speaker="${escape(block.speakerId)}"><div class="story-reader-speaker">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : `<span aria-hidden="true">${escape(mark)}</span>`}<div><strong>${escape(name)}</strong><small>${escape(role)}</small></div></div><p>「${escape(block.text)}」</p></section>`;
   }
 

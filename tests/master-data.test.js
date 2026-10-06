@@ -338,7 +338,7 @@ for (const [sceneId, script] of Object.entries(data.relations.storySceneScripts)
 }
 const allStoryDialogue = Object.values(data.relations.storySceneScripts).flatMap(script => script.blocks.filter(block => block.kind === "dialogue"));
 assert(!allStoryDialogue.some(block => block.speakerId === "expedition_leader"), "Story dialogue never substitutes an unnamed expedition leader for player adventurers");
-assert(allStoryDialogue.every(block => block.speakerId === "guild_owner" || has(data.storyCharacters, block.speakerId)), "Every speaking character has one shared story-character identity record");
+assert(allStoryDialogue.every(block => block.speakerId === "guild_leader" || has(data.storyCharacters, block.speakerId)), "Every speaking character has one shared story-character identity record");
 for (const sceneId of ["meadow_opening", "meadow_discovery", "meadow_clear", "whispering_brook_opening", "whispering_brook_discovery", "whispering_brook_clear", "brigand_pass_opening", "brigand_pass_discovery", "brigand_pass_clear", "abandoned_station_opening", "abandoned_station_discovery", "abandoned_station_clear", "moonfang_den_opening", "moonfang_den_discovery", "roadside_clear"]) {
   assert(data.relations.storySceneScripts[sceneId].blocks.filter(block => block.kind === "dialogue").length >= 2, `${sceneId} advances through an actual named-character exchange`);
 }

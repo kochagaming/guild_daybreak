@@ -349,10 +349,22 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .combat-traits { margin: -8px 0 12px; display: flex; flex-wrap: wrap; gap: 7px; }
 .combat-traits span { padding: 5px 8px; color: var(--muted); background: #ece8df; border-radius: 4px; font-size: .65rem; }
 .combat-traits strong { color: var(--ink); }
+.combat-traits small { align-self: center; color: var(--muted); font-size: .68rem; }
 .skill-list { margin-bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
 .skill-chip { padding: 5px 8px; border: 1px solid var(--line); border-radius: 99px; font-size: .65rem; }
 .skill-chip.learned { color: #725092; background: #eee5f4; border-color: #cbb5dc; }
 .skill-chip.locked { color: #8d8c88; background: #ebe8e1; }
+.character-stat-chips span { display: inline-flex; align-items: baseline; gap: 4px; }
+.skill-chip-detail { max-width: 100%; display: inline-block; }
+.skill-chip-detail > summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; list-style: none; }
+.skill-chip-detail > summary::-webkit-details-marker { display: none; }
+.skill-chip-detail > summary i { margin-left: 2px; font-style: normal; transition: transform .15s ease; }
+.skill-chip-detail[open] { width: 100%; overflow: hidden; background: #fffdf8; border: 1px solid var(--line); border-radius: 5px; }
+.skill-chip-detail[open] > summary { border: 0; border-bottom: 1px solid var(--line); border-radius: 4px 4px 0 0; }
+.skill-chip-detail[open] > summary i { transform: rotate(90deg); }
+.skill-chip-description { padding: 8px 10px; }
+.skill-chip-description p { margin: 0; color: var(--ink); font-size: .76rem; line-height: 1.65; }
+.skill-chip-description small { display: block; margin-top: 4px; color: var(--muted); font-size: .68rem; line-height: 1.55; }
 .portrait.job-warrior { color: #f0d397; }.portrait.job-thief { color: #a9d9be; }.portrait.job-mage { color: #d5b9ed; }.portrait.job-cleric { color: #b7d8ef; }
 .formation-guide { margin: -5px 0 9px; display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: .64rem; }.formation-guide i { height: 1px; flex: 1; background: linear-gradient(90deg, var(--red), var(--blue)); }
 .formation-actions { margin-left: auto; display: flex !important; flex-direction: row !important; gap: 4px; }

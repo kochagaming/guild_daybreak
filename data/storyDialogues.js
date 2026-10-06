@@ -9,7 +9,7 @@
   };
   const actors = {
     rina: storyCharacter("receptionist_rina"),
-    owner: { speakerId: "guild_owner", speakerName: "ギルドオーナー", speakerRole: "あなた" },
+    owner: { speakerId: "guild_leader", speakerName: "マスター", speakerRole: "依頼と帰還を預かる者" },
     cook: storyCharacter("inn_cook"), child: storyCharacter("town_child"),
     marta: storyCharacter("merchant_marta"), karl: storyCharacter("road_warden_karl"),
     gregor: storyCharacter("blacksmith_gregor"), else: storyCharacter("archivist_else"),
@@ -66,7 +66,7 @@
     dialogue(actors.rina, "はい。最初の一枚は目立つ場所へ――と言いたいところですが、掲示板の前に荷箱が届いています。"),
     narration("話を聞いていたように、半開きの扉から赤茶色の髪の商人が顔を出した。背後の荷車には、鞘に入った剣や旅靴、包帯の箱が隙間なく積まれている。"),
     dialogue(actors.marta, "届いたんじゃなくて、道が危なくて先へ行けないの。私はマルタ。空いている壁を貸してくれるなら、店が動けるまで冒険者の旅支度をここで売らせて。"),
-    dialogue(actors.rina, "依頼書の隣が値札だらけになりますよ。……でも、何も持たずに草原へ行かせるよりは良さそうです。オーナー、棚を一つ貸しましょう。"),
+    dialogue(actors.rina, "依頼書の隣が値札だらけになりますよ。……でも、何も持たずに草原へ行かせるよりは良さそうです。マスター、棚を一つ貸しましょう。"),
     dialogue(actors.owner, "決まりだ。マルタは道具を、私たちは道を取り戻す。互いに帰ってきた時の場所も、ここに作ろう。"),
     narration("依頼書の横へ、小さな店棚が並んだ。小さなギルドの最初の仕事は、世界を救うことではなく、町の朝食と一本の街道を守ることから始まった。")
   ]);

@@ -36,7 +36,7 @@
       ["hp", "HP"], ["attack", "物攻"], ["defense", "物防"],
       ["magicAttack", "魔攻"], ["magicDefense", "魔防"], ["magicHealing", "魔回"],
       ["hitRate", "命中", "percent"], ["evasionRate", "回避", "percent"],
-      ["speed", "速度"], ["attackCount", "回数"], ["criticalRate", "会心", "percent"],
+      ["criticalRate", "会心", "percent"], ["speed", "速度"], ["attackCount", "回数"],
       ["physicalPower", "物理威力", "percent"], ["magicPower", "魔法威力", "percent"],
       ["skillPower", "技威力", "percent"], ["healingPower", "回復威力", "percent"]
     ];
@@ -66,7 +66,7 @@
       ["hp", "最大HP"], ["attack", "物理攻撃"], ["defense", "物理防御"],
       ["magicAttack", "魔法攻撃"], ["magicDefense", "魔法防御"], ["magicHealing", "魔法回復"],
       ["hitRate", "命中率", "percent"], ["evasionRate", "回避率", "percent"],
-      ["speed", "行動速度"], ["attackCount", "攻撃回数"], ["criticalRate", "会心率", "percent"],
+      ["criticalRate", "会心率", "percent"], ["speed", "行動速度"], ["attackCount", "攻撃回数"],
       ["physicalPower", "物理攻撃威力", "percent"], ["magicPower", "魔法攻撃威力", "percent"],
       ["skillPower", "スキル威力", "percent"], ["healingPower", "回復威力", "percent"]
     ];

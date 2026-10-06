@@ -1139,7 +1139,7 @@
         if (typeof block.speakerId !== "string" || !block.speakerId.trim()) errors.push(`${blockSource}.speakerId がありません`);
         if (typeof block.speakerName !== "string" || !block.speakerName.trim()) errors.push(`${blockSource}.speakerName がありません`);
         if (typeof block.speakerRole !== "string" || !block.speakerRole.trim()) errors.push(`${blockSource}.speakerRole がありません`);
-        if (block.speakerId !== "guild_owner" && !has(master.storyCharacters, block.speakerId)) errors.push(`${blockSource}.speakerId -> ${block.speakerId}`);
+        if (block.speakerId !== "guild_leader" && !has(master.storyCharacters, block.speakerId)) errors.push(`${blockSource}.speakerId -> ${block.speakerId}`);
       });
     });
     Object.keys(master.storyScenes).forEach(sceneId => {

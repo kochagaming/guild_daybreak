@@ -29,20 +29,22 @@
   }
 
   function applicantCard(context, applicant, requirements) {
-    const { escape, extraStats, originBonuses, portraitImage } = context;
+    const { characterStatChips, escape, originBonuses, portraitImage, skillDisclosure } = context;
     const character = window.Recruitment.preview(applicant), stat = window.Characters.stats(character);
     const talent = window.GameData.recruitmentTalents[applicant.talentId];
     const cost = window.Recruitment.cost(applicant), affordable = window.GameState.data.gold >= cost;
-    const matching = extraStats(stat) + window.GameData.config.recruitment.fields.filter(field => requirements[field.id] !== "any").map(field => {
+    const matching = window.GameData.config.recruitment.fields.filter(field => requirements[field.id] !== "any").map(field => {
       const value = field.id === "focus" ? applicant.talentId : applicant[field.id];
       return `<span class="badge ${value === requirements[field.id] ? "good" : ""}">${escape(field.name)}：${value === requirements[field.id] ? "一致" : "希望と異なる"}</span>`;
     }).join("");
-      const skills = window.Characters.skillProgression(character);
-    return `<details class="panel applicant-card compact-record"><summary class="record-summary">${portraitImage(character, true)}<span class="record-name"><strong>${escape(applicant.name)}</strong><small>${escape(window.GameData.jobs[applicant.jobId].name)} · ${escape(window.GameData.races[applicant.raceId].name)} · ${escape(window.GameData.births[applicant.birthId].name)}</small></span><span class="record-stats"><b>HP ${stat.hp}</b><b>攻 ${stat.attack}</b><b>防 ${stat.defense}</b><b>攻撃${stat.attackCount}回</b><b>重 ${window.Characters.maxWeight(character)}</b></span><span class="applicant-badges"><span class="badge good">${escape(talent.name)}</span><span class="badge ${affordable ? "price" : "bad"}">${gold(cost)}</span></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="record-detail"><div class="applicant-matches">${matching || '<span class="badge">条件指定なし</span>'}</div><p class="applicant-talent"><strong>${escape(talent.name)}</strong>：${escape(talent.description)}</p><div class="bonus-chips"><span>HP <strong>${stat.hp}</strong></span><span>攻撃 <strong>${stat.attack}</strong></span><span>防御 <strong>${stat.defense}</strong></span><span>攻撃回数 ${stat.attackCount}</span><span>速度 ${stat.speed}</span><span>会心 ${Math.round(stat.criticalRate * 100)}%</span><span>重量上限 ${window.Characters.maxWeight(character)}</span></div><p class="small-note">基礎能力：HP ${applicant.base.hp}／攻撃 ${applicant.base.attack}／防御 ${applicant.base.defense}。上の能力は出自補正を反映済み・装備なし。</p>${priceDetails(applicant)}<details class="applicant-details"><summary>能力補正・装備適性・習得スキル</summary>${originBonuses(character)}<div class="creation-skills">${skills.map(skill => { const cooldown = skill.activation?.type === "active" ? ` 再使用：${skill.activation.cooldownTurns}ターン。` : ""; return `<span class="skill-chip ${skill.initial || skill.level === 1 ? "learned" : "locked"}" title="${escape(skill.description + cooldown)}">${skill.initial ? "初期" : `Lv.${skill.level}`} ${escape(window.GameData.config.skillCategories[skill.category] || "技")} · ${escape(skill.name)}</span>`; }).join("")}</div></details><button class="button primary full" data-action="review-applicant" data-applicant="${applicant.id}" ${affordable ? "" : "disabled"}>${affordable ? `雇用を確認（${gold(cost)}）` : `所持金不足（${gold(cost)}）`}</button></div></details>`;
+    const skills = window.Characters.skillProgression(character);
+    const maxWeight = window.Characters.maxWeight(character);
+    const skillRows = skills.map(skill => skillDisclosure(skill, { acquired: skill.initial || character.level >= skill.level })).join("");
+    return `<details class="panel applicant-card compact-record"><summary class="record-summary">${portraitImage(character, true)}<span class="record-name"><strong>${escape(applicant.name)}</strong><small>${escape(window.GameData.jobs[applicant.jobId].name)} · ${escape(window.GameData.races[applicant.raceId].name)} · ${escape(window.GameData.births[applicant.birthId].name)}</small></span><span class="record-stats"><b>HP ${stat.hp}</b><b>攻 ${stat.attack}</b><b>防 ${stat.defense}</b><b>攻撃${stat.attackCount}回</b><b>重 ${maxWeight}</b></span><span class="applicant-badges"><span class="badge good">${escape(talent.name)}</span><span class="badge ${affordable ? "price" : "bad"}">${gold(cost)}</span></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="record-detail"><div class="applicant-matches">${matching || '<span class="badge">条件指定なし</span>'}</div><p class="applicant-talent"><strong>${escape(talent.name)}</strong>：${escape(talent.description)}</p>${characterStatChips(stat, maxWeight)}<p class="small-note">基礎能力：HP ${applicant.base.hp}／攻撃 ${applicant.base.attack}／防御 ${applicant.base.defense}。上の能力は出自補正を反映済み・装備なし。</p>${priceDetails(applicant)}<details class="applicant-details"><summary>能力補正・装備適性・習得スキル</summary>${originBonuses(character)}<p class="small-note">スキル名を押すと効果を確認できます。</p><div class="creation-skills">${skillRows}</div></details><button class="button primary full" data-action="review-applicant" data-applicant="${applicant.id}" ${affordable ? "" : "disabled"}>${affordable ? `雇用を確認（${gold(cost)}）` : `所持金不足（${gold(cost)}）`}</button></div></details>`;
   }
 
   function showReveal(context) {
-    const { escape, navigate, portraitImage } = context;
+    const { characterStatEntries, escape, navigate, portraitImage } = context;
     const pending = window.Recruitment.state().pending;
     if (!pending) return;
     const cards = pending.candidates.map((applicant, index) => {
@@ -50,16 +52,7 @@
       const talent = window.GameData.recruitmentTalents[applicant.talentId];
       const stat = window.Characters.stats(character);
       const cost = window.Recruitment.cost(applicant), affordable = window.GameState.data.gold >= cost;
-      const allStats = [
-        ["HP", stat.hp], ["物攻", stat.attack], ["物防", stat.defense],
-        ["魔攻", stat.magicAttack], ["魔防", stat.magicDefense], ["回復", stat.magicHealing],
-        ["命中", `${Math.round(stat.hitRate * 100)}%`], ["回避", `${Math.round(stat.evasionRate * 100)}%`],
-        ["速度", stat.speed], ["回数", stat.attackCount], ["会心", `${Math.round(stat.criticalRate * 100)}%`],
-        ["重量", window.Characters.maxWeight(character)], ["物威力", `${Math.round(stat.physicalPower * 100)}%`],
-        ["魔威力", `${Math.round(stat.magicPower * 100)}%`], ["技威力", `${Math.round(stat.skillPower * 100)}%`],
-        ["回復力", `${Math.round(stat.healingPower * 100)}%`]
-      ];
-      const statCells = allStats.map(([label, value]) => `<span><small>${label}</small><b>${value}</b></span>`).join("");
+      const statCells = characterStatEntries(stat, window.Characters.maxWeight(character)).map(entry => `<span data-stat="${entry.key}"><small>${entry.compactLabel}</small><b>${entry.value}</b></span>`).join("");
       return `<article class="reveal-applicant" style="--reveal-delay:${(index * .2).toFixed(1)}s"><i class="reveal-card-seal" aria-hidden="true"><span>✦</span><small>APPLICATION ${index + 1}</small></i><span class="reveal-number">志願者 ${index + 1}</span><div class="reveal-portrait">${portraitImage(character)}</div><span class="reveal-job">${escape(window.GameData.jobs[applicant.jobId].name)}</span><h4>${escape(applicant.name)}</h4><p>${escape(window.GameData.races[applicant.raceId].name)} · ${escape(window.GameData.births[applicant.birthId].name)}</p><small>${escape(talent.name)}</small><strong class="reveal-hire-cost ${affordable ? "" : "is-short"}">雇用費 ${gold(cost)}</strong><div class="reveal-stat-scroll" role="region" aria-label="${escape(applicant.name)}の全ステータス" tabindex="0"><div class="reveal-stats">${statCells}</div></div><span class="reveal-scroll-hint" aria-hidden="true">← 横にスライドして全能力を表示 →</span><button type="button" class="button primary reveal-hire-button" data-action="quick-hire-applicant" data-applicant="${applicant.id}" ${affordable ? "" : "disabled"}>${affordable ? `この冒険者を雇う` : "所持金不足"}</button></article>`;
     }).join("");
     window.RecruitmentReveal.start({
