@@ -273,6 +273,7 @@
         physicalPower: member.stats.physicalPower || 1, magicPower: member.stats.magicPower || 1,
         slayerMultipliers: Object.assign({}, member.stats.slayerMultipliers || {}),
         elementModifiers: Object.assign({}, member.stats.elementModifiers || {}), statusResistances: Object.assign({}, member.stats.statusResistances || {}),
+        bossRivalries: Object.fromEntries(Object.entries(member.bossRivalries || {}).map(([bossId, entry]) => [bossId, { ...entry }])),
         sharedSorties: Object.assign({}, member.sharedSorties || {}),
         hp: member.stats.hp, currentHp: member.stats.hp, attack: member.stats.attack,
         defense: member.stats.defense, speed: member.stats.speed || 10,
@@ -806,6 +807,7 @@
       monsters.forEach(monster => { monster.strategyReport = strategyReport; });
       const wardedHeroes = [];
       const scoutingHeroes = [];
+      const rivalryHeroes = [];
       if (floor.routeEffect?.type === "ward") {
         living(heroes).forEach(hero => {
           wardedHeroes.push({ hero, previous: hero.incomingDamageMultiplier });
@@ -821,7 +823,25 @@
         });
         pushLog(log, "secret", "足跡から敵の進路を読み、一行は先んじて布陣した。次の戦闘では行動速度と命中精度が高まる。", index + 1, 0);
       }
+      const rivalBossIds = Array.from(new Set(groupIds.filter(id => window.GameData.monsters[id]?.boss)));
+      living(heroes).forEach(hero => {
+        const matched = rivalBossIds.filter(id => hero.bossRivalries?.[id]?.lastOutcome === "defeat");
+        if (!matched.length) return;
+        rivalryHeroes.push({ hero, incomingDamageMultiplier: hero.incomingDamageMultiplier, hitRate: hero.hitRate });
+        hero.incomingDamageMultiplier = (hero.incomingDamageMultiplier || 1) * .97;
+        hero.hitRate *= 1.03;
+      });
+      if (rivalryHeroes.length) {
+        const heroNames = rivalryHeroes.map(entry => entry.hero.name).join("、");
+        const bossNames = rivalBossIds.map(id => window.GameData.monsters[id]?.name).filter(Boolean).join("、");
+        pushLog(log, "formation", `【因縁の再戦】${heroNames}は${bossNames}との撤退記録を思い返し、見覚えのある動きへ身構えた。`, index + 1, 0, { rivalryBossIds: rivalBossIds, rivalryMemberIds: rivalryHeroes.map(entry => entry.hero.id) });
+      }
       const fight = fightEncounter(random, heroes, monsters, index + 1, encounter.name, log, combatRules);
+      rivalryHeroes.forEach(({ hero, incomingDamageMultiplier, hitRate }) => {
+        if (incomingDamageMultiplier == null) delete hero.incomingDamageMultiplier;
+        else hero.incomingDamageMultiplier = incomingDamageMultiplier;
+        hero.hitRate = hitRate;
+      });
       wardedHeroes.forEach(({ hero, previous }) => {
         if (previous == null) delete hero.incomingDamageMultiplier;
         else hero.incomingDamageMultiplier = previous;

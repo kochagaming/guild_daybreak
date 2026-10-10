@@ -109,6 +109,8 @@
         sharedSorties: entry.sharedSorties,
         label: entry.label
       })),
+      newBossRivalries: (result.newBossRivalries || []).map(entry => ({ ...entry })),
+      bossRevengeVictories: (result.bossRevengeVictories || []).map(entry => ({ ...entry })),
       routeMasteryIds: [...(result.newRouteMasteryIds || [])],
       memberHighlights: memberHighlights(result),
       partySetup: Array.isArray(result.partySetup) ? result.partySetup.map(member => ({ ...member, actionRates: { ...member.actionRates }, equipmentNames: [...member.equipmentNames] })) : [],
@@ -151,6 +153,7 @@
         familyIds: window.CreatureFamilies ? window.CreatureFamilies.familyIdsForRace(member.raceId || "human") : [],
         routeEventSuccesses: { ...window.Characters.expeditionRecord(member).routeEventSuccesses },
         treasureOpenings: window.Characters.expeditionRecord(member).treasureOpenings,
+        bossRivalries: Object.fromEntries(window.Characters.activeBossRivalries(member).map(entry => [entry.bossId, { defeats: entry.defeats, victories: entry.victories, lastOutcome: entry.lastOutcome, lastAt: entry.lastAt }])),
         sharedSorties: Object.fromEntries(window.Characters.sharedSorties(member).map(entry => [entry.characterId, entry.count])),
         bondMomentIds: Object.fromEntries(window.Characters.sharedSorties(member).filter(entry => entry.memoryIds.length).map(entry => [entry.characterId, [...entry.memoryIds]])),
         actionRates: window.Characters.actionRates(member),
@@ -232,7 +235,9 @@
     const baseDungeon = window.GameData.dungeons[expedition.dungeonId];
     const dungeon = window.DungeonDifficulty ? window.DungeonDifficulty.variant(baseDungeon, expedition.difficultyId || "normal") : baseDungeon;
     const outcome = window.Battle.resolve(expedition, dungeon);
-    const newAdventurerMilestones = [], newAdventurerRecords = [];
+    const newAdventurerMilestones = [], newAdventurerRecords = [], newBossRivalries = [], bossRevengeVictories = [];
+    const encounteredBossIds = Object.keys(outcome.monsterEncounters || {}).filter(id => window.GameData.monsters[id]?.boss);
+    const defeatedBossIds = new Set(Object.keys(outcome.monsterCounts || {}).filter(id => window.GameData.monsters[id]?.boss && outcome.monsterCounts[id] > 0));
     const earnedMilestonesBefore = new Map(outcome.memberReports.map(report => {
       const character = window.Characters.get(report.id);
       return [report.id, new Set(character ? window.Characters.expeditionMilestones(character).filter(entry => entry.complete).map(entry => entry.id) : [])];
@@ -295,6 +300,13 @@
       if (milestoneIds.length) newAdventurerMilestones.push({ characterId: character.id, name: character.name, milestoneIds });
       const improvements = ["bestDamage", "bestHealing", "bestEndurance"].filter(field => recordAfter[field] > recordBefore[field]).map(field => ({ field, previous: recordBefore[field], value: recordAfter[field] }));
       if (improvements.length) newAdventurerRecords.push({ characterId: character.id, name: character.name, improvements });
+      encounteredBossIds.forEach(bossId => {
+        const change = window.Characters.recordBossEncounter(character, bossId, defeatedBossIds.has(bossId), expedition.endsAt);
+        if (!change) return;
+        const entry = { characterId: character.id, name: character.name, bossId, bossName: window.GameData.monsters[bossId].name };
+        if (change.started) newBossRivalries.push(entry);
+        if (change.avenged) bossRevengeVictories.push(entry);
+      });
     });
     const newMonsterInsights = window.Encyclopedia ? window.Encyclopedia.battleInsights(outcome.monsterObservations) : [];
     const difficultyId = expedition.difficultyId || "normal";
@@ -369,6 +381,8 @@
       newUltraRareTitleIds: Array.from(newUltraRareTitleIds),
       newAdventurerMilestones,
       newAdventurerRecords,
+      newBossRivalries,
+      bossRevengeVictories,
       newAdventurerBondMomentIds,
       newAdventurerBondTiers,
       rumor: expedition.rumor || null,
@@ -424,6 +438,8 @@
       `${window.Party.name(partyIndex)}：${dungeon.shortName}の探索は${outcome.success ? "成功" : "失敗"}。${outcome.gold}Gを獲得${autoSellGold ? `、装備${autoSold.length}点を${autoSellGold}Gで自動売却` : ""}しました。`,
       outcome.success ? "success" : "danger"
     );
+    if (newBossRivalries.length) window.GameState.addLog(`${newBossRivalries.map(entry => `${entry.name}と${entry.bossName}`).join("、")}の間に、再戦を待つ因縁が残りました。`, "danger");
+    if (bossRevengeVictories.length) window.GameState.addLog(`${bossRevengeVictories.map(entry => `${entry.name}が${entry.bossName}`).join("、")}へ雪辱を果たしました。`, "success");
     if (trackedItemQuantity) window.GameState.addLog(`探索目標「${window.GameData.items[trackedItemId].name}」を${trackedItemQuantity}個持ち帰りました。`, "success");
     if (state.lastResult.newRouteMasteryIds.length) window.GameState.addLog(`${state.lastResult.newRouteMasteryIds.map(id => window.GameData.config.explorationEvents.routeEvents.find(event => event.id === id)?.name).filter(Boolean).join("、")}の知見が観察日記にまとまり、次の遠征から共有されます。`, "success");
     if (state.lastResult.newTreasureMasteryIds.length) window.GameState.addLog(`${state.lastResult.newTreasureMasteryIds.map(id => window.GameData.config.explorationEvents.treasure.types.find(tier => tier.id === id)?.name).filter(Boolean).join("、")}の開け方が共有され、次の遠征から役立ちます。`, "success");

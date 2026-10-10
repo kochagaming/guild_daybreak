@@ -81,6 +81,7 @@
       if (character.expeditionRecord && typeof character.expeditionRecord === "object") {
         if (!Number.isInteger(character.expeditionRecord.routeSuccesses)) character.expeditionRecord.routeSuccesses = 0;
         if (!character.expeditionRecord.routeEventSuccesses || typeof character.expeditionRecord.routeEventSuccesses !== "object" || Array.isArray(character.expeditionRecord.routeEventSuccesses)) character.expeditionRecord.routeEventSuccesses = {};
+        if (!character.expeditionRecord.bossRivalries || typeof character.expeditionRecord.bossRivalries !== "object" || Array.isArray(character.expeditionRecord.bossRivalries)) character.expeditionRecord.bossRivalries = {};
         if (!Number.isInteger(character.expeditionRecord.treasureOpenings)) character.expeditionRecord.treasureOpenings = 0;
         if (!Number.isInteger(character.expeditionRecord.teamSurveys)) character.expeditionRecord.teamSurveys = 0;
       }

@@ -71,6 +71,24 @@
       return true;
     });
   }
+  function validBossRivalries(value, data) {
+    return object(value) && Object.entries(value).every(([bossId, entry]) => known(data.monsters, bossId) && data.monsters[bossId].boss
+      && object(entry) && integer(entry.defeats) && integer(entry.victories) && entry.defeats + entry.victories > 0
+      && ["defeat", "victory"].includes(entry.lastOutcome) && (entry.lastOutcome === "defeat" ? entry.defeats > 0 : entry.victories > 0)
+      && number(entry.lastAt));
+  }
+  function validBossRivalryEvents(entries, data, characters) {
+    if (!Array.isArray(entries) || entries.length > 60) return false;
+    const seen = new Set();
+    return entries.every(entry => {
+      const character = object(entry) ? characters.get(entry.characterId) : null;
+      const boss = object(entry) ? data.monsters[entry.bossId] : null;
+      const key = object(entry) ? `${entry.characterId}:${entry.bossId}` : "";
+      if (!character || !boss?.boss || entry.name !== character.name || entry.bossName !== boss.name || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
   function safeTree(value, depth) {
     check(depth < 32, "データの階層が深すぎます。");
     if (value && typeof value === "object") Object.entries(value).forEach(([key, child]) => {
@@ -285,6 +303,7 @@
           && record.knockouts <= record.sorties
           && object(record.routeEventSuccesses) && Object.entries(record.routeEventSuccesses).every(([id, count]) => (data.config.explorationEvents?.routeEvents || []).some(event => event.id === id) && integer(count) && count > 0)
           && Object.values(record.routeEventSuccesses).reduce((sum, count) => sum + count, 0) <= record.routeSuccesses
+          && validBossRivalries(record.bossRivalries || {}, data)
           && (record.lastAt === null && record.sorties === 0 || number(record.lastAt) && record.sorties > 0), "冒険者の遠征記録が不正です。");
       }
       if (character.recordTitleId != null) {
@@ -401,6 +420,8 @@
             }), "探索履歴の旅仲間記録が不正です。");
           }
           if (entry.newAdventurerBondTiers != null) check(validBondTierProgress(entry.newAdventurerBondTiers, data, characters, bonds), "探索履歴の旅仲間成長が不正です。");
+          if (entry.newBossRivalries != null) check(validBossRivalryEvents(entry.newBossRivalries, data, characters), "探索履歴のボス因縁が不正です。");
+          if (entry.bossRevengeVictories != null) check(validBossRivalryEvents(entry.bossRevengeVictories, data, characters), "探索履歴の雪辱記録が不正です。");
           if (entry.bondFormations != null) check(validBondFormations(entry.bondFormations, data), "探索履歴の戦列連携が不正です。");
           if (entry.routeMasteryIds != null) {
             const routeEventIds = new Set((data.config.explorationEvents?.routeEvents || []).map(event => event.id));
@@ -494,6 +515,7 @@
           if (member.basicDamageType != null) check(["physical", "magic"].includes(member.basicDamageType), "探索中の通常攻撃種別が不正です。");
           if (member.routeEventSuccesses != null) check(object(member.routeEventSuccesses) && Object.entries(member.routeEventSuccesses).every(([id, count]) => (data.config.explorationEvents?.routeEvents || []).some(event => event.id === id) && integer(count) && count > 0), "探索開始時の個人道中経験が不正です。");
           if (member.treasureOpenings != null) check(integer(member.treasureOpenings) && member.treasureOpenings >= 0, "探索開始時の個人開錠経験が不正です。");
+          if (member.bossRivalries != null) check(validBossRivalries(member.bossRivalries, data) && Object.values(member.bossRivalries).every(entry => entry.lastOutcome === "defeat"), "探索開始時のボス因縁が不正です。");
           if (member.sharedSorties != null) check(object(member.sharedSorties) && Object.entries(member.sharedSorties).every(([id, count]) => id !== member.id && characters.has(id) && integer(count) && count > 0), "探索開始時の同行記録が不正です。");
           if (member.bondMomentIds != null) check(object(member.bondMomentIds) && Object.entries(member.bondMomentIds).every(([id, momentIds]) => id !== member.id && characters.has(id) && Array.isArray(momentIds) && momentIds.length > 0 && new Set(momentIds).size === momentIds.length && momentIds.every(momentId => (data.config.explorationEvents?.adventurerBondMoments || []).some(moment => moment.id === momentId) && bonds.memories[[member.id, id].sort().join("::")]?.includes(momentId))), "探索開始時の旅仲間記憶が不正です。");
           if (member.equipmentSkillIds != null) check(Array.isArray(member.equipmentSkillIds) && member.equipmentSkillIds.length <= Object.keys(data.equipmentSkills).length && new Set(member.equipmentSkillIds).size === member.equipmentSkillIds.length && member.equipmentSkillIds.every(id => known(data.equipmentSkills, id)), "探索中の装備スキルが不正です。");
@@ -614,6 +636,8 @@
                 && Number(character.expeditionRecord?.[improvement.field] || 0) >= improvement.value));
           }), "探索結果の冒険者最高記録が不正です。");
       }
+      if (result.newBossRivalries != null) check(validBossRivalryEvents(result.newBossRivalries, data, characters), "探索結果のボス因縁が不正です。");
+      if (result.bossRevengeVictories != null) check(validBossRivalryEvents(result.bossRevengeVictories, data, characters), "探索結果の雪辱記録が不正です。");
       if (result.newAdventurerBondMomentIds != null) {
         const definitions = new Set((data.config.explorationEvents?.adventurerBondMoments || []).map(moment => moment.id));
         const logged = new Set((result.battleLog || []).filter(entry => entry.kind === "bond").map(entry => entry.adventurerBondMomentId));

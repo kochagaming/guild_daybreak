@@ -65,8 +65,10 @@ const assert = require("assert");
 
   assert(game.Party.toggle(hero.id).ok);
   assert(game.Dungeon.start("meadow").ok);
-  const dropSeed = game.GameState.data.expeditions[0].seed + 100003;
-  const predictedDrop = game.Items.createInstance("wooden_sword", { source: "drop", seed: dropSeed });
+  const expedition = game.GameState.data.expeditions[0];
+  const dropSeed = expedition.seed + 100003;
+  const qualityRate = game.AcquisitionSkills.normalize(expedition.acquisitionBonuses).qualityRate;
+  const predictedDrop = game.Items.createInstance("wooden_sword", { source: "drop", seed: dropSeed, qualityRateMultiplier: qualityRate.multiplier });
   { const registered = await execute("autosell.add", { instanceId: predictedDrop.id }); assert(registered.ok || game.AutoSell.matchingRule(predictedDrop, "drop"), registered.message); }
   assert(game.Items.sell(predictedDrop.id).ok);
   game.Battle.resolve = () => ({

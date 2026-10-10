@@ -106,6 +106,18 @@
     return `<section class="result-route-events result-bond-formations"><div><span class="label">BATTLE COMPANIONS</span><strong>戦列で息を合わせた仲間</strong></div>${entries.map(entry => `<article class="success"><span aria-hidden="true">結</span><div><strong>${(entry.memberNames || []).map(escape).join("と")} · ${escape(entry.label || "旅仲間の布陣")}</strong><small>${(entry.positions || []).map(position => `${Number(position) + 1}列`).join("・")}で隣接 · 同行${entry.sharedSorties || 0}回</small><p>互いの合図が届く距離で、戦いの呼吸を合わせました。</p></div></article>`).join("")}<button class="button ghost" data-action="jump-result-section" data-target="result-battle-records">戦闘ログで確認</button></section>`;
   }
 
+  function bossRivalryPanel(result, context) {
+    const { escape } = context;
+    const started = Array.isArray(result.newBossRivalries) ? result.newBossRivalries : [];
+    const avenged = Array.isArray(result.bossRevengeVictories) ? result.bossRevengeVictories : [];
+    if (!started.length && !avenged.length) return "";
+    const rows = [
+      ...started.map(entry => ({ ...entry, state: "active", mark: "因", title: "撤退の痛みを忘れない" })),
+      ...avenged.map(entry => ({ ...entry, state: "avenged", mark: "雪", title: "因縁を越えた" }))
+    ];
+    return `<section class="result-boss-rivalries"><div><span class="label">RIVALRY RECORD</span><strong>${avenged.length ? "冒険者の因縁に決着が刻まれました" : "次の遠征へ持ち越す因縁が残りました"}</strong></div><div>${rows.map(entry => `<article class="is-${entry.state}"><span aria-hidden="true">${entry.mark}</span><div><small>${escape(entry.title)}</small><strong>${escape(entry.name)} × ${escape(entry.bossName)}</strong><button class="text-button" data-action="open-adventurer-record" data-character="${escape(entry.characterId)}">この冒険者の足跡を見る</button></div></article>`).join("")}</div></section>`;
+  }
+
   function treasurePanel(result, context) {
     const { escape } = context;
     const definitions = new Map((window.GameData.config.explorationEvents?.treasure?.types || []).map(entry => [entry.id, entry]));
@@ -252,5 +264,5 @@
     return `<article class="companion-growth-result"><strong>${escape(companion?.name || "人物")}が「${escape(stage?.name || "新たな段階")}」へ成長しました</strong>${changes.length ? `<div class="companion-growth-skills">${changes.join("")}</div>` : ""}<p>人物録または装備画面で現在の固有スキルを確認できます。</p></article>`;
   }
 
-  window.GameUIViews.results = { adventurerBondMomentPanel, adventurerBondTierPanel, attemptComparison, bondFormationPanel, companionGrowthSummary, growthPanel, highlights, lootPanel, memberHighlightPanel, memberReport, monsterInsightPanel, routeEvents, routeEventPanel, tacticalReport, treasurePanel };
+  window.GameUIViews.results = { adventurerBondMomentPanel, adventurerBondTierPanel, attemptComparison, bondFormationPanel, bossRivalryPanel, companionGrowthSummary, growthPanel, highlights, lootPanel, memberHighlightPanel, memberReport, monsterInsightPanel, routeEvents, routeEventPanel, tacticalReport, treasurePanel };
 })();

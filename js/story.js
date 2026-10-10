@@ -317,6 +317,55 @@
     }
     return events;
   }
+  function sceneCharacterIds(sourceScene) {
+    const source = typeof sourceScene === "string" ? scene(sourceScene) : sourceScene;
+    if (!source) return [];
+    const ids = [source.protagonistId, ...(source.castIds || []), ...(source.script || []).filter(block => block.kind === "dialogue").map(block => block.speakerId)];
+    return [...new Set(ids.filter(id => id && window.GameData.storyCharacters?.[id]))];
+  }
+  function sceneCharacters(sourceScene) {
+    return sceneCharacterIds(sourceScene).map(id => window.GameData.storyCharacters[id]);
+  }
+  function readTimeline() {
+    const story = ensure(), read = new Set(story.readSceneIds || []), seen = new Set(), events = [];
+    [...chapters()].sort((a, b) => a.order - b.order).forEach(chapter => {
+      chapterTimeline(chapter.id).forEach(event => {
+        if (!event.scene || !read.has(event.scene.id) || seen.has(event.scene.id)) return;
+        seen.add(event.scene.id);
+        events.push(event);
+      });
+    });
+    return events;
+  }
+  function episodeCharacters(episode = pendingEpisode()) {
+    if (!episode) return [];
+    const ids = episode.entries.flatMap(entry => sceneCharacterIds(entry.scene));
+    return [...new Set(ids)].map(id => window.GameData.storyCharacters[id]).filter(Boolean);
+  }
+  function characterChronicles() {
+    const timeline = readTimeline(), records = new Map(), order = new Map(timeline.map((event, index) => [event.scene.id, index]));
+    timeline.forEach(event => sceneCharacterIds(event.scene).forEach(characterId => {
+      const record = records.get(characterId) || { character: window.GameData.storyCharacters[characterId], events: [] };
+      if (!record.events.some(known => known.scene.id === event.scene.id)) record.events.push(event);
+      records.set(characterId, record);
+    }));
+    return [...records.values()].filter(record => record.character).sort((a, b) => {
+      const latestA = order.get(a.events.at(-1)?.scene.id) ?? -1;
+      const latestB = order.get(b.events.at(-1)?.scene.id) ?? -1;
+      return latestB - latestA || b.events.length - a.events.length || a.character.name.localeCompare(b.character.name, "ja");
+    });
+  }
+  function storyGuide() {
+    const timeline = readTimeline(), episode = pendingEpisode(), latest = timeline.at(-1) || null;
+    return {
+      latest,
+      recent: timeline.slice(-3),
+      episode,
+      cast: episodeCharacters(episode),
+      nextScene: episode?.entries?.[0] || null,
+      readCount: timeline.length
+    };
+  }
   function focus() {
     const chapter = current();
     if (!chapter) {
@@ -343,5 +392,5 @@
       return !chapters().some(chapter => chapter.id === dungeon.chapterId && chapter.clearStoryId === dungeon.clearStoryId);
     }).map(dungeon => ({ dungeon, scene: scene(dungeon.clearStoryId) }));
   }
-  window.Story = { ensure, sync, recordDeparture, recordResult, rawCanEnter, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterUnlockText, chapterDungeons, chapterTimeline, dungeonStoryLinks, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, pendingEpisode, readPending, hasReadScene, optionalStories, routeStories, mainChapters, postgameChapters, mainComplete, triggerSatisfied, applyStoryTriggers };
+  window.Story = { ensure, sync, recordDeparture, recordResult, rawCanEnter, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterUnlockText, chapterDungeons, chapterTimeline, sceneCharacterIds, sceneCharacters, readTimeline, episodeCharacters, characterChronicles, storyGuide, dungeonStoryLinks, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, pendingEpisode, readPending, hasReadScene, optionalStories, routeStories, mainChapters, postgameChapters, mainComplete, triggerSatisfied, applyStoryTriggers };
 })();

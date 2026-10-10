@@ -10,7 +10,7 @@
       sorties: 0, victories: 0, retreats: 0, encounterClears: 0,
       routeSuccesses: 0, routeEventSuccesses: {}, treasureOpenings: 0, teamSurveys: 0,
       damageDealt: 0, healingDone: 0, damageTaken: 0, criticalHits: 0, knockouts: 0,
-      bestDamage: 0, bestHealing: 0, bestEndurance: 0, lastAt: null
+      bestDamage: 0, bestHealing: 0, bestEndurance: 0, bossRivalries: {}, lastAt: null
     };
   }
 
@@ -18,7 +18,35 @@
     const record = character?.expeditionRecord;
     const normalized = Object.assign(emptyExpeditionRecord(), record && typeof record === "object" && !Array.isArray(record) ? record : {});
     normalized.routeEventSuccesses = Object.assign({}, record?.routeEventSuccesses || {});
+    normalized.bossRivalries = Object.fromEntries(Object.entries(record?.bossRivalries || {}).map(([bossId, entry]) => [bossId, Object.assign({ defeats: 0, victories: 0, lastOutcome: null, lastAt: null }, entry)]));
     return normalized;
+  }
+
+  function bossRivalries(character) {
+    return Object.freeze(Object.entries(expeditionRecord(character).bossRivalries).map(([bossId, entry]) => Object.freeze({ bossId, ...entry }))
+      .sort((left, right) => (right.lastAt || 0) - (left.lastAt || 0)));
+  }
+
+  function activeBossRivalries(character) {
+    return Object.freeze(bossRivalries(character).filter(entry => entry.lastOutcome === "defeat"));
+  }
+
+  function recordBossEncounter(character, bossId, victory, completedAt) {
+    const boss = window.GameData.monsters?.[bossId];
+    if (!character || !boss?.boss) return null;
+    const record = expeditionRecord(character);
+    const previous = record.bossRivalries[bossId] || { defeats: 0, victories: 0, lastOutcome: null, lastAt: null };
+    const started = !victory && previous.lastOutcome !== "defeat";
+    const avenged = victory && previous.lastOutcome === "defeat";
+    const entry = {
+      defeats: previous.defeats + (victory ? 0 : 1),
+      victories: previous.victories + (victory ? 1 : 0),
+      lastOutcome: victory ? "victory" : "defeat",
+      lastAt: Number(completedAt) || window.GameRuntime.now()
+    };
+    record.bossRivalries[bossId] = entry;
+    character.expeditionRecord = record;
+    return { bossId, entry: Object.freeze({ ...entry }), started, avenged };
   }
 
   function routeExperience(character) {
@@ -485,5 +513,5 @@
     return { ok: true, message: "キャラクター画像を変更しました。" };
   }
 
-  window.Characters = { get, stats, statBreakdown, addExperience, emptyExpeditionRecord, expeditionRecord, expeditionMilestones, routeExperience, routeSpecialties, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, bondMemories, recordBondMemory, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseStats, companionDefinition, attackCountFor, attackCountForSpeed };
+  window.Characters = { get, stats, statBreakdown, addExperience, emptyExpeditionRecord, expeditionRecord, bossRivalries, activeBossRivalries, recordBossEncounter, expeditionMilestones, routeExperience, routeSpecialties, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, bondMemories, recordBondMemory, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseStats, companionDefinition, attackCountFor, attackCountForSpeed };
 })();

@@ -142,7 +142,7 @@
     const lootPanel = resultViews.lootPanel(result, { escape, itemName });
     const levels = resultViews.growthPanel(result, { escape });
     const highlights = resultViews.highlights(result);
-    const memberHighlights = resultViews.memberHighlightPanel(result, { escape });
+    const memberHighlights = resultViews.memberHighlightPanel(result, { escape }) + resultViews.bossRivalryPanel(result, { escape });
     const bondFormations = resultViews.bondFormationPanel(result, { escape });
     const routeEvents = resultViews.routeEventPanel(result, { escape });
     const adventurerBondMoments = resultViews.adventurerBondMomentPanel(result, { escape });
@@ -1052,23 +1052,49 @@
     const button = document.querySelector('[data-action="finish-story-reader"]');
     if (meter) meter.textContent = ratio >= .995 ? "読了できます" : `読書中 ${Math.round(ratio * 100)}%`;
     if (button) button.disabled = ratio < .995;
+    const scenes = [...document.querySelectorAll(".story-reader-scene")];
+    const current = scenes.reduce((found, candidate, index) => candidate.offsetTop <= position + 100 ? index : found, 0);
+    document.querySelectorAll('[data-action="story-reader-jump"]').forEach((entry, index) => entry.classList.toggle("active", index === current));
   }
 
-  function openStoryReader() {
-    const episode = window.Story.pendingEpisode();
-    if (!episode) { toast("今読むべき新しい物語はありません。", "error"); return; }
+  function openStoryReader(sceneId = null) {
+    const replayScene = sceneId ? window.Story.scene(sceneId) : null;
+    const replayEntry = replayScene ? window.GameData.storyChapters
+      .flatMap(chapter => window.Story.chapterTimeline(chapter.id))
+      .find(entry => entry.scene?.id === sceneId) : null;
+    const replay = Boolean(replayScene);
+    const episode = replay ? {
+      id: `archive:${sceneId}`,
+      title: `回想：${replayScene.name}`,
+      subtitle: "この記録は何度でも読み返せます。",
+      entries: [replayEntry || { label: "過去の記録", scene: replayScene, chapter: null, dungeon: null }]
+    } : window.Story.pendingEpisode();
+    if (!episode) { toast(sceneId ? "その物語は記録されていません。" : "今読むべき新しい物語はありません。", "error"); return; }
+    const guide = window.Story.storyGuide();
+    const cast = window.Story.episodeCharacters(episode);
+    const previously = !replay && guide.recent.length ? `<section class="story-reader-previously"><span class="label">PREVIOUSLY</span><h3>前回までの記録</h3><ol>${guide.recent.map(event => `<li><small>${escape(event.chapter?.title || event.dungeon?.name || "過去の記録")}</small><strong>${escape(event.scene.name)}</strong><p>${escape(event.scene.text)}</p></li>`).join("")}</ol></section>` : "";
+    const castList = cast.length ? `<section class="story-reader-cast"><span class="label">CAST</span><h3>この物語に登場する人々</h3><div>${cast.map(character => {
+      const portrait = window.GameData.portraits?.[character.portraitId];
+      return `<span>${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<b>${escape(character.name)}</b><small>${escape(character.title)}</small></span>`;
+    }).join("")}</div></section>` : "";
+    const tableOfContents = `<nav class="story-reader-toc" aria-label="場面目次">${episode.entries.map((entry, index) => `<button type="button" class="${index === 0 ? "active" : ""}" data-action="story-reader-jump" data-story-index="${index}"><small>${index + 1}</small><span>${escape(entry.scene.name)}</span></button>`).join("")}</nav>`;
     const scenes = episode.entries.map((entry, index) => {
       const place = entry.dungeon?.name || entry.chapter?.title || "ギルドの記録";
       const protagonist = window.GameData.storyCharacters?.[entry.scene.protagonistId];
       const portrait = protagonist ? window.GameData.portraits?.[protagonist.portraitId] : null;
       const cast = (entry.scene.castIds || []).map(id => window.GameData.storyCharacters?.[id]?.name).filter(Boolean);
-      return `<article class="story-reader-scene"><header><span>${index + 1} / ${episode.entries.length} · ${escape(entry.label)}</span><small>${escape(place)}</small></header>${protagonist ? `<div class="story-reader-character">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<span><small>この場面の視点</small><strong>${escape(protagonist.name)}</strong>${cast.length ? `<em>共にいる者：${escape(cast.join("、"))}</em>` : ""}</span></div>` : ""}<h3>${escape(entry.scene.name)}</h3><div class="story-reader-script">${storyReaderBlocks(entry.scene).map(storyReaderBlock).join("")}</div></article>`;
+      return `<article class="story-reader-scene" id="story-reader-scene-${index}"><header><span>${index + 1} / ${episode.entries.length} · ${escape(entry.label)}</span><small>${escape(place)}</small></header>${protagonist ? `<div class="story-reader-character">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<span><small>この場面の視点</small><strong>${escape(protagonist.name)}</strong>${cast.length ? `<em>共にいる者：${escape(cast.join("、"))}</em>` : ""}</span></div>` : ""}<h3>${escape(entry.scene.name)}</h3><div class="story-reader-script">${storyReaderBlocks(entry.scene).map(storyReaderBlock).join("")}</div></article>`;
     }).join("");
-    document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop story-reader-backdrop"><section class="modal story-reader-modal" role="dialog" aria-modal="true" aria-labelledby="story-reader-title"><header class="story-reader-heading"><button class="button ghost" data-action="close-modal">あとで読む</button><div><span class="label">STORY</span><h2 id="story-reader-title">${escape(episode.title)}</h2></div><span data-story-read-progress>読書中 0%</span></header><div class="story-reader-scroll" data-story-reader-scroll tabindex="0">${scenes}<footer class="story-reader-ending"><span aria-hidden="true">◆</span><strong>ここまでの物語を記録する</strong><p>${escape(episode.subtitle)}</p><button class="button primary" data-action="finish-story-reader" data-episode="${escape(episode.id)}" disabled>読み終える</button></footer></div></section></div>`;
+    const ending = replay
+      ? `<footer class="story-reader-ending story-reader-replay-ending"><span aria-hidden="true">◆</span><strong>記録の終わり</strong><p>${escape(episode.subtitle)}</p><button class="button primary" data-action="close-modal">回想を閉じる</button></footer>`
+      : `<footer class="story-reader-ending"><span aria-hidden="true">◆</span><strong>ここまでの物語を記録する</strong><p>${escape(episode.subtitle)}</p><button class="button primary" data-action="finish-story-reader" data-episode="${escape(episode.id)}" disabled>読み終える</button></footer>`;
+    document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop story-reader-backdrop"><section class="modal story-reader-modal" role="dialog" aria-modal="true" aria-labelledby="story-reader-title"><header class="story-reader-heading"><button class="button ghost" data-action="close-modal">${replay ? "閉じる" : "あとで読む"}</button><div><span class="label">${replay ? "STORY ARCHIVE" : "STORY"}</span><h2 id="story-reader-title">${escape(episode.title)}</h2></div><span data-story-read-progress>${replay ? "回想" : "読書中 0%"}</span></header>${tableOfContents}<div class="story-reader-scroll" data-story-reader-scroll tabindex="0">${previously}${castList}${scenes}${ending}</div></section></div>`;
     const scroller = document.querySelector("[data-story-reader-scroll]");
     if (scroller) {
-      scroller.addEventListener("scroll", () => refreshStoryReaderProgress(scroller), { passive: true });
-      refreshStoryReaderProgress(scroller);
+      if (!replay) {
+        scroller.addEventListener("scroll", () => refreshStoryReaderProgress(scroller), { passive: true });
+        refreshStoryReaderProgress(scroller);
+      }
       scroller.focus?.();
     }
   }
@@ -1387,6 +1413,11 @@
     if (button.classList.contains("modal-backdrop") && event.target.closest(".modal")) return;
     const action = button.dataset.action;
     if (action === "open-story-reader") { openStoryReader(); return; }
+    if (action === "replay-story-scene") { openStoryReader(button.dataset.scene); return; }
+    if (action === "story-reader-jump") {
+      document.getElementById(`story-reader-scene-${Number(button.dataset.storyIndex) || 0}`)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      return;
+    }
     if (action === "finish-story-reader") {
       const servicesBefore = new Set(window.GuildServices.unlockedIds());
       const result = await window.GameClient.execute("story.readPending", { episodeId: button.dataset.episode });

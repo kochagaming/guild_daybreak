@@ -226,9 +226,11 @@
         healing: ["癒", "仲間の命をつないだ", entry => `実回復 ${entry.value.toLocaleString("ja-JP")}`],
         endurance: ["盾", "最後まで立ち続けた", entry => `被ダメージ ${entry.value.toLocaleString("ja-JP")}・帰還HP ${entry.remainingHp}/${entry.maxHp}`]
       };
-      const memberHighlights = (entry.memberHighlights || []).length
+      let memberHighlights = (entry.memberHighlights || []).length
         ? `<div class="party-history-contributions"><strong>遠征の働き</strong><div>${entry.memberHighlights.map(highlight => { const view = highlightViews[highlight.kind]; return `<span class="${highlight.kind}"><i>${view[0]}</i><small>${view[1]}</small><b>${escape(highlight.name)}</b><em>${escape(view[2](highlight))}</em></span>`; }).join("")}</div></div>`
         : "";
+      const rivalryEvents = [...(entry.newBossRivalries || []).map(item => ({ ...item, avenged: false })), ...(entry.bossRevengeVictories || []).map(item => ({ ...item, avenged: true }))];
+      if (rivalryEvents.length) memberHighlights += `<div class="party-history-rivalries"><strong>因縁の記録</strong><div>${rivalryEvents.map(item => `<span class="${item.avenged ? "is-avenged" : "is-active"}"><i>${item.avenged ? "雪" : "因"}</i><b>${escape(item.name)}</b><small>${escape(item.bossName)}・${item.avenged ? "雪辱" : "再戦を待つ"}</small></span>`).join("")}</div></div>`;
       const setup = Array.isArray(entry.partySetup) && entry.partySetup.length
         ? `<details class="party-history-setup"><summary>遠征時の編成 ${entry.partySetup.length}人</summary><div>${entry.partySetup.map(member => {
           const job = window.GameData.jobs[member.jobId]?.name || "冒険者", rates = member.actionRates;
@@ -493,6 +495,9 @@
       const monsterIds = Array.from(new Set(dungeon.encounters.flatMap(encounter => encounter.groups.flat())));
       const monsters = monsterIds.map(id => window.DungeonDifficulty.monster(id, difficultyId));
       const monsterPreview = monsters.map(monster => { const record = window.Encyclopedia.monster(monster.id); return `<span class="monster-chip ${monster.boss && record ? "boss" : ""}">${record ? `${monster.icon} ${escape(monster.name)}` : "？ 未確認"}</span>`; }).join("") + dungeonIntel(dungeon, monsters);
+      const rivalBossIds = new Set(monsterIds.filter(id => window.GameData.monsters[id]?.boss));
+      const rivalryMembers = window.Party.members(partyIndex).filter(member => window.Characters.activeBossRivalries(member).some(entry => rivalBossIds.has(entry.bossId)));
+      const rivalryLead = rivalryMembers.length ? `<p class="dungeon-rivalry-lead"><span>因縁の再戦</span><strong>${rivalryMembers.map(member => escape(member.name)).join("、")}</strong><small>以前の撤退で見た動きを覚えている。</small></p>` : "";
       const selected = dungeon.id === selectedId;
       const partyRuleCheck = window.DungeonPartyRules.check(dungeon, window.Party.members(partyIndex));
       const restrictionCompanions = window.DungeonPartyRules.companionIds(dungeon)
@@ -513,9 +518,10 @@
         && (entry.timeMultiplier || 1) === multiplier
         && entry.battle);
       const previousBattle = previousAttempt?.battle;
-      const previousRecord = previousBattle
+      const previousAttemptRecord = previousBattle
         ? `<p class="dungeon-attempt-record ${previousAttempt.success ? "success" : "failure"}"><span>この隊の前回・${multiplier}倍探索</span><strong>${previousAttempt.success ? "攻略成功" : "撤退"}　${previousBattle.encountersCleared}/${previousBattle.totalEncounters}戦</strong><small>討伐 ${previousBattle.monstersDefeated}体</small></p>`
         : "";
+      const previousRecord = previousAttemptRecord + rivalryLead;
       const rumorDefinition = currentRumor?.dungeonId === dungeon.id ? window.ExpeditionRumors.definition(currentRumor) : null;
       const rumorNote = rumorDefinition ? `<p class="dungeon-rumor-note"><span>${escape(rumorDefinition.icon)} 旅人の噂</span><strong>${escape(rumorDefinition.name)}</strong><small>${escape(rumorDefinition.text)}</small></p>` : "";
       const routeRumor = window.Exploration.routeRumor(dungeon);
