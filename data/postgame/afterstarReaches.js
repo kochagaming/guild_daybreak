@@ -153,7 +153,7 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    afterstar_reaches_1_opening: { id: "afterstar_reaches_1_opening", name: "五つの座標", text: "異形神の残した座標の一つが、宿の古地図に灰色の海を描いた。空の主の循環から外れた世界へ、ギルドは初めて自らの意志で遠征隊を送る。" },
+    afterstar_reaches_1_opening: { id: "afterstar_reaches_1_opening", name: "五つの座標", text: "星後の旅人へ返した鐘に、五つの方角から応答が届いた。宿の古地図へ灰色の海が浮かぶが、そこは誰にも知られていない空白ではない。灰潮を渡る案内人リーネは、往路だけを描いた地図を閉じ、帰路の印まで刻むなら案内すると告げた。" },
     gray_ash_sea_opening: { id: "gray_ash_sea_opening", name: "灰色の渡航路", text: "星後の神域に生まれた裂け目を越えると、海も空も灰で満ちていた。遠くの波間で、山ほどの影がゆっくりと向きを変える。" },
     gray_ash_sea_discovery: { id: "gray_ash_sea_discovery", name: "燃える潮目", text: "灰の海は死んでいない。沈んだ星の熱を食べる生き物たちが、燼火の潮目を渡って別の領域へ移動している。" },
     gray_ash_sea_clear: { id: "gray_ash_sea_clear", name: "最初の領域標", text: "灰海王が沈むと、海底から次の座標を刻んだ領域標が浮上した。風景を上下逆さに映す、玻璃の峡谷へ道が繋がる。" },
@@ -168,10 +168,10 @@
     silent_iron_city_clear: { id: "silent_iron_city_clear", name: "鐘の中の座標", text: "大鐘の内側に、すべての観測線が集まる座標が刻まれていた。五領域の中心、遠界観測座への扉が開く。" },
     distant_observatory_opening: { id: "distant_observatory_opening", name: "見られていた旅", text: "観測座の壁一面に、名もなき宿から今日までの冒険が映っている。偶然だと思っていた出会いまで、誰かが記録していた。" },
     distant_observatory_discovery: { id: "distant_observatory_discovery", name: "選ばれなかった結末", text: "観測者は運命を操ってはいない。無数の遠征を眺め、最も遠くへ届いた一行が次の扉を開くのを待っていた。" },
-    distant_observatory_clear: { id: "distant_observatory_clear", name: "観測を終える者", text: "遠界の観測者が沈黙すると、記録の中の冒険者たちも歩みを止めた。残された地図には、まだ四つの星後領域と、それらを呑み込む空白が描かれている。" },
+    distant_observatory_clear: { id: "distant_observatory_clear", name: "観測を終える者", text: "遠界の観測窓を各領域から開閉できる通信路へ変えると、記録の中で止まっていた人々はそれぞれの続きを歩き始めた。残された地図には四つの星後領域と空白がある。遠征隊はそれを所有する地図として持ち帰らず、返事が届いた時だけ開く頁として宿へ預けた。" },
     five_reaches_nest_opening: { id: "five_reaches_nest_opening", name: "繋がりすぎた境界", text: "観測座の地下で、五つの領域が肉のように癒着している。境界を食べる何かが、遠い世界を一つの巣へ変え始めた。" },
     five_reaches_nest_discovery: { id: "five_reaches_nest_discovery", name: "空白の幼体", text: "五界喰らいは侵略者ではなく、地図に描かれた空白から生まれた幼体だった。観測される世界が増えるほど、その胃袋も広がる。" },
-    five_reaches_nest_clear: { id: "five_reaches_nest_clear", name: "五界を分かつ楔", text: "巣を断つと五領域は再び離れ、境界片が楔となって残った。その表面には、次の領域へ渡った何者かの手形が焼き付いている。" }
+    five_reaches_nest_clear: { id: "five_reaches_nest_clear", name: "五界を分かつ楔", text: "五つの異なる拍を楔にすると、癒着した領域は互いの声が届く距離を残して離れた。境界片には次の領域へ渡った何者かの手形がある。遠征隊はすぐ追わず、五領域へ記録を返し、帰路を確かめてから次の扉を相談することにした。" }
   });
 
   data.registry.entityList("storyChapters", [{

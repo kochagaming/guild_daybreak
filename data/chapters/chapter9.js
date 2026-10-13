@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    falling_sky_castle_opening: { id: "falling_sky_castle_opening", name: "極光に浮かぶ城影", text: "白い山脈を越えた夜、極光の星路に巨大な城影が浮かんだ。黒い羽はそこから落ちている。リナは望遠鏡を下ろし、『女王の使者は、あの城へ向かったようです』と告げた。" },
+    falling_sky_castle_opening: { id: "falling_sky_castle_opening", name: "極光に浮かぶ城影", text: "白い山脈を越えた夜、極光の星路に巨大な城影が浮かんだ。町では落城が地上へ攻めてくると鐘が鳴らされたが、城の黒い羽は前進するためではなく、背後から迫る暗い天体を避けるように傷ついている。女王の使者は、その城へ続く星路を先に渡っていた。" },
     starroad_gate_clear: { id: "starroad_gate_clear", name: "門に刻まれた地上の地図", text: "外門の裏には、王朝が失った地上の都市が赤い印で刻まれていた。空城の軍勢は逃亡者ではなく、帰還の時を待っていたらしい。" },
     broken_sky_garden_clear: { id: "broken_sky_garden_clear", name: "星を育てる庭", text: "空中庭園の蔓は土ではなく、砕けた星の光を吸っていた。女王の使者は、その根から浮遊核を一つ持ち去っている。" },
     blackwing_cloister_clear: { id: "blackwing_cloister_clear", name: "黒翼侯の密命", text: "黒翼侯の書状には『星路の門を地上から開く者を探せ』とある。使者は捕らえられたのではなく、自ら王座へ案内させていた。" },
     fallen_star_foundry_clear: { id: "fallen_star_foundry_clear", name: "空へ向けられた兵器", text: "鋳造所で作られていた兵は地上侵攻用ではなかった。すべての照準は、星路のさらに外側にある暗い空へ向いている。" },
-    falling_sky_castle_clear: { id: "falling_sky_castle_clear", name: "日蝕の王が恐れたもの", text: "蝕星王は門を開き、地上へ逃げようとしていた。女王の使者は王座の星図を奪い、空城より高い『黒い月』へ向かったという。" },
+    falling_sky_castle_clear: { id: "falling_sky_castle_clear", name: "日蝕の王が恐れたもの", text: "蝕星王が門を開いたのは、地上を攻めるためではなく、空城の住民を黒い月から逃がすためだった。女王の使者は捕らわれておらず、王座で互いの情報を交換した後、黒月へ入る星図だけを持って先へ進んだ。空城より高い場所で、王朝自身が作った何かが目覚めつつある。" },
     void_star_prison_clear: { id: "void_star_prison_clear", name: "牢獄から届く星声", text: "虚星執政官は倒れる間際、黒い月を王朝の敵ではなく王朝自身が作った檻だと語った。空城の歴史には、消されたもう一人の王がいる。" }
   });
   data.registry.entityList("storyChapters", [{

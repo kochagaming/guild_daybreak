@@ -67,13 +67,13 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    end_of_starless_night_opening: { id: "end_of_starless_night_opening", name: "空へ向かう冒険者たち", text: "王都の天門を前に、ノアはギルドの仲間を振り返った。王命でも予言でもない。名もない宿で始まった冒険者たちが、自分たちの意思で空へ踏み出す。" },
+    end_of_starless_night_opening: { id: "end_of_starless_night_opening", name: "空へ向かう冒険者たち", text: "王都の天門を前に、ノアはギルドの仲間を振り返った。王命でも予言でもない。名もない宿で出会った八人は、それぞれが終えたい過去と始めたい明日を言葉にして、自分たちの意思で空へ踏み出す。町では鐘楼守アンナが、帰還まで途切れさせない最初の鐘を鳴らした。" },
     sky_gate_ascent_clear: { id: "sky_gate_ascent_clear", name: "地上を離れる足跡", text: "門守を越えると、地上は小さな灯の集まりに見えた。リナは宿の灯を見つけ、『帰る場所があるから、空の果てまで行けます』と笑った。" },
     broken_constellation_clear: { id: "broken_constellation_clear", name: "終わった世界の星座", text: "砕けた星座は、空の主へ力を返し尽くした世界の墓標だった。地上の星海もまた、同じ循環のために育てられていた。" },
     first_light_archive_clear: { id: "first_light_archive_clear", name: "最初の星の記録", text: "空の主は星を生み、育った力を回収して次の星を作る。王朝はその仕組みを盗んだのではない。地上を収穫しやすく整える代行者として選ばれていた。" },
     throne_beyond_sky_clear: { id: "throne_beyond_sky_clear", name: "所有されない星", text: "摂政は地上の命を空の主の所有物と呼んだ。ノアは静かに首を振る。『生まれた場所が誰かのものでも、そこで生きた時間まで所有されはしません』。" },
-    end_of_starless_night_clear: { id: "end_of_starless_night_clear", name: "星なき夜の終わり", text: "ノアが星核を砕き、冒険者たちが空の主の真名を呼ぶと、世界を巡る収穫の鎖は途切れた。王都へ戻った夜、名もなき宿の上には初めて誰のものでもない星が輝いた。ギルドの扉には、また新しい依頼が届いている。" },
-    afterstar_sanctum_clear: { id: "afterstar_sanctum_clear", name: "星の後から来るもの", text: "循環の外側には、空の主さえ知らない世界が広がっていた。異形神の残した座標は五つの遠い領域を示す。大きな物語は終わったが、冒険者の旅に終わりはない。" }
+    end_of_starless_night_clear: { id: "end_of_starless_night_clear", name: "星なき夜の終わり", text: "冒険者たちが空の主の真名を呼び、ノアが星核から主へ続く専用路を砕くと、世界を巡る収穫の鎖は途切れた。光は消えず、星々が互いに選んで渡せる流れへ戻っていく。王都へ帰還した夜、名もなき宿の上には初めて誰のものでもない星が輝いた。ギルドの扉には、また新しい依頼が届いている。" },
+    afterstar_sanctum_clear: { id: "afterstar_sanctum_clear", name: "星の後から来るもの", text: "循環の外側から来た旅人は、五つの遠い領域へ返事を運ぶ光を残した。それは征服先でも次の災厄でもなく、まだ互いを知らない世界からの呼びかけだった。大きな物語は終わった。冒険者たちは宿へ帰り、次に扉を開くかを自分たちで選べる。" }
   });
   data.registry.entityList("storyChapters", [{
     id: "end_of_starless_night", order: 15, number: 15, title: "第15章：星なき夜の果て", recommendedLevelRange: [100, 100],

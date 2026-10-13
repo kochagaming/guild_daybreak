@@ -12,6 +12,16 @@ assert(chapter && chapter.number === 13 && chapter.recommendedLevelRange[1] === 
 assert.deepStrictEqual(Array.from(required, entry => entry.id), ["frozen_starsea_shore", "black_aurora_field", "fallen_star_grave", "vessel_fortress", "northstar_cradle"]);
 assert.deepStrictEqual(Array.from(optional, entry => entry.id), ["worldscar_glacier"]);
 assert.deepStrictEqual(Array.from(routes, entry => entry.recommendedLevel), [95, 95, 96, 96, 97, 98]);
+const openingScript = data.relations.storySceneScripts.northern_star_tomb_opening?.blocks || [];
+const endingScript = data.relations.storySceneScripts.northern_star_tomb_clear?.blocks || [];
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "noah" && block.text.includes("今は僕のものです")), "Noah introduces the name he chose in his own voice");
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "guild_leader" && block.text.includes("本人と一緒に確かめる")), "The guild refuses to frame Noah as an object to recover");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "noah" && block.text.includes("僕の答えを待って")), "Noah names the consent that the messenger denied him");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "receptionist_rina" && block.text.includes("ノアさん帰還")), "Rina records Noah as a returned person rather than a recovered vessel");
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert.strictEqual(endingScript[0].kind, "setting");
+assert.strictEqual(endingScript.at(-1).kind, "narration");
 
 require("./helpers").createCharacter(game, "北天星墓の攻略者", "warrior");
 require("./helpers").completeThrough(game, "starsea_corridor");

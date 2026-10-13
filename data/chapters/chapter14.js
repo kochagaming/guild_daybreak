@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    returnless_capital_opening: { id: "returnless_capital_opening", name: "星の消える王都", text: "ノアを連れて北から戻ると、王都の上空だけ星が消えていた。天を貫く黒い光柱の下で、女王の使者が王座へ向かっている。『あの人は私の星核を使って、空の主を呼ぶつもりです』。" },
+    returnless_capital_opening: { id: "returnless_capital_opening", name: "星の消える王都", text: "ノアを連れて北から戻ると、王都の上空だけ星が消えていた。天を貫く黒い光柱の下で、女王の使者エーファが王座へ向かっている。彼女は王妹イルマの記憶を継ぐ役目に隠されてきた自分の名を明かし、奪った星核で空の主への道を閉じるつもりだと告げた。" },
     north_return_road_clear: { id: "north_return_road_clear", name: "閉ざされた帰都門", text: "門衛の記録には、星力をすべて王宮へ送る命令が残っていた。民の命を燃料にしてでも、天門を完成させるつもりらしい。" },
     silent_outer_city_clear: { id: "silent_outer_city_clear", name: "偽女王の布告", text: "街角の布告は、現女王が病に倒れ、遠征から帰った王妹が摂政になったと告げていた。だが肖像の顔は、黒月で消えた使者そのものだった。" },
-    royal_memory_vault_clear: { id: "royal_memory_vault_clear", name: "王妹の記憶", text: "記憶庫で使者の正体が明らかになる。彼女は初代王の妹イルマの記憶を継ぐ器であり、王朝を終わらせるため何代も姿を変えてきた。" },
+    royal_memory_vault_clear: { id: "royal_memory_vault_clear", name: "王妹から継がれた記憶", text: "記憶庫で使者が継いだものが明らかになる。初代王の妹イルマが始めた計画は何代もの担い手へ渡され、それぞれが失敗と迷いを余白へ書き足していた。今の使者はイルマの再来ではなく、継承された目的と自分の意思の間で、王朝を終わらせようとしている。" },
     skykey_spire_clear: { id: "skykey_spire_clear", name: "開き始めた天門", text: "天鍵を止めても、空の亀裂は閉じなかった。門の向こうから巨大な眼が地上を覗き、ノアの星核へ呼びかけている。" },
-    returnless_capital_clear: { id: "returnless_capital_clear", name: "地上最後の王座", text: "簒奪者を倒し星核を取り戻した瞬間、ノアは自ら天門を完全に開いた。『ここで閉じても、また誰かが星を奪います。空へ行って、始まりそのものを終わらせましょう』。" },
+    returnless_capital_clear: { id: "returnless_capital_clear", name: "地上最後の王座", text: "冠から解かれたエーファは、歴代の使者ではなく自分の声で星核をノアへ返した。ノアは器へ戻るのではなく、星核を自ら選んだ名前へ結び直す。空の主が別の器を探し続ける以上、門を閉じるだけでは終わらない。一行は王都で今を生きる人々とエーファ自身の意思を確かめたうえで天門を開き、始まりそのものを終わらせる道を選んだ。" },
     hollow_coronation_clear: { id: "hollow_coronation_clear", name: "冠を拒んだ名", text: "空王の中には、王になることを拒んだ者たちの記憶が残っていた。彼らが守った真名は、空の主を地上へ縛る最後の鎖になる。" }
   });
   data.registry.entityList("storyChapters", [{

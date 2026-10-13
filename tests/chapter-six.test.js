@@ -67,6 +67,16 @@ for (const id of Object.keys(data.monsters).filter(id => ["gate_scarab", "tide_c
   assert(data.relations.monsterSignatureDrops[id]?.materials?.length && data.relations.monsterSignatureDrops[id]?.equipment?.itemId, `${id} needs signature loot`);
 }
 assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 13));
+const openingScript = data.relations.storySceneScripts.clockwork_desert_opening.blocks;
+const clearScript = data.relations.storySceneScripts.clockwork_desert_clear.blocks;
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert(openingScript.some(entry => entry.speakerId === "tio" && entry.text.includes("一万九千八百四十二回")));
+assert(openingScript.some(entry => entry.speakerId === "caravan_zara" && entry.text.includes("荷札の日付")));
+assert.strictEqual(clearScript[0].kind, "setting");
+assert.strictEqual(clearScript.at(-1).kind, "narration");
+assert(clearScript.some(entry => entry.speakerId === "tio" && entry.text.includes("覚えたまま次の一秒")));
+assert(clearScript.some(entry => entry.speakerId === "tio" && entry.text.includes("一人で進めること")));
 const parsed = game.SaveTransfer.parse(JSON.stringify(state));
 assert(parsed.ok, parsed.message);
 console.log("Chapter six test passed: five main clockwork routes, Tio-only titan growth, story discoveries, materials, recipes, signature loot, boss gear and upgrade cap");

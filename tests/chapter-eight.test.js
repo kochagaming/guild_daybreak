@@ -46,5 +46,15 @@ for (const dungeon of routes) {
   assert(data.storyScenes[links.openingStoryId] && data.storyScenes[links.discoveryStoryId]);
 }
 assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 17));
+const openingScript = data.relations.storySceneScripts.thunder_snow_peaks_opening.blocks;
+const clearScript = data.relations.storySceneScripts.thunder_snow_peaks_clear.blocks;
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert(openingScript.some(entry => entry.speakerId === "kai" && entry.text.includes("閉じる役目")));
+assert(openingScript.some(entry => entry.speakerId === "rize" && entry.text.includes("守ることと閉じ込めること")));
+assert.strictEqual(clearScript[0].kind, "setting");
+assert.strictEqual(clearScript.at(-1).kind, "narration");
+assert(clearScript.some(entry => entry.speakerId === "kai" && entry.text.includes("地上へ降ります")));
+assert(clearScript.some(entry => entry.speakerId === "elena" && entry.text.includes("逃げた跡")));
 assert(game.SaveTransfer.parse(JSON.stringify(state)).ok);
 console.log("Chapter eight test passed: five main mountain routes, optional white dragon, chill/paralysis counterplay, stories, materials, recipes, boss gear and upgrade cap");

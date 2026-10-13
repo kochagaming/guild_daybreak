@@ -69,12 +69,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    mirror_tide_opening: { id: "mirror_tide_opening", name: "灰の先にある海", text: "灰冠の大地に戻った風は、冷たい潮の匂いを運んできた。海図には存在しない海岸と、海中へ沈む古い街道が描き出される。リナは濡れた地図を広げ、『消された記録を追いましょう。今度の道は、海の底へ続いています』と告げた。" },
+    mirror_tide_opening: { id: "mirror_tide_opening", name: "灰の先にある海", text: "灰冠の大地に戻った風は、海図にない白い海岸から冷たい潮の匂いを運んできた。波間では沈んだ人々の名を歌う声が続き、浜へ返された遺品だけが、消された航路に暮らしがあったことを伝えていた。" },
     frost_coast_clear: { id: "frost_coast_clear", name: "波が運んだ黒い頁", text: "白礁の番人が崩れると、凍った波間から黒い頁が流れ着いた。文字は読めないが、王朝の記録院を示す印だけが残っている。" },
     drowned_archive_clear: { id: "drowned_archive_clear", name: "消された航海記録", text: "沈黙の司書が守っていた帳簿には、灰冠王国へ火を運んだ船団の名があった。最後の航路だけが、何者かの墨で塗り潰されている。" },
     blue_reef_clear: { id: "blue_reef_clear", name: "珊瑚に閉じ込められた声", text: "蒼い珊瑚から、帰港を許されなかった船員たちの声が響いた。彼らの艦隊はいまも、鏡の宮殿を隠す霧の中を巡っている。" },
     silent_fleet_clear: { id: "silent_fleet_clear", name: "提督が守った海図", text: "凍れる提督の羅針盤は、霧の向こうにある鏡潮の宮殿を指した。船団は遭難したのではなく、海の王家との約束を守って航路を閉ざしていた。" },
-    mirror_tide_clear: { id: "mirror_tide_clear", name: "海が記憶を返す時", text: "鏡海女王が剣を収めると、黒い潮は澄み、消された航海記録が海面へ浮かび上がった。王朝が隠した道はさらに深い海溝へ続くが、まずは長い沈黙が終わった。" },
+    mirror_tide_clear: { id: "mirror_tide_clear", name: "海が記憶を返す時", text: "鏡海女王が剣を収めると、黒い潮は澄み、消された船乗りたちの名が海面へ浮かび上がった。帰らなかった人々を勝利の物語へ変えず、一人ずつ地上の記録へ戻す長い仕事が始まった。" },
     abyssal_trench_clear: { id: "abyssal_trench_clear", name: "深淵の底で聞いた歌", text: "深淵鯨の潮声は警告だった。海溝の底には、王朝より古い門が眠っている。鯨は大盾となる鱗を残し、門のさらに先へ姿を消した。" }
   });
   data.registry.entityList("storyChapters", [{

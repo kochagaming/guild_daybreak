@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    starsea_corridor_opening: { id: "starsea_corridor_opening", name: "根の下に広がる空", text: "始原樹の根門を降りた先には、天井のない青い海が広がっていた。リナは水面を流れる光を見つめる。『星は空から落ちたのではなく、この海から汲み上げられていたのかもしれません』。" },
+    starsea_corridor_opening: { id: "starsea_corridor_opening", name: "根の下に広がる空", text: "始原樹の根門を降りた先には、天井のない青い海が広がっていた。頭上に空はない。それでも水面を流れる光は、夜空の星と同じ脈で明滅している。古い船着き場には、王朝が地下の海から光を汲み上げ、地上へ運んだ痕跡が残されていた。" },
     rootsea_descent_clear: { id: "rootsea_descent_clear", name: "海へ沈む根", text: "潮門の先で根は無数の船着き場へ分かれていた。王朝は森から星力を奪っただけでなく、地下の海を渡るための港まで築いていた。" },
     drowned_chartroom_clear: { id: "drowned_chartroom_clear", name: "帰り道のない海図", text: "海図には星海から地上へ向かう航路だけが描かれ、戻る道は塗り潰されていた。海図師の記憶は、王命によって帰路を消した夜を繰り返している。" },
     stellar_reef_clear: { id: "stellar_reef_clear", name: "星を運ぶ潮", text: "大礁の星光は一つの流れとなり、王都のさらに北へ向かっていた。空へ帰れなかった力は、今も誰かの器へ注がれ続けている。" },
     submerged_temple_clear: { id: "submerged_temple_clear", name: "閉ざされた送星儀式", text: "祭壇には星力を空へ返す古い儀式が刻まれていた。初代王はその儀式を封じ、星を地上へ留めることで王朝を築いたのだ。" },
-    starsea_corridor_clear: { id: "starsea_corridor_clear", name: "北へ昇る黒い光", text: "心珠を鎮めると、星海の流れは一瞬だけ澄んだ。その奥で黒い光が北の山脈へ昇っていく。女王の使者は、星を宿す最後の器を追っている。" },
+    starsea_corridor_clear: { id: "starsea_corridor_clear", name: "北へ昇る黒い光", text: "心珠を鎮めると、星海の流れは一瞬だけ澄んだ。水底には、星を地上へ汲み上げる航路と、力を受け取る人型の器が描かれている。その奥で一本の黒い光が北の山脈へ昇った。女王の使者は、星を宿す最後の器を追っている。" },
     leviathan_trench_clear: { id: "leviathan_trench_clear", name: "海竜が守った欠片", text: "海竜の盾の内側には、空から落ちたものではない黒い星殻が残されていた。それは北方で眠る『星の器』と同じ脈動を刻んでいる。" }
   });
   data.registry.entityList("storyChapters", [{

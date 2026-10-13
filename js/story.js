@@ -337,6 +337,20 @@
     });
     return events;
   }
+  function searchReadScenes(query, limit = 40) {
+    const needle = String(query || "").normalize("NFKC").trim().toLocaleLowerCase("ja");
+    const timeline = readTimeline();
+    const matches = timeline.map(event => {
+      const characters = sceneCharacters(event.scene);
+      const script = Array.isArray(event.scene?.script) ? event.scene.script : [];
+      const fields = [event.scene?.name, event.scene?.text, event.label, event.chapter?.title, event.dungeon?.name,
+        ...characters.flatMap(character => [character.name, character.title]), ...script.map(block => block.text)].filter(Boolean);
+      if (needle && !fields.some(value => String(value).normalize("NFKC").toLocaleLowerCase("ja").includes(needle))) return null;
+      const matchingBlock = needle ? script.find(block => String(block.text || "").normalize("NFKC").toLocaleLowerCase("ja").includes(needle)) : null;
+      return { ...event, characters, excerpt: matchingBlock?.text || event.scene.text };
+    }).filter(Boolean).reverse();
+    return matches.slice(0, Math.max(1, Math.min(100, Number(limit) || 40)));
+  }
   function episodeCharacters(episode = pendingEpisode()) {
     if (!episode) return [];
     const ids = episode.entries.flatMap(entry => sceneCharacterIds(entry.scene));
@@ -366,6 +380,44 @@
       readCount: timeline.length
     };
   }
+  function deriveMysteries(read) {
+    return (window.GameData.relations?.storyMysteries || []).filter(mystery => read.has(mystery.openedBySceneId)).map(mystery => {
+      const evidence = (mystery.evidence || []).map((entry, index) => ({
+        ...entry,
+        index,
+        scene: scene(entry.sceneId),
+        discovered: read.has(entry.sceneId)
+      }));
+      const discoveredEvidence = evidence.filter(entry => entry.discovered);
+      const resolved = read.has(mystery.resolvedBySceneId);
+      return {
+        ...mystery,
+        resolved,
+        evidence,
+        discoveredEvidence,
+        latestEvidence: discoveredEvidence.at(-1) || null,
+        evidenceCount: discoveredEvidence.length,
+        evidenceTotal: evidence.length,
+        openingScene: scene(mystery.openedBySceneId),
+        resolutionScene: resolved ? scene(mystery.resolvedBySceneId) : null
+      };
+    });
+  }
+  function mysteries() { return deriveMysteries(new Set(ensure().readSceneIds || [])); }
+  function mysteryUpdates(sceneIds = []) {
+    const relevant = new Set(sceneIds.filter(Boolean));
+    if (!relevant.size) return [];
+    const projectedRead = new Set([...(ensure().readSceneIds || []), ...relevant]);
+    return deriveMysteries(projectedRead).map(mystery => {
+      const updatedEvidence = mystery.discoveredEvidence.filter(entry => relevant.has(entry.sceneId));
+      return {
+        ...mystery,
+        updatedEvidence,
+        evidenceCountAtUpdate: updatedEvidence.length ? Math.max(...updatedEvidence.map(entry => entry.index + 1)) : 0,
+        resolvedByUpdate: updatedEvidence.some(entry => entry.sceneId === mystery.resolvedBySceneId)
+      };
+    }).filter(mystery => mystery.updatedEvidence.length);
+  }
   function focus() {
     const chapter = current();
     if (!chapter) {
@@ -392,5 +444,5 @@
       return !chapters().some(chapter => chapter.id === dungeon.chapterId && chapter.clearStoryId === dungeon.clearStoryId);
     }).map(dungeon => ({ dungeon, scene: scene(dungeon.clearStoryId) }));
   }
-  window.Story = { ensure, sync, recordDeparture, recordResult, rawCanEnter, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterUnlockText, chapterDungeons, chapterTimeline, sceneCharacterIds, sceneCharacters, readTimeline, episodeCharacters, characterChronicles, storyGuide, dungeonStoryLinks, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, pendingEpisode, readPending, hasReadScene, optionalStories, routeStories, mainChapters, postgameChapters, mainComplete, triggerSatisfied, applyStoryTriggers };
+  window.Story = { ensure, sync, recordDeparture, recordResult, rawCanEnter, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterUnlockText, chapterDungeons, chapterTimeline, sceneCharacterIds, sceneCharacters, readTimeline, searchReadScenes, episodeCharacters, characterChronicles, storyGuide, mysteries, mysteryUpdates, dungeonStoryLinks, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, pendingEpisode, readPending, hasReadScene, optionalStories, routeStories, mainChapters, postgameChapters, mainComplete, triggerSatisfied, applyStoryTriggers };
 })();

@@ -12,6 +12,16 @@ assert(chapter && chapter.number === 10 && chapter.recommendedLevelRange[1] === 
 assert.deepStrictEqual(Array.from(required, entry => entry.id), ["moonshadow_dock", "sealed_memory_ward", "silver_chain_gallery", "dream_eater_spire", "blackmoon_core"]);
 assert.deepStrictEqual(Array.from(optional, entry => entry.id), ["exiled_king_crypt"]);
 assert.deepStrictEqual(Array.from(routes, entry => entry.recommendedLevel), [78, 80, 82, 84, 86, 90]);
+const openingScript = data.relations.storySceneScripts.black_moon_prison_opening?.blocks || [];
+const endingScript = data.relations.storySceneScripts.black_moon_prison_clear?.blocks || [];
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "tio" && block.text.includes("十一秒")), "Tio measures the prison's theft without treating Irma as a machine");
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "rize" && block.text.includes("偽物ってことにはならない")), "Rize directly answers Irma's fear of returning changed");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "dreamer_irma" && block.text.includes("知らない森")), "Irma's changed dream leads into the primordial forest");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "tio" && block.text.includes("別々に保持")), "Tio keeps testimony and evidence distinct instead of forcing a conclusion");
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert.strictEqual(endingScript[0].kind, "setting");
+assert.strictEqual(endingScript.at(-1).kind, "narration");
 
 require("./helpers").createCharacter(game, "黒月の攻略者", "warrior");
 require("./helpers").completeThrough(game, "falling_sky_castle");

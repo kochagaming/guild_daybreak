@@ -154,6 +154,7 @@ async function run() {
     { itemId: "craft_material", quantity: 4 }
   ];
   game.GameState.data.partyResults[0].newItemIds = ["wooden_sword"];
+  game.GameState.data.partyResults[0].storyMoments = [{ kind: "discovery", dungeonId: "meadow", sceneId: "meadow_discovery" }];
   game.GameState.data.partyResults[0].newSetDiscoveries = [{ setId: "windtrail_craft", previousCount: 1, count: 2, newBonusSkillIds: ["set_windtrail_2"], complete: false }];
   game.GameState.data.partyResults[0].newBestQualities = [{ itemId: "cloth_clothes", qualityId: "fine" }];
   game.GameState.data.partyResults[0].newUltraRareTitleIds = ["worldbreaker"];
@@ -193,6 +194,7 @@ async function run() {
   assert(html().includes("ADVENTURERS IN ACTION") && html().includes("この遠征で刻まれた働き") && html().includes("敵陣を切り開いた"), "The return report immediately gives individual adventurers factual recognition");
   assert(html().includes("探索目標を発見しました") && html().includes("鉄鉱石 ×3") && html().includes("累計 3 / 10") && html().includes("関連レシピを確認") && html().includes('data-action="open-target-recipes"') && html().includes("初めての品を1種類発見しました") && html().includes("is-new-discovery") && html().includes("過去最高の品質を1種類更新しました") && html().includes("is-quality-best") && html().includes("is-ultra-rare") && html().includes("NEW ULTRA RARE") && html().includes("新しい称号 1種") && html().includes("名を持つ逸品を1点発見しました") && html().includes("全装備性能2倍") && html().includes("称号記録を確認") && html().includes("アイテム図鑑で確認"));
   assert(html().includes("EQUIPMENT COMBINATION") && html().includes("装備の組合せ記録が進みました") && html().includes("風渡りの旅装") && html().includes("1 → 2 / 3") && html().includes("新効果：風渡りの足並み") && html().includes("組合せの記録を見る"), "The return report celebrates newly advanced equipment combinations and crossed bonus thresholds");
+  assert(html().includes("MYSTERY NOTE") && html().includes("手掛かり帳に新しい記録が加わりました") && html().includes("街道へ向けられた獣") && html().includes("ホームの手掛かり帳を開く"), "A return report connects newly found story evidence to the long-running mystery ledger");
   assert(html().includes("result-level-ups") && html().includes("新しく習得") && html().includes("強撃") && html().includes("再使用まで10ターン") && html().includes("重量上限") && html().includes("+1.4"), "Level-up results preserve stat gains and explain newly learned skills");
   const report = game.GameState.data.partyResults[0];
   const discoveryCount = (report.newItemIds?.length || 0) + (report.newSetDiscoveries?.length || 0) + (report.newRecipeIds?.length || 0) + (report.newObservationIds?.length || 0) + (report.newMonsterInsights?.length || 0);

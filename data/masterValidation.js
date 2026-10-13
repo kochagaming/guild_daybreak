@@ -1123,6 +1123,33 @@
         if (overlay[field] != null && (typeof overlay[field] !== "string" || !overlay[field].trim())) errors.push(`relations.storySceneOverlays.${sceneId}.${field} が不正です`);
       });
     });
+    const routeDialogueFields = {
+      opening: ["witness", "hero", "witnessReply"],
+      discovery: ["hero", "witness", "heroReply"],
+      ending: ["hero", "witness", "heroReply"]
+    };
+    Object.entries(master.relations.storyRouteConversations).forEach(([dungeonId, phases]) => {
+      const source = `relations.storyRouteConversations.${dungeonId}`;
+      requireRef(master.dungeons, dungeonId, source);
+      if (!phases || typeof phases !== "object" || Array.isArray(phases)) {
+        errors.push(`${source} が不正です`);
+        return;
+      }
+      Object.entries(phases).forEach(([phase, lines]) => {
+        const phaseSource = `${source}.${phase}`;
+        const requiredFields = routeDialogueFields[phase];
+        if (!requiredFields || !lines || typeof lines !== "object" || Array.isArray(lines)) {
+          errors.push(`${phaseSource} が不正です`);
+          return;
+        }
+        requiredFields.forEach(field => {
+          if (typeof lines[field] !== "string" || !lines[field].trim()) errors.push(`${phaseSource}.${field} がありません`);
+        });
+        Object.keys(lines).forEach(field => {
+          if (!requiredFields.includes(field)) errors.push(`${phaseSource}.${field} は未定義の会話欄です`);
+        });
+      });
+    });
     Object.entries(master.relations.storySceneScripts).forEach(([sceneId, script]) => {
       const source = `relations.storySceneScripts.${sceneId}`;
       requireRef(master.storyScenes, sceneId, source);
@@ -1131,6 +1158,15 @@
         errors.push(`${source}.blocks は3件以上必要です`);
         return;
       }
+      const settings = script.blocks.filter(block => block?.kind === "setting");
+      const narrations = script.blocks.filter(block => block?.kind === "narration");
+      const dialogues = script.blocks.filter(block => block?.kind === "dialogue");
+      const speakers = new Set(dialogues.map(block => block?.speakerId).filter(Boolean));
+      if (script.blocks[0]?.kind !== "setting") errors.push(`${source}.blocks は情景描写から始めてください`);
+      if (!settings.length) errors.push(`${source}.blocks に情景描写がありません`);
+      if (!narrations.length) errors.push(`${source}.blocks に地の文がありません`);
+      if (dialogues.length < 3 || speakers.size < 2) errors.push(`${source}.blocks は複数人物による3発言以上の会話が必要です`);
+      if (script.blocks.at(-1)?.kind !== "narration") errors.push(`${source}.blocks は地の文で場面を結んでください`);
       script.blocks.forEach((block, index) => {
         const blockSource = `${source}.blocks.${index}`;
         if (!["setting", "narration", "dialogue"].includes(block?.kind)) errors.push(`${blockSource}.kind -> ${block?.kind ?? "(未指定)"}`);
@@ -1144,6 +1180,33 @@
     });
     Object.keys(master.storyScenes).forEach(sceneId => {
       if (!master.relations.storySceneScripts[sceneId]) errors.push(`relations.storySceneScripts.${sceneId} がありません`);
+    });
+
+    const mysteryIds = new Set();
+    master.relations.storyMysteries.forEach(mystery => {
+      const source = `relations.storyMysteries.${mystery.id}`;
+      if (!mystery.id || mysteryIds.has(mystery.id)) errors.push(`${source}.id が不正または重複しています`);
+      mysteryIds.add(mystery.id);
+      requireRef(master.storyScenes, mystery.openedBySceneId, `${source}.openedBySceneId`);
+      requireRef(master.storyScenes, mystery.resolvedBySceneId, `${source}.resolvedBySceneId`);
+      ["title", "clue", "resolution"].forEach(field => {
+        if (typeof mystery[field] !== "string" || !mystery[field].trim()) errors.push(`${source}.${field} が不正です`);
+      });
+      if (mystery.openedBySceneId === mystery.resolvedBySceneId) errors.push(`${source} の開始場面と解決場面が同一です`);
+      if (!Array.isArray(mystery.evidence) || mystery.evidence.length < 2) errors.push(`${source}.evidence は2件以上必要です`);
+      else {
+        const evidenceSceneIds = new Set();
+        mystery.evidence.forEach((entry, index) => {
+          const entrySource = `${source}.evidence.${index}`;
+          requireRef(master.storyScenes, entry?.sceneId, `${entrySource}.sceneId`);
+          if (evidenceSceneIds.has(entry?.sceneId)) errors.push(`${entrySource}.sceneId が重複しています`);
+          evidenceSceneIds.add(entry?.sceneId);
+          if (typeof entry?.note !== "string" || !entry.note.trim()) errors.push(`${entrySource}.note が不正です`);
+          if (entry?.margin != null && (typeof entry.margin !== "string" || !entry.margin.trim())) errors.push(`${entrySource}.margin が不正です`);
+        });
+        if (mystery.evidence[0]?.sceneId !== mystery.openedBySceneId) errors.push(`${source}.evidence の先頭は開始場面である必要があります`);
+        if (mystery.evidence.at(-1)?.sceneId !== mystery.resolvedBySceneId) errors.push(`${source}.evidence の末尾は解決場面である必要があります`);
+      }
     });
 
     const storyTriggerTypes = new Set(["chapterActive", "chapterCompleted", "dungeonOpened", "dungeonDiscovered", "dungeonCleared"]);

@@ -82,12 +82,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    ember_crown_opening: { id: "ember_crown_opening", name: "星図の先の灰", text: "翼王の星図が示した光は、雲海の下に眠る灰冠王国へ続いていた。リナは五枚の地図を机に並べる。『一度の遠征では届きません。峠、森、鉱山、城塞を越えて、最後の火が残る玉座を目指しましょう。』" },
+    ember_crown_opening: { id: "ember_crown_opening", name: "星図の先の灰", text: "翼王の星図が示した光は、雲海の下に眠る灰冠王国へ続いていた。滅びた城門では一人の騎士が古い王命を守り、門外では故郷へ戻れない人々が、王国最後の火を暮らしへ返してほしいと待っていた。" },
     skyfall_road_clear: { id: "skyfall_road_clear", name: "灰の大地への門", text: "裂風の門衛が崩れると、雲の切れ間から灰色の大地が姿を見せた。道標には、透き通る森を示す古い紋章が刻まれている。" },
     glasswood_clear: { id: "glasswood_clear", name: "玻璃樹が映した記憶", text: "鏡角の森主が守っていた泉には、王国の鉱山へ向かう人々の記憶が映った。彼らは地の底から『消えない火』を掘り出していた。" },
     ember_mine_clear: { id: "ember_mine_clear", name: "消えない炉の正体", text: "溶鉱の巨像の胸から、王冠と同じ形の炉心が見つかった。王国の火は自然の恵みではなく、何かから奪い取った力だった。" },
     ash_fortress_clear: { id: "ash_fortress_clear", name: "門を守り続けた者", text: "守将は倒れる間際、玉座へ続く門を開いた。命令に縛られた兵たちは侵入者を拒んでいたのではなく、王を外へ出さないために戦っていた。" },
-    ember_crown_clear: { id: "ember_crown_clear", name: "最後の火を手放す時", text: "灰冠王は、滅びた国を留めるため炉心の火を抱え続けていた。王冠が砕けると灰の空に朝日が差し、止まっていた風が新しい道を描いた。" },
+    ember_crown_clear: { id: "ember_crown_clear", name: "最後の火を手放す時", text: "滅びた国を留めていた炉心の火は、王冠から人々の手へ返された。灰の空に朝日が差す中、最後の騎士もまた、過去の命令ではなく今を生きる者を守る盾になると自ら選んだ。" },
     elder_dragon_clear: { id: "elder_dragon_clear", name: "王国が火を奪った相手", text: "古灰竜の眠りを解くと、炉心の火が竜から奪われたものだと判明した。竜は最後の鱗を残して空へ去り、灰冠王国の長い罪と役目は静かに終わった。" }
   });
   data.registry.entityList("storyChapters", [{

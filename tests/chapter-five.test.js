@@ -65,6 +65,16 @@ const dwarfStats = game.Characters.stats(game.Characters.get(dwarfId), [frostRob
 assert(Math.abs(dwarfStats.statusResistances.chill - .4475) < 1e-9, "racial and equipment resistances should combine probabilistically");
 assert(data.config.upgrades.limits.some(entry => entry.chapterId === "mirror_tide" && entry.maximum === 11));
 assert(data.config.partyProgression.partySlots.unlocks.some(entry => entry.chapterNumber === 5 && entry.slot === 6));
+const openingScript = data.relations.storySceneScripts.mirror_tide_opening.blocks;
+const clearScript = data.relations.storySceneScripts.mirror_tide_clear.blocks;
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert(openingScript.some(entry => entry.speakerId === "shia" && entry.text.includes("望みまで私が決めて")));
+assert(openingScript.some(entry => entry.speakerId === "fisher_nils" && entry.text.includes("弟の名")));
+assert.strictEqual(clearScript[0].kind, "setting");
+assert.strictEqual(clearScript.at(-1).kind, "narration");
+assert(clearScript.some(entry => entry.speakerId === "shia" && entry.text.includes("守ったつもりの歌")));
+assert(clearScript.some(entry => entry.speakerId === "elena" && entry.text.includes("三列に分けます")));
 const parsed = game.SaveTransfer.parse(JSON.stringify(state));
 assert(parsed.ok, parsed.message);
 console.log("Chapter five test passed: five main sea routes, optional trench, chill combat mechanic, stories, materials, recipes, boss gear, upgrade cap and sixth-party right");

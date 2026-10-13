@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    black_moon_prison_opening: { id: "black_moon_prison_opening", name: "空城より高い黒月", text: "日蝕の王座から伸びる最後の星路は、夜空に浮かぶ黒い月へ繋がっていた。リナは古い王統譜を閉じる。『あれは天体ではありません。王朝が、忘れたいものを閉じ込めた牢獄です』。" },
+    black_moon_prison_opening: { id: "black_moon_prison_opening", name: "空城より高い黒月", text: "日蝕の王座から伸びる最後の星路は、夜空に浮かぶ黒い月へ繋がっていた。望遠鏡で覗くと、月面には窓、接岸橋、銀鎖が見える。あれは天体ではない。王朝が歴代の王族と、都合の悪い記憶と、帰りたいと願う夢をまとめて閉じ込めた牢獄だった。" },
     moonshadow_dock_clear: { id: "moonshadow_dock_clear", name: "月舟が運んだ囚人", text: "接岸記録には、王朝の罪人ではなく歴代の王族が黒月へ運ばれたとある。罪状の欄はすべて空白だった。" },
     sealed_memory_ward_clear: { id: "sealed_memory_ward_clear", name: "使者が手放した名前", text: "封書の棚から女王の使者の記憶が見つかった。彼女は心核へ近づくため、自ら名前と過去を預けていた。" },
     silver_chain_gallery_clear: { id: "silver_chain_gallery_clear", name: "王を縛った将軍", text: "銀鎖将の命令書は、追放王を憎んでではなく、黒月の心核から守るため縛れと告げていた。牢獄そのものが囚人の記憶を食べている。" },
     dream_eater_spire_clear: { id: "dream_eater_spire_clear", name: "黒月を浮かべる夢", text: "塔の底で無数の夢が燃えていた。黒月は魔力ではなく、囚人たちが帰郷を願う力で空に留まっている。" },
-    black_moon_prison_clear: { id: "black_moon_prison_clear", name: "心核から消えた使者", text: "心核は止まったが、使者の姿はなかった。残された短剣には『王朝の始まりへ戻る』と刻まれ、星図は東の始原樹海を指している。" },
+    black_moon_prison_clear: { id: "black_moon_prison_clear", name: "心核から消えた使者", text: "心核は止まり、燃料にされていた夢と記憶は持ち主へ戻り始めた。ただし、失われた時間まで元どおりにはならない。女王の使者の姿はなく、残された短剣には『王朝の始まりへ戻る』と刻まれていた。刃に映る星図は東の始原樹海を指している。" },
     exiled_king_crypt_clear: { id: "exiled_king_crypt_clear", name: "追放王の遺言", text: "追放王は王朝を奪おうとしたのではない。星の力が記憶を喰らうことを知り、すべての星路を閉じようとして歴史から消されたのだ。" }
   });
   data.registry.entityList("storyChapters", [{

@@ -27,6 +27,18 @@ assert.strictEqual(game.Items.count("nameless_star"), 2);
 assert(game.Story.canEnter("afterstar_sanctum"));
 game.Story.recordResult({ success: true, dungeonId: "afterstar_sanctum" });
 assert(game.Story.optionalStories().some(entry => entry.scene.id === "afterstar_sanctum_clear"));
+const finaleScript = data.relations.storySceneScripts.end_of_starless_night_clear?.blocks || [];
+const finaleSpeakers = new Set(finaleScript.filter(block => block.kind === "dialogue").map(block => block.speakerId));
+for (const id of Object.keys(data.companionProfiles)) assert(finaleSpeakers.has(id), `Finale gives ${id} a spoken epilogue moment`);
+for (const phrase of ["終わった鎖", "椅子を出す練習", "次の時刻は、まだ指定されていません", "逃げた山羊", "いつもと同じ朝六時の鐘"]) {
+  assert(finaleScript.some(block => block.text?.includes(phrase)), `Finale carries its ending into ordinary life: ${phrase}`);
+}
+const departureScript = data.relations.storySceneScripts.end_of_starless_night_opening?.blocks || [];
+const departureSpeakers = new Set(departureScript.filter(block => block.kind === "dialogue").map(block => block.speakerId));
+for (const id of Object.keys(data.companionProfiles)) assert(departureSpeakers.has(id), `Final departure lets ${id} state and negotiate a personal reason`);
+for (const phrase of ["誰か一人の目的", "鎖と道を見分ける", "記録することと、所有すること", "動く盾列", "違う答えを持ったまま帰る"]) {
+  assert(departureScript.some(block => block.text?.includes(phrase)), `Final departure is a connected planning conversation: ${phrase}`);
+}
 
 for (const id of ["sky_dust", "constellation_fragment", "first_light", "void_heart", "nameless_star"]) {
   assert.strictEqual(data.items[id].type, "material");

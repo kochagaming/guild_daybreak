@@ -12,6 +12,16 @@ assert(chapter && chapter.number === 12 && chapter.recommendedLevelRange[1] === 
 assert.deepStrictEqual(Array.from(required, entry => entry.id), ["rootsea_descent", "drowned_chartroom", "stellar_reef", "submerged_temple", "starsea_nucleus"]);
 assert.deepStrictEqual(Array.from(optional, entry => entry.id), ["leviathan_trench"]);
 assert.deepStrictEqual(Array.from(routes, entry => entry.recommendedLevel), [92, 92, 93, 93, 94, 96]);
+const openingScript = data.relations.storySceneScripts.starsea_corridor_opening?.blocks || [];
+const endingScript = data.relations.storySceneScripts.starsea_corridor_clear?.blocks || [];
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "shia" && block.text.includes("根の港から運び上げる")), "Shia recognizes the erased working verse in the starsea song");
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "rize" && block.text.includes("光が上へ流れすぎないよう")), "Rize connects the forest roots to the starsea without repeating Shia's discovery");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "shia" && block.text.includes("歌い直します")), "Shia answers the boatman's interpretation and chooses how to carry the song forward");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "guild_leader" && block.text.includes("本人が何と名乗る")), "The ending leads naturally into Noah's name-focused chapter");
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert.strictEqual(endingScript[0].kind, "setting");
+assert.strictEqual(endingScript.at(-1).kind, "narration");
 
 require("./helpers").createCharacter(game, "星海の攻略者", "warrior");
 require("./helpers").completeThrough(game, "primordial_forest");

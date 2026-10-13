@@ -248,7 +248,7 @@ for (const [id, companion] of Object.entries(data.companionProfiles)) {
     assert(Object.entries(stage.replacements || {}).every(([fromId, toId]) => has(data.skills, fromId) && has(data.skills, toId)), `${id}:${stageId} has invalid skill replacements`);
   }
 }
-assert.strictEqual(data.masterMeta.schemaVersion, 44, "The master schema version is explicit");
+assert.strictEqual(data.masterMeta.schemaVersion, 48, "The master schema version is explicit");
 assert(data.storyCharacters.road_warden_karl && !data.companionProfiles.road_warden_karl, "A named story character may exist before receiving a recruitable combat profile");
 assert.strictEqual(game.Companions.definition("mina").name, data.storyCharacters.mina.name, "Recruitable definitions merge identity and combat profile through one stable character ID");
 assert.strictEqual(data.config.guildServices.pages.blacksmith.unlock.sceneId, "meadow_clear", "Facility availability is driven by story readership");
@@ -335,14 +335,303 @@ for (const [sceneId, script] of Object.entries(data.relations.storySceneScripts)
   assert(Array.isArray(script.blocks) && script.blocks.length >= 3, `${sceneId} has a substantial story script`);
   assert(script.blocks.every(block => ["setting", "narration", "dialogue"].includes(block.kind) && typeof block.text === "string" && block.text.trim()), `${sceneId} has valid story blocks`);
   assert(script.blocks.filter(block => block.kind === "dialogue").every(block => block.speakerId && block.speakerName && block.speakerRole), `${sceneId} dialogue identifies its speaker`);
+  const dialogue = script.blocks.filter(block => block.kind === "dialogue");
+  assert.strictEqual(script.blocks[0].kind, "setting", `${sceneId} opens by placing the reader in a scene`);
+  assert.strictEqual(script.blocks.at(-1).kind, "narration", `${sceneId} closes with narrative consequence rather than a disconnected remark`);
+  assert(script.blocks.some(block => block.kind === "narration") && dialogue.length >= 3 && new Set(dialogue.map(block => block.speakerId)).size >= 2, `${sceneId} balances scenery, narration and an actual exchange`);
 }
 const allStoryDialogue = Object.values(data.relations.storySceneScripts).flatMap(script => script.blocks.filter(block => block.kind === "dialogue"));
 assert(!allStoryDialogue.some(block => block.speakerId === "expedition_leader"), "Story dialogue never substitutes an unnamed expedition leader for player adventurers");
 assert(allStoryDialogue.every(block => block.speakerId === "guild_leader" || has(data.storyCharacters, block.speakerId)), "Every speaking character has one shared story-character identity record");
+for (const repeatedTemplate of ["では道標を最初の確認地点にします", "通信紙にも同じ印を書きました", "では『成功』の一行だけで閉じません"]) {
+  assert(!allStoryDialogue.some(block => block.text.includes(repeatedTemplate)), `Route stories replace repeated stock dialogue: ${repeatedTemplate}`);
+}
 for (const sceneId of ["meadow_opening", "meadow_discovery", "meadow_clear", "whispering_brook_opening", "whispering_brook_discovery", "whispering_brook_clear", "brigand_pass_opening", "brigand_pass_discovery", "brigand_pass_clear", "abandoned_station_opening", "abandoned_station_discovery", "abandoned_station_clear", "moonfang_den_opening", "moonfang_den_discovery", "roadside_clear"]) {
   assert(data.relations.storySceneScripts[sceneId].blocks.filter(block => block.kind === "dialogue").length >= 2, `${sceneId} advances through an actual named-character exchange`);
 }
+const prologueOpening = data.relations.storySceneScripts.prologue_opening.blocks;
+const prologueEnding = data.relations.storySceneScripts.prologue_clear.blocks;
+const roadsideOpening = data.relations.storySceneScripts.roadside_opening.blocks;
+const roadsideEnding = data.relations.storySceneScripts.roadside_clear.blocks;
+assert(prologueOpening.some(block => block.speakerId === "receptionist_rina" && block.text.includes("町役場では三か月もたない")), "Rina explains why she chose the uncertain new guild");
+assert(prologueOpening.some(block => block.speakerId === "guild_leader" && block.text.includes("帰ってきた者の名")), "The player establishes return records as the guild's first principle");
+assert(prologueEnding.some(block => block.speakerId === "guild_leader" && block.text.includes("勝つことではなく帰ること")), "The first departure states the guild's promise without inventing an expedition captain");
+assert(roadsideOpening.some(block => block.kind === "narration" && block.text === data.storyScenes.roadside_opening.text), "Chapter one opens with the same readable synopsis used by the archive");
+assert(roadsideOpening.some(block => block.speakerId === "road_warden_karl" && block.text.includes("商隊が戻らなければ")), "Karl defines success by the missing people's return rather than kill count");
+assert(roadsideEnding.some(block => block.speakerId === "miller_judit" && block.text.includes("パンを焼けました")), "Chapter one closes the baker's everyday stake introduced in the prologue");
 assert.deepStrictEqual(new Set(Object.keys(data.relations.storySceneScripts)), new Set(Object.keys(data.storyScenes)), "Every story scene has a reader script");
+const sealRouteScenes = ["cave", "fungal_depths", "crystal_vein", "sealed_workshop", "earthpulse_altar"];
+for (const dungeonId of sealRouteScenes) {
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("foreman_oskar") && speakers.includes("mina"), `${sceneId} develops the chapter through Oskar and Mina's exchange`);
+  }
+}
+for (const phrase of ["退避命令と封鎖命令", "深層班長の目印", "封印へ送る力の目盛り", "交代が来ない作業員", "星路が閉じるまで地脈を保て"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter two keeps its route-specific story beat: ${phrase}`
+  );
+}
+const sealOpening = data.relations.storySceneScripts.seal_opening.blocks;
+const sealEnding = data.relations.storySceneScripts.seal_clear.blocks;
+assert(sealOpening.some(block => block.speakerId === "foreman_oskar" && block.text.includes("下にいる者の空気")), "Oskar directly challenges the cost of delaying rescue");
+assert(sealOpening.some(block => block.speakerId === "mina" && block.text.includes("両方とも迎えに")), "Mina commits to rescuing miners and machines without equating their urgency");
+assert(sealEnding.some(block => block.speakerId === "blacksmith_gregor" && block.text.includes("修理の終わり")), "Gregor distinguishes stopping a machine from restoring its agency");
+assert(sealEnding.some(block => block.speakerId === "mina" && block.text.includes("直される側が何になりたいか")), "Mina defines a workshop built around mutual choice");
+const starfallRouteScenes = ["ruins", "lunar_archive", "inverted_cloister", "stargrave_corridor", "astral_core"];
+for (const dungeonId of starfallRouteScenes) {
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("copyist_cecil") && speakers.includes("elena"), `${sceneId} develops the chapter through Cecil and Elena's exchange`);
+  }
+}
+for (const phrase of ["削られた幅と道具の跡", "読む者が変わるたび", "天井は王朝の空、床は今夜の空", "誰が代価を払ったか", "名なき者の記録を示せ"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter three keeps its route-specific story beat: ${phrase}`
+  );
+}
+const starfallOpening = data.relations.storySceneScripts.starfall_opening.blocks;
+const starfallEnding = data.relations.storySceneScripts.starfall_clear.blocks;
+const observatoryEnding = data.relations.storySceneScripts.observatory_clear.blocks;
+assert(starfallOpening.some(block => block.speakerId === "copyist_cecil" && block.text.includes("同じ行数だけ欠けている")), "Cecil identifies deliberate censorship through copied records");
+assert(starfallOpening.some(block => block.speakerId === "elena" && block.text.includes("知らなかったか")), "Elena records the limits of her own knowledge");
+assert(starfallEnding.some(block => block.speakerId === "mina" && block.text.includes("誰が代価を払ったか")), "Mina questions the cost of the newly activated bridge");
+assert(observatoryEnding.some(block => block.speakerId === "elena" && block.text.includes("止めていたものまで動かしました")), "The observatory ending preserves responsibility for activating the star road");
+const emberRouteScenes = ["skyfall_road", "glasswood", "ember_mine", "ash_fortress", "cinder_throne", "elder_dragon_crater"];
+for (const dungeonId of emberRouteScenes) {
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("refugee_frieda") && speakers.includes("garm"), `${sceneId} develops the chapter through Frieda and Garm's exchange`);
+  }
+}
+for (const phrase of ["峠を守った騎士", "二本の道が町を救った", "火を返せ", "王を城外へ出すな", "終わった後にも生きた証", "返すまでに百年かかった火"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter four keeps its route-specific story beat: ${phrase}`
+  );
+}
+const tideRouteScenes = ["frost_coast", "drowned_archive", "blue_reef", "silent_fleet", "mirror_palace", "abyssal_trench"];
+for (const dungeonId of tideRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("fisher_nils") && speakers.includes("shia"), `${sceneId} develops the chapter through Nils and Shia's exchange`);
+  }
+}
+for (const phrase of ["名前がなくても", "最後の書庫", "懐かしさは証拠ではない", "百年ずっと", "呼ぶ人の声", "何千人分もの帰りたい声"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter five keeps its route-specific story beat: ${phrase}`
+  );
+}
+const clockworkRouteScenes = ["tidal_gate", "white_sand_road", "stopped_clocktower", "royal_workshop", "hourglass_palace", "forgotten_titan_tomb"];
+for (const dungeonId of clockworkRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("caravan_zara") && speakers.includes("tio"), `${sceneId} develops the chapter through Zara and Tio's exchange`);
+  }
+}
+for (const phrase of ["記憶の流出を止める堤", "繰り返しは完全ではありません", "終わらせ方を選ぶ権利", "一歯ずつ形が違います", "覚えたまま次の一秒", "避難都市の設計"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter six keeps its route-specific story beat: ${phrase}`
+  );
+}
+const blackwoodRouteScenes = ["blackwood_border", "whispering_roots", "witch_lantern_marsh", "thorn_cathedral", "night_bloom_sanctuary", "devouring_tree_pit"];
+for (const dungeonId of blackwoodRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("herbalist_olga") && speakers.includes("rize"), `${sceneId} develops the chapter through Olga and Rize's exchange`);
+  }
+}
+for (const phrase of ["花粉を町へ向かわせない", "持ち主へ尋ねず永遠に閉じれば", "話せない間も本人のもの", "次の朝まで", "出口のない檻", "人が飢えを与えた道具"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter seven keeps its route-specific story beat: ${phrase}`
+  );
+}
+const thunderSnowRouteScenes = ["snowbound_foothill", "frozen_sky_bridge", "thunder_nest", "cloud_monastery", "aurora_summit", "white_dragon_roost"];
+for (const dungeonId of thunderSnowRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("pilgrim_hein") && speakers.includes("kai"), `${sceneId} develops the chapter through Hein and Kai's exchange`);
+  }
+}
+for (const phrase of ["黒い羽が落ちた斜面", "持ち続ける理由", "噂どおりの敵", "足元の声", "進路を曲げる網", "七つの集落"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter eight keeps its route-specific story beat: ${phrase}`
+  );
+}
+const skyCastleRouteScenes = ["starroad_gate", "broken_sky_garden", "blackwing_cloister", "fallen_star_foundry", "eclipsed_throne", "void_star_prison"];
+for (const dungeonId of skyCastleRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("watcher_lutz") && speakers.includes("elena"), `${sceneId} develops the chapter through Lutz and Elena's exchange`);
+  }
+}
+for (const phrase of ["井戸の数と人口", "空城の食料と空気", "確かめる手段", "城が飢えます", "二つの故郷", "空白を空白のまま"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter nine keeps its route-specific story beat: ${phrase}`
+  );
+}
+const blackMoonRouteScenes = ["moonshadow_dock", "sealed_memory_ward", "silver_chain_gallery", "dream_eater_spire", "blackmoon_core", "exiled_king_crypt"];
+for (const dungeonId of blackMoonRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("dreamer_irma") && speakers.includes("tio"), `${sceneId} develops the chapter through Irma and Tio's exchange`);
+  }
+}
+for (const phrase of ["罪がないと読める部分", "現在のイルマ", "本人が外せる留め具", "夢の向き", "使者の犠牲を完成させません", "未来へ残すもの"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter ten keeps its route-specific story beat: ${phrase}`
+  );
+}
+const primordialRouteScenes = ["primal_root_gate", "starseed_nursery", "memory_moss_woods", "ancestor_altar", "origin_tree_heart", "star_eater_rootpit"];
+for (const dungeonId of primordialRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("woodcutter_bram") && speakers.includes("rize"), `${sceneId} develops the chapter through Bram and Rize's exchange`);
+  }
+}
+for (const phrase of ["利益を受け継いだ者", "結果ではなく過程", "書かない選択", "次代へ代価", "記憶を鍵として消費しません", "これは私の頁"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter eleven keeps its route-specific story beat: ${phrase}`
+  );
+}
+const starseaRouteScenes = ["rootsea_descent", "drowned_chartroom", "stellar_reef", "submerged_temple", "starsea_nucleus", "leviathan_trench"];
+for (const dungeonId of starseaRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("boatman_ren") && speakers.includes("shia"), `${sceneId} develops the chapter through Ren and Shia's exchange`);
+  }
+}
+for (const phrase of ["往路と帰路を同じ歌", "歌える者だけの道", "死んだ王都への配分", "一人の正しい声", "心珠は海を命令する", "帰る港がなくても"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter twelve keeps its route-specific story beat: ${phrase}`
+  );
+}
+const northernStarRouteScenes = ["frozen_starsea_shore", "black_aurora_field", "fallen_star_grave", "vessel_fortress", "northstar_cradle", "worldscar_glacier"];
+for (const dungeonId of northernStarRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("astronomer_adel") && speakers.includes("noah"), `${sceneId} develops the chapter through Adel and Noah's exchange`);
+  }
+}
+for (const phrase of ["番号だけだったことには", "同じ部屋で眠った人", "空から来なかった偽物", "本人が開門を選んだ", "番号しかなかった時の自分", "拒めた"] ) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter thirteen keeps its route-specific story beat: ${phrase}`
+  );
+}
+const returnlessRouteScenes = ["north_return_road", "silent_outer_city", "royal_memory_vault", "skykey_spire", "usurper_throne", "hollow_coronation"];
+for (const dungeonId of returnlessRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("refugee_marek") && speakers.includes("garm"), `${sceneId} develops the chapter through Marek and Garm's exchange`);
+  }
+}
+for (const phrase of ["今ここで生きる人", "暮らしは合図", "一人ずつ別の人生", "一つの声で開けない門", "一人が悪名", "冠より先に守るもの"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter fourteen keeps its route-specific story beat: ${phrase}`
+  );
+}
+const starlessRouteScenes = ["sky_gate_ascent", "broken_constellation", "first_light_archive", "throne_beyond_sky", "nameless_star_end", "afterstar_sanctum"];
+for (const dungeonId of starlessRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("bell_keeper_anna") && speakers.includes("noah"), `${sceneId} develops the chapter through Anna and Noah's exchange`);
+  }
+}
+for (const phrase of ["いつでも帰れる時刻", "世界の終わりを所有者", "自然な贈与", "一つの収穫へ変換", "各世界へ返します", "征服先ではなく"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `Chapter fifteen keeps its route-specific story beat: ${phrase}`
+  );
+}
+const afterstarRouteScenes = ["gray_ash_sea", "inverted_glass_canyon", "worldskin_garden", "silent_iron_city", "distant_observatory", "five_reaches_nest"];
+for (const dungeonId of afterstarRouteScenes) {
+  assert(data.relations.storyRouteConversations[dungeonId], `${dungeonId} keeps route dialogue in the dedicated story relation`);
+  const links = data.relations.dungeonStoryLinks[dungeonId];
+  for (const sceneId of [links.openingStoryId, links.discoveryStoryId].filter(Boolean)) {
+    const speakers = data.relations.storySceneScripts[sceneId].blocks
+      .filter(block => block.kind === "dialogue")
+      .map(block => block.speakerId);
+    assert(speakers.includes("reach_guide_rine") && speakers.includes("elena"), `${sceneId} develops the postgame region through Rine and Elena's exchange`);
+  }
+}
+for (const phrase of ["往路と帰路を同じ太さ", "見られる側へ余白", "今育っている菌糸", "どちらも選んだ時", "記録を閉じる権利", "別々のまま返事"]) {
+  assert(
+    Object.values(data.relations.storySceneScripts).some(script => script.blocks.some(block => block.text.includes(phrase))),
+    `The first afterstar region keeps its route-specific story beat: ${phrase}`
+  );
+}
+assert(data.relations.storyMysteries.length >= 6, "Long-running story mysteries connect distant chapters");
+for (const mystery of data.relations.storyMysteries) {
+  assert(mystery.id && mystery.title && mystery.clue && mystery.resolution, `${mystery.id} has complete mystery text`);
+  assert(has(data.storyScenes, mystery.openedBySceneId) && has(data.storyScenes, mystery.resolvedBySceneId) && mystery.openedBySceneId !== mystery.resolvedBySceneId, `${mystery.id} has valid opening and resolution scenes`);
+  assert(mystery.evidence.length >= 2 && mystery.evidence[0].sceneId === mystery.openedBySceneId && mystery.evidence.at(-1).sceneId === mystery.resolvedBySceneId, `${mystery.id} has an ordered evidence trail`);
+  assert(mystery.evidence.every(entry => has(data.storyScenes, entry.sceneId) && entry.note), `${mystery.id} evidence references valid scenes and readable notes`);
+}
 const storyTriggerIds = data.relations.storyTriggers.map(trigger => trigger.id);
 assert.strictEqual(new Set(storyTriggerIds).size, storyTriggerIds.length, "Story trigger IDs must be unique");
 data.relations.storyTriggers.forEach(trigger => {

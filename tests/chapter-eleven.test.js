@@ -12,6 +12,16 @@ assert(chapter && chapter.number === 11 && chapter.recommendedLevelRange[1] === 
 assert.deepStrictEqual(Array.from(required, entry => entry.id), ["primal_root_gate", "starseed_nursery", "memory_moss_woods", "ancestor_altar", "origin_tree_heart"]);
 assert.deepStrictEqual(Array.from(optional, entry => entry.id), ["star_eater_rootpit"]);
 assert.deepStrictEqual(Array.from(routes, entry => entry.recommendedLevel), [87, 88, 89, 90, 91, 93]);
+const openingScript = data.relations.storySceneScripts.primordial_forest_opening?.blocks || [];
+const endingScript = data.relations.storySceneScripts.primordial_forest_clear?.blocks || [];
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "rize" && block.text.includes("全部持ち帰れば森から記憶を奪う")), "Rize questions her own habit of containing other people's memories");
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "elena" && block.text.includes("匂いと音で渡す文章")), "Elena responds to Bram's evidence without reducing it to written history");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "shia" && block.text.includes("水の拍子")), "Shia hears the starsea before the next chapter begins");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "rize" && block.text.includes("聞き方を教えてもらう番")), "Rize and Shia explicitly hand the viewpoint from forest to sea");
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert.strictEqual(endingScript[0].kind, "setting");
+assert.strictEqual(endingScript.at(-1).kind, "narration");
 
 require("./helpers").createCharacter(game, "始原樹海の攻略者", "warrior");
 require("./helpers").completeThrough(game, "black_moon_prison");

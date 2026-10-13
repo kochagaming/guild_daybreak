@@ -27,6 +27,16 @@ assert.strictEqual(game.Items.count("throne_star_core"), 2);
 assert(game.Story.canEnter("hollow_coronation"));
 game.Story.recordResult({ success: true, dungeonId: "hollow_coronation" });
 assert(game.Story.optionalStories().some(entry => entry.scene.id === "hollow_coronation_clear"));
+assert.strictEqual(data.storyCharacters.queens_messenger_eva.name, "エーファ");
+for (const sceneId of ["returnless_capital_opening", "returnless_capital_clear"]) {
+  const blocks = data.relations.storySceneScripts[sceneId]?.blocks || [];
+  assert(blocks.some(block => block.speakerId === "queens_messenger_eva"), `${sceneId} lets the messenger speak under her own stable identity`);
+  assert(blocks.some(block => block.text?.includes("エーファ")), `${sceneId} names the messenger in the conversation rather than only by her role`);
+}
+const endingBlocks = data.relations.storySceneScripts.returnless_capital_clear.blocks;
+for (const phrase of ["許したからではありません", "今日の町", "使者のままギルドへ逃げません", "依頼人の名前"]) {
+  assert(endingBlocks.some(block => block.text?.includes(phrase)), `Messenger resolution preserves accountability and an unfinished civilian life: ${phrase}`);
+}
 
 for (const id of ["eclipse_glass", "starblood_crystal", "royal_memory", "skykey_fragment", "throne_star_core"]) {
   assert.strictEqual(data.items[id].type, "material");

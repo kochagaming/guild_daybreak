@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    thunder_snow_peaks_opening: { id: "thunder_snow_peaks_opening", name: "黒樹海の先の白い壁", text: "女王の使者を追う一行の前に、雷雲を抱いた山脈が立ちはだかった。リナは雪に埋もれた巡礼杖を拾い、『使者は山を越えています。極光の向こうに、王朝が隠した星路があるようです』と告げた。" },
+    thunder_snow_peaks_opening: { id: "thunder_snow_peaks_opening", name: "黒樹海の先の白い壁", text: "女王の使者を追う一行の前に、雷雲を抱いた山脈が立ちはだかった。閉ざされた巡礼路では、空を見張り続けた者たちの役目だけが、守る相手を忘れたまま残っていた。" },
     snowbound_foothill_clear: { id: "snowbound_foothill_clear", name: "雪崩に埋もれた巡礼印", text: "巨像の足元から、黒樹海と同じ巡礼印が刻まれた石標が現れた。印は凍空の吊橋と、その先の雷雲を指している。" },
     frozen_sky_bridge_clear: { id: "frozen_sky_bridge_clear", name: "審判者が守った問い", text: "橋の審判者は通行を拒んでいたのではない。『何を忘れ、何を持って山を越えるか』という古い問いを、答える者が来るまで守っていた。" },
     thunder_nest_clear: { id: "thunder_nest_clear", name: "雷羽に残る伝言", text: "王鳥の巣から、女王の使者が結んだ黒い布が見つかった。布には『星路は王朝の逃げ道ではない』と短く記されている。" },
     cloud_monastery_clear: { id: "cloud_monastery_clear", name: "雷を聴く者たち", text: "雲上導師は使者を峰へ通していた。導師の記録によれば、極光の星路は北へ逃げるためではなく、空から何かが降りるのを防ぐ門だった。" },
-    thunder_snow_peaks_clear: { id: "thunder_snow_peaks_clear", name: "極光の向こうの星路", text: "守護者が光を解くと、極光は道となって北の夜空へ伸びた。使者の足跡はそこで途切れ、代わりに空から落ちた巨大な黒い羽が残されていた。" },
+    thunder_snow_peaks_clear: { id: "thunder_snow_peaks_clear", name: "極光の向こうの星路", text: "極光の門が解けると、北の夜空から焼け焦げた黒い羽が落ちてきた。峰の見張りが拒んでいたのは地上の旅人ではなく、空から近づく何かだった。" },
     white_dragon_roost_clear: { id: "white_dragon_roost_clear", name: "白竜が見張った空", text: "白嶺竜の鱗には、星路の向こうから降りる黒い翼との戦いが刻まれていた。古竜は宝を守っていたのではなく、山脈を最後の盾として眠り続けていた。" }
   });
   data.registry.entityList("storyChapters", [{

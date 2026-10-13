@@ -58,6 +58,35 @@
   let equipmentChangeNotice = null;
   let facilityNoticeCount = -1;
   let equipmentChangeTimer = null;
+  let storyBookmarkTimer = null;
+  let activeStoryReading = null;
+  const storyTextSizeKey = "guildChronicleStoryTextSize_v1";
+  let storyTextSize = (() => {
+    try {
+      const stored = window.SaveStorage.get(storyTextSizeKey);
+      return ["small", "standard", "large"].includes(stored) ? stored : "standard";
+    } catch (_) {
+      return "standard";
+    }
+  })();
+  const storyLayoutKey = "guildChronicleStoryLayout_v1";
+  let storyLayout = (() => {
+    try {
+      const stored = window.SaveStorage.get(storyLayoutKey);
+      return ["comfortable", "compact"].includes(stored) ? stored : "comfortable";
+    } catch (_) {
+      return "comfortable";
+    }
+  })();
+  const storyThemeKey = "guildChronicleStoryTheme_v1";
+  let storyTheme = (() => {
+    try {
+      const stored = window.SaveStorage.get(storyThemeKey);
+      return ["paper", "night"].includes(stored) ? stored : "paper";
+    } catch (_) {
+      return "paper";
+    }
+  })();
 
   const escape = (text) => String(text).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
   const formatGold = (amount) => `${Number(amount).toLocaleString("ja-JP")} G`;
@@ -160,6 +189,10 @@
         const momentLabel = moment.kind === "opening" ? "新しい探索地" : moment.kind === "discovery" ? "探索で判明" : "攻略後";
         return `<article><small>${momentLabel} · ${escape(route?.name || "物語")}</small><strong>${escape(scene?.name || "物語が進みました")}</strong><p>${escape(scene?.text || "")}</p></article>`;
       }).join("")}</section>` : "";
+    const mysteryProgress = window.Story.mysteryUpdates((result.storyMoments || []).map(moment => moment.sceneId));
+    const mysteryUpdates = mysteryProgress.length
+      ? `<section class="result-mystery-progress"><span class="label">MYSTERY NOTE</span><strong>${mysteryProgress.some(mystery => mystery.resolvedByUpdate) ? "散らばっていた手掛かりが繋がりました" : "手掛かり帳に新しい記録が加わりました"}</strong>${mysteryProgress.map(mystery => `<article class="${mystery.resolvedByUpdate ? "resolved" : ""}"><span>${mystery.resolvedByUpdate ? "解明" : `${mystery.evidenceCountAtUpdate}/${mystery.evidenceTotal}`}</span><div><b>${escape(mystery.title)}</b>${mystery.updatedEvidence.map(entry => `<p>${escape(entry.note)}</p>`).join("")}</div></article>`).join("")}<button class="button ghost" data-nav="home">ホームの手掛かり帳を開く</button></section>`
+      : "";
     const newRouteMasteryIds = Array.isArray(result.newRouteMasteryIds) ? result.newRouteMasteryIds : [];
     const masteryNoteIds = new Set((window.GameData.observationNotes || []).filter(note => note.unlock?.type === "routeEventMastered" && newRouteMasteryIds.includes(note.unlock.routeEventId)).map(note => note.id));
     const ordinaryObservationIds = (result.newObservationIds || []).filter(id => !masteryNoteIds.has(id));
@@ -256,7 +289,7 @@
       <div class="card-heading"><div><span class="label">最新の探索報告</span><h3>${escape(result.dungeonName || dungeon.name)} · ${result.timeMultiplier || 1}倍探索</h3></div><span class="badge ${result.success ? "good" : "bad"}">${result.success ? "探索成功" : "撤退"}</span></div>
       <p>${escape(result.partyNames.join("、"))}が帰還しました。</p>
       <div class="reward-line"><strong>+${formatGold(result.gold)}</strong>${experience}</div>
-      ${highlights}${memberHighlights}${bondFormations}${routeEvents}${adventurerBondMoments}${adventurerBondTiers}${newRumorConfirmations}${treasures}${rumorResult}${lootPanel}${trackedAchievement}${ultraRares}${autoSales}${levels}${firstClearReward}${newItems}${newSetDiscoveries}${bestQualities}${newRecipes}${newRouteMasteries}${newObservations}${monsterInsights}${storyMoments}${newCompanions}${companionAdvancements}${newCompanionMemories}${completedCompanionBonds}${newAdventurerRecords}${newAdventurerMilestones}${newAchievements}${(result.storyCompleted || []).map(id => window.GameData.storyChapters.find(chapter => chapter.id === id)).filter(Boolean).map(chapter => `<div class="story-objective"><strong>${escape(chapter.title)}・達成</strong><p>解放・章報酬：${escape(window.Story.chapterUnlockText(chapter))}</p></div>`).join("")}${failureEvidenceLinks}${analysis}</div></article>`;
+      ${highlights}${memberHighlights}${bondFormations}${routeEvents}${adventurerBondMoments}${adventurerBondTiers}${newRumorConfirmations}${treasures}${rumorResult}${lootPanel}${trackedAchievement}${ultraRares}${autoSales}${levels}${firstClearReward}${newItems}${newSetDiscoveries}${bestQualities}${newRecipes}${newRouteMasteries}${newObservations}${monsterInsights}${mysteryUpdates}${storyMoments}${newCompanions}${companionAdvancements}${newCompanionMemories}${completedCompanionBonds}${newAdventurerRecords}${newAdventurerMilestones}${newAchievements}${(result.storyCompleted || []).map(id => window.GameData.storyChapters.find(chapter => chapter.id === id)).filter(Boolean).map(chapter => `<div class="story-objective"><strong>${escape(chapter.title)}・達成</strong><p>解放・章報酬：${escape(window.Story.chapterUnlockText(chapter))}</p></div>`).join("")}${failureEvidenceLinks}${analysis}</div></article>`;
   }
 
   function dungeonIntel(dungeon, monsters) {
@@ -1033,7 +1066,12 @@
     return storyParagraphs(scene).map(text => ({ kind: "narration", text }));
   }
 
-  function storyReaderBlock(block) {
+  function storyReadingMinutes(scene) {
+    const characters = storyReaderBlocks(scene).reduce((total, block) => total + String(block.text || "").replace(/\s/g, "").length, String(scene?.name || "").length);
+    return Math.max(1, Math.ceil(characters / 420));
+  }
+
+  function storyReaderBlock(block, index, blocks) {
     if (block.kind === "setting") return `<aside class="story-reader-setting"><span aria-hidden="true">◇</span><p>${escape(block.text)}</p></aside>`;
     if (block.kind !== "dialogue") return storyParagraphs({ text: block.text }).map(text => `<p class="story-reader-narration">${escape(text)}</p>`).join("");
     const character = window.GameData.storyCharacters?.[block.speakerId];
@@ -1041,7 +1079,12 @@
     const name = character?.name || block.speakerName;
     const role = character?.title || block.speakerRole;
     const mark = block.speakerId === "guild_leader" ? "マ" : String(name || "語").slice(0, 1);
-    return `<section class="story-reader-dialogue" data-story-speaker="${escape(block.speakerId)}"><div class="story-reader-speaker">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : `<span aria-hidden="true">${escape(mark)}</span>`}<div><strong>${escape(name)}</strong><small>${escape(role)}</small></div></div><p>「${escape(block.text)}」</p></section>`;
+    const tone = [...String(block.speakerId || name || "")].reduce((total, letter) => total + letter.codePointAt(0), 0) % 7;
+    const previous = blocks[index - 1];
+    const chained = previous?.kind === "dialogue";
+    const continued = chained && previous.speakerId === block.speakerId;
+    const flowClass = continued ? " is-continuation" : chained ? " is-reply" : "";
+    return `<section class="story-reader-dialogue story-speaker-tone-${tone}${flowClass}" data-story-speaker="${escape(block.speakerId)}"><button type="button" class="story-reader-speaker" data-action="story-speaker-focus" data-story-speaker="${escape(block.speakerId)}" aria-pressed="false" aria-label="${escape(name)}の発言に注目する">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : `<span aria-hidden="true">${escape(mark)}</span>`}<span><strong>${escape(name)}</strong><small>${escape(role)}</small></span></button><p>「${escape(block.text)}」</p></section>`;
   }
 
   function refreshStoryReaderProgress(scroller) {
@@ -1049,54 +1092,138 @@
     const position = Math.max(0, Number(scroller?.scrollTop) || 0);
     const ratio = maximum ? Math.min(1, position / maximum) : 1;
     const meter = document.querySelector("[data-story-read-progress]");
+    const progress = document.querySelector("[data-story-read-meter]");
+    const sceneMeter = document.querySelector("[data-story-scene-progress]");
     const button = document.querySelector('[data-action="finish-story-reader"]');
-    if (meter) meter.textContent = ratio >= .995 ? "読了できます" : `読書中 ${Math.round(ratio * 100)}%`;
+    const replay = document.querySelector(".story-reader-modal")?.dataset?.storyReplay === "true";
+    if (meter) meter.textContent = ratio >= .995 ? (replay ? "回想の終わり" : "読了できます") : `${replay ? "回想中" : "読書中"} ${Math.round(ratio * 100)}%`;
+    if (progress) progress.value = Math.round(ratio * 100);
     if (button) button.disabled = ratio < .995;
     const scenes = [...document.querySelectorAll(".story-reader-scene")];
     const current = scenes.reduce((found, candidate, index) => candidate.offsetTop <= position + 100 ? index : found, 0);
-    document.querySelectorAll('[data-action="story-reader-jump"]').forEach((entry, index) => entry.classList.toggle("active", index === current));
+    if (sceneMeter) sceneMeter.textContent = `場面 ${Math.min(current + 1, Math.max(1, scenes.length))} / ${Math.max(1, scenes.length)}`;
+    document.querySelectorAll('[data-action="story-reader-jump"]').forEach((entry, index) => {
+      entry.classList.toggle("active", index === current);
+      entry.classList.toggle("passed", index < current);
+    });
   }
 
-  function openStoryReader(sceneId = null) {
+  function storyReadingPosition(scroller) {
+    const position = Math.max(0, Number(scroller?.scrollTop) || 0);
+    const scenes = [...document.querySelectorAll(".story-reader-scene")];
+    const sceneIndex = scenes.reduce((found, candidate, index) => candidate.offsetTop <= position + 100 ? index : found, 0);
+    const sceneTop = Math.max(0, Number(scenes[sceneIndex]?.offsetTop) || 0);
+    return { sceneIndex, sceneOffset: Math.max(0, position - sceneTop), scrollTop: position };
+  }
+
+  function storeStoryBookmark() {
+    if (!activeStoryReading) return;
+    const scroller = document.querySelector("[data-story-reader-scroll]");
+    if (scroller) window.StoryReaderBookmark.write(activeStoryReading.episodeId, storyReadingPosition(scroller));
+  }
+
+  function scheduleStoryBookmark() {
+    if (!activeStoryReading) return;
+    clearTimeout(storyBookmarkTimer);
+    storyBookmarkTimer = setTimeout(storeStoryBookmark, 250);
+  }
+
+  function closeStoryReading(savePosition = true) {
+    clearTimeout(storyBookmarkTimer);
+    if (savePosition) storeStoryBookmark();
+    activeStoryReading = null;
+  }
+
+  function openStoryReader(sceneId = null, chapterId = null) {
+    const replayChapter = chapterId ? window.GameData.storyChapters.find(chapter => chapter.id === chapterId) : null;
+    const replayChapterEntries = replayChapter ? window.Story.chapterTimeline(replayChapter.id)
+      .filter(entry => entry.dungeon?.requiredForStory !== false && window.Story.hasReadScene(entry.scene.id)) : [];
     const replayScene = sceneId ? window.Story.scene(sceneId) : null;
     const replayEntry = replayScene ? window.GameData.storyChapters
       .flatMap(chapter => window.Story.chapterTimeline(chapter.id))
       .find(entry => entry.scene?.id === sceneId) : null;
-    const replay = Boolean(replayScene);
-    const episode = replay ? {
+    const chapterReplay = Boolean(replayChapter && replayChapterEntries.length);
+    const replay = Boolean(replayScene || replayChapter);
+    const episode = chapterReplay ? {
+      id: `archive:chapter:${replayChapter.id}`,
+      title: `回想録：${replayChapter.title}`,
+      subtitle: `${replayChapter.title}の会話と情景を、時間の流れに沿って読み返しました。`,
+      entries: replayChapterEntries
+    } : replayScene ? {
       id: `archive:${sceneId}`,
       title: `回想：${replayScene.name}`,
       subtitle: "この記録は何度でも読み返せます。",
       entries: [replayEntry || { label: "過去の記録", scene: replayScene, chapter: null, dungeon: null }]
     } : window.Story.pendingEpisode();
-    if (!episode) { toast(sceneId ? "その物語は記録されていません。" : "今読むべき新しい物語はありません。", "error"); return; }
+    if (!episode) { toast(sceneId || chapterId ? "その物語はまだ記録されていません。" : "今読むべき新しい物語はありません。", "error"); return; }
+    closeStoryReading(false);
+    const bookmark = !replay || chapterReplay ? window.StoryReaderBookmark.read(episode.id) : null;
     const guide = window.Story.storyGuide();
     const cast = window.Story.episodeCharacters(episode);
-    const previously = !replay && guide.recent.length ? `<section class="story-reader-previously"><span class="label">PREVIOUSLY</span><h3>前回までの記録</h3><ol>${guide.recent.map(event => `<li><small>${escape(event.chapter?.title || event.dungeon?.name || "過去の記録")}</small><strong>${escape(event.scene.name)}</strong><p>${escape(event.scene.text)}</p></li>`).join("")}</ol></section>` : "";
-    const castList = cast.length ? `<section class="story-reader-cast"><span class="label">CAST</span><h3>この物語に登場する人々</h3><div>${cast.map(character => {
+    const previously = !replay && guide.recent.length ? `<details class="story-reader-previously"><summary class="story-reader-aid-summary"><span><small>PREVIOUSLY</small><strong>前回までの記録</strong></span><i>${guide.recent.length}場面のあらすじ</i><b aria-hidden="true">＋</b></summary><ol>${guide.recent.map(event => `<li><small>${escape(event.chapter?.title || event.dungeon?.name || "過去の記録")}</small><strong>${escape(event.scene.name)}</strong><p>${escape(event.scene.text)}</p></li>`).join("")}</ol></details>` : "";
+    const castList = cast.length ? `<details class="story-reader-cast"><summary class="story-reader-aid-summary"><span><small>CAST</small><strong>この物語に登場する人々</strong></span><i>${cast.length}人 · 人物紹介を開く</i><b aria-hidden="true">＋</b></summary><p class="story-reader-cast-hint">人物をタップすると、肩書とこれまでの歩みを確認できます。</p><div>${cast.map(character => {
       const portrait = window.GameData.portraits?.[character.portraitId];
-      return `<span>${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<b>${escape(character.name)}</b><small>${escape(character.title)}</small></span>`;
-    }).join("")}</div></section>` : "";
-    const tableOfContents = `<nav class="story-reader-toc" aria-label="場面目次">${episode.entries.map((entry, index) => `<button type="button" class="${index === 0 ? "active" : ""}" data-action="story-reader-jump" data-story-index="${index}"><small>${index + 1}</small><span>${escape(entry.scene.name)}</span></button>`).join("")}</nav>`;
+      return `<details><summary>${portrait ? `<img src="${escape(portrait.image)}" alt="">` : `<span class="story-reader-cast-mark" aria-hidden="true">${escape(character.name.slice(0, 1))}</span>`}<span><b>${escape(character.name)}</b><small>${escape(character.title)}</small></span><i aria-hidden="true">＋</i></summary><p>${escape(character.description || "この物語に関わる人物。")}</p></details>`;
+    }).join("")}</div></details>` : "";
+    const sceneMinutes = episode.entries.map(entry => storyReadingMinutes(entry.scene));
+    const totalMinutes = sceneMinutes.reduce((total, minutes) => total + minutes, 0);
+    const textControls = `<div class="story-reader-text-controls"><span>文字</span><div role="group" aria-label="本文の文字サイズ">${[["small", "小"], ["standard", "標準"], ["large", "大"]].map(([size, label]) => `<button type="button" data-action="story-reader-text-size" data-story-size="${size}" aria-label="文字サイズ ${label}">${label}</button>`).join("")}</div><span>表示</span><div role="group" aria-label="本文の表示密度">${[["comfortable", "ゆったり"], ["compact", "簡潔"]].map(([layout, label]) => `<button type="button" data-action="story-reader-layout" data-story-layout="${layout}" aria-label="表示 ${label}">${label}</button>`).join("")}</div><span>背景</span><div role="group" aria-label="本文の背景">${[["paper", "紙"], ["night", "夜"]].map(([theme, label]) => `<button type="button" data-action="story-reader-theme" data-story-theme="${theme}" aria-label="背景 ${label}">${label}</button>`).join("")}</div></div>`;
+    const speakerFocusStatus = `<div class="story-reader-focus-status" aria-live="polite"><span data-story-focus-name></span><button type="button" data-action="story-speaker-focus-clear">全員の会話へ戻す</button></div>`;
+    const tableOfContents = `<nav class="story-reader-toc" aria-label="場面目次">${textControls}${speakerFocusStatus}${episode.entries.map((entry, index) => `<button type="button" class="${index === 0 ? "active" : ""}" data-action="story-reader-jump" data-story-index="${index}" aria-label="場面${index + 1} ${escape(entry.scene.name)}、読了目安約${sceneMinutes[index]}分"><small>${index + 1}</small><span>${escape(entry.scene.name)}</span><i>約${sceneMinutes[index]}分</i></button>`).join("")}</nav>`;
     const scenes = episode.entries.map((entry, index) => {
       const place = entry.dungeon?.name || entry.chapter?.title || "ギルドの記録";
       const protagonist = window.GameData.storyCharacters?.[entry.scene.protagonistId];
       const portrait = protagonist ? window.GameData.portraits?.[protagonist.portraitId] : null;
       const cast = (entry.scene.castIds || []).map(id => window.GameData.storyCharacters?.[id]?.name).filter(Boolean);
-      return `<article class="story-reader-scene" id="story-reader-scene-${index}"><header><span>${index + 1} / ${episode.entries.length} · ${escape(entry.label)}</span><small>${escape(place)}</small></header>${protagonist ? `<div class="story-reader-character">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<span><small>この場面の視点</small><strong>${escape(protagonist.name)}</strong>${cast.length ? `<em>共にいる者：${escape(cast.join("、"))}</em>` : ""}</span></div>` : ""}<h3>${escape(entry.scene.name)}</h3><div class="story-reader-script">${storyReaderBlocks(entry.scene).map(storyReaderBlock).join("")}</div></article>`;
+      const previous = episode.entries[index - 1];
+      const next = episode.entries[index + 1];
+      const bridge = previous ? `<aside class="story-reader-bridge"><span aria-hidden="true">↳</span><div><small>前の場面から</small><strong>${escape(previous.scene.name)}</strong><p>${escape(previous.scene.text)}</p></div></aside>` : "";
+      const sceneEnding = next
+        ? `<footer class="story-reader-scene-ending"><span><small>場面 ${index + 1}　了</small><strong>次の場面へ</strong></span><button type="button" data-action="story-reader-next" data-story-index="${index + 1}">${escape(next.scene.name)}<i aria-hidden="true">↓</i></button></footer>`
+        : `<footer class="story-reader-scene-ending final"><span><small>場面 ${index + 1}　了</small><strong>${replay ? "記録の結び" : "この物語の結びへ"}</strong></span><i aria-hidden="true">◆</i></footer>`;
+      return `<article class="story-reader-scene" id="story-reader-scene-${index}"><header><span>${index + 1} / ${episode.entries.length} · ${escape(entry.label)}</span><small>${escape(place)}</small></header>${bridge}${protagonist ? `<div class="story-reader-character">${portrait ? `<img src="${escape(portrait.image)}" alt="">` : ""}<span><small>この場面の視点</small><strong>${escape(protagonist.name)}</strong>${cast.length ? `<em>共にいる者：${escape(cast.join("、"))}</em>` : ""}</span></div>` : ""}<h3>${escape(entry.scene.name)}</h3><div class="story-reader-script">${storyReaderBlocks(entry.scene).map(storyReaderBlock).join("")}</div>${sceneEnding}</article>`;
     }).join("");
+    const endingIndexes = [...new Set(episode.entries.length > 3 ? [0, Math.floor((episode.entries.length - 1) / 2), episode.entries.length - 1] : episode.entries.map((_, index) => index))];
+    const endingNotes = `<section class="story-reader-ending-notes"><h3>${replay ? "この記録の節目" : "今回、帳簿に残ること"}</h3><ol>${endingIndexes.map(index => {
+      const entry = episode.entries[index];
+      return `<li><span>${index + 1}</span><div><strong>${escape(entry.scene.name)}</strong><p>${escape(entry.scene.text)}</p></div></li>`;
+    }).join("")}</ol></section>`;
+    const mysteryThreads = window.Story.mysteryUpdates(episode.entries.map(entry => entry.scene.id)).slice(0, 2);
+    const threadNotes = mysteryThreads.length ? `<section class="story-reader-thread-notes"><h3>${mysteryThreads.some(mystery => !mystery.resolvedByUpdate) ? "この先へ続く手掛かり" : "この記録で繋がった謎"}</h3>${mysteryThreads.map(mystery => {
+      const latest = mystery.updatedEvidence.at(-1);
+      return `<article class="${mystery.resolvedByUpdate ? "resolved" : "active"}"><span>${mystery.resolvedByUpdate ? "解明" : `${mystery.evidenceCountAtUpdate}/${mystery.evidenceTotal}`}</span><div><strong>${escape(mystery.title)}</strong><p>${escape(latest?.note || mystery.clue)}</p>${latest?.margin && !mystery.resolvedByUpdate ? `<small><b>帳面の余白</b>${escape(latest.margin)}</small>` : ""}</div></article>`;
+    }).join("")}</section>` : "";
     const ending = replay
-      ? `<footer class="story-reader-ending story-reader-replay-ending"><span aria-hidden="true">◆</span><strong>記録の終わり</strong><p>${escape(episode.subtitle)}</p><button class="button primary" data-action="close-modal">回想を閉じる</button></footer>`
-      : `<footer class="story-reader-ending"><span aria-hidden="true">◆</span><strong>ここまでの物語を記録する</strong><p>${escape(episode.subtitle)}</p><button class="button primary" data-action="finish-story-reader" data-episode="${escape(episode.id)}" disabled>読み終える</button></footer>`;
-    document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop story-reader-backdrop"><section class="modal story-reader-modal" role="dialog" aria-modal="true" aria-labelledby="story-reader-title"><header class="story-reader-heading"><button class="button ghost" data-action="close-modal">${replay ? "閉じる" : "あとで読む"}</button><div><span class="label">${replay ? "STORY ARCHIVE" : "STORY"}</span><h2 id="story-reader-title">${escape(episode.title)}</h2></div><span data-story-read-progress>${replay ? "回想" : "読書中 0%"}</span></header>${tableOfContents}<div class="story-reader-scroll" data-story-reader-scroll tabindex="0">${previously}${castList}${scenes}${ending}</div></section></div>`;
+      ? `<footer class="story-reader-ending story-reader-replay-ending"><span aria-hidden="true">◆</span><strong>記録の終わり</strong>${endingNotes}${threadNotes}<p>${escape(episode.subtitle)}</p><button class="button primary" data-action="finish-story-replay" data-episode="${escape(episode.id)}">回想を閉じる</button></footer>`
+      : `<footer class="story-reader-ending"><span aria-hidden="true">◆</span><strong>ここまでの物語を記録する</strong>${endingNotes}${threadNotes}<p>${escape(episode.subtitle)}</p><button class="button primary" data-action="finish-story-reader" data-episode="${escape(episode.id)}" disabled>読み終える</button></footer>`;
+    document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop story-reader-backdrop"><section class="modal story-reader-modal" data-story-replay="${replay}" data-story-text-size="${storyTextSize}" data-story-layout="${storyLayout}" data-story-theme="${storyTheme}" data-story-speaker-focus="" role="dialog" aria-modal="true" aria-labelledby="story-reader-title"><header class="story-reader-heading"><button class="button ghost" data-action="close-modal">${replay ? "閉じる" : "あとで読む"}</button><div><span class="label">${replay ? "STORY ARCHIVE" : "STORY"}</span><h2 id="story-reader-title">${escape(episode.title)}</h2><small class="story-reader-duration">全${episode.entries.length}場面 · 読了目安 約${totalMinutes}分</small></div><div class="story-reader-status"><span data-story-scene-progress>場面 1 / ${episode.entries.length}</span><strong data-story-read-progress>${replay ? "回想中 0%" : "読書中 0%"}</strong><progress max="100" value="0" data-story-read-meter aria-label="読書の進み具合"></progress></div></header>${tableOfContents}<div class="story-reader-scroll" data-story-reader-scroll tabindex="0">${previously}${castList}${scenes}${ending}</div></section></div>`;
     const scroller = document.querySelector("[data-story-reader-scroll]");
     if (scroller) {
-      if (!replay) {
-        scroller.addEventListener("scroll", () => refreshStoryReaderProgress(scroller), { passive: true });
-        refreshStoryReaderProgress(scroller);
+      activeStoryReading = !replay || chapterReplay ? { episodeId: episode.id } : null;
+      if (bookmark) {
+        const bookmarkedScene = document.getElementById(`story-reader-scene-${Math.min(bookmark.sceneIndex, episode.entries.length - 1)}`);
+        const sceneTop = Math.max(0, Number(bookmarkedScene?.offsetTop) || 0);
+        scroller.scrollTop = bookmarkedScene ? sceneTop + bookmark.sceneOffset : bookmark.scrollTop;
       }
+      scroller.addEventListener("scroll", () => { refreshStoryReaderProgress(scroller); scheduleStoryBookmark(); }, { passive: true });
+      refreshStoryReaderProgress(scroller);
       scroller.focus?.();
+      if (bookmark) toast(`場面${Math.min(bookmark.sceneIndex + 1, episode.entries.length)}の栞から再開しました。`, "success");
     }
+  }
+
+  function storyIndexResults(query = "") {
+    const results = window.Story.searchReadScenes(query);
+    if (!results.length) return `<p class="story-index-empty">「${escape(query)}」に一致する既読の記録はありません。</p>`;
+    return `<div class="story-index-count">${query ? `「${escape(query)}」を含む記録` : "新しい順"} · ${results.length}件</div><ol class="story-index-results">${results.map(event => {
+      const people = event.characters.map(character => character.name).join("、");
+      return `<li><button type="button" data-action="replay-story-scene" data-scene="${escape(event.scene.id)}"><span><small>${escape(event.chapter?.title || "過去の記録")} · ${escape(event.dungeon?.name || event.label)}</small><strong>${escape(event.scene.name)}</strong>${people ? `<em>${escape(people)}</em>` : ""}<p>${escape(event.excerpt)}</p></span><i aria-hidden="true">›</i></button></li>`;
+    }).join("")}</ol>`;
+  }
+
+  function openStoryIndex() {
+    document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop story-index-backdrop" data-action="close-modal"><section class="modal story-index-modal" role="dialog" aria-modal="true" aria-labelledby="story-index-title"><header class="modal-heading"><div><span class="label">STORY INDEX</span><h3 id="story-index-title">物語の索引</h3></div><button class="modal-close" data-action="close-modal" aria-label="索引を閉じる">×</button></header><label class="story-index-search"><span aria-hidden="true">⌕</span><input type="search" data-story-index-query placeholder="人物名、地名、会話の言葉で探す" autocomplete="off" enterkeyhint="search"></label><p class="story-index-hint">読み終えた物語だけを、あらすじと会話の全文から探します。検索結果をタップすると、その場面を開きます。</p><div id="story-index-results" class="story-index-scroll">${storyIndexResults("")}</div></section></div>`;
+    document.querySelector("[data-story-index-query]")?.focus?.();
   }
 
   function renderNav() {
@@ -1413,8 +1540,62 @@
     if (button.classList.contains("modal-backdrop") && event.target.closest(".modal")) return;
     const action = button.dataset.action;
     if (action === "open-story-reader") { openStoryReader(); return; }
+    if (action === "open-story-index") { openStoryIndex(); return; }
     if (action === "replay-story-scene") { openStoryReader(button.dataset.scene); return; }
-    if (action === "story-reader-jump") {
+    if (action === "replay-story-chapter") { openStoryReader(null, button.dataset.chapter); return; }
+    if (action === "story-reader-text-size") {
+      const size = ["small", "standard", "large"].includes(button.dataset.storySize) ? button.dataset.storySize : "standard";
+      storyTextSize = size;
+      try { window.SaveStorage.set(storyTextSizeKey, size); } catch (_) {}
+      const reader = document.querySelector(".story-reader-modal");
+      if (reader) reader.dataset.storyTextSize = size;
+      return;
+    }
+    if (action === "story-reader-layout") {
+      const layout = ["comfortable", "compact"].includes(button.dataset.storyLayout) ? button.dataset.storyLayout : "comfortable";
+      storyLayout = layout;
+      try { window.SaveStorage.set(storyLayoutKey, layout); } catch (_) {}
+      const reader = document.querySelector(".story-reader-modal");
+      if (reader) reader.dataset.storyLayout = layout;
+      return;
+    }
+    if (action === "story-reader-theme") {
+      const theme = ["paper", "night"].includes(button.dataset.storyTheme) ? button.dataset.storyTheme : "paper";
+      storyTheme = theme;
+      try { window.SaveStorage.set(storyThemeKey, theme); } catch (_) {}
+      const reader = document.querySelector(".story-reader-modal");
+      if (reader) reader.dataset.storyTheme = theme;
+      return;
+    }
+    if (action === "story-speaker-focus") {
+      const reader = document.querySelector(".story-reader-modal");
+      if (!reader) return;
+      const speakerId = button.dataset.storySpeaker || "";
+      const focused = reader.dataset.storySpeakerFocus === speakerId ? "" : speakerId;
+      reader.dataset.storySpeakerFocus = focused;
+      const focusName = document.querySelector("[data-story-focus-name]");
+      if (focusName) focusName.textContent = focused ? `${window.GameData.storyCharacters?.[focused]?.name || button.querySelector?.("strong")?.textContent || "選んだ人物"}の発言を表示中` : "";
+      document.querySelectorAll(".story-reader-dialogue[data-story-speaker]").forEach(line => {
+        line.classList.toggle("is-speaker-muted", Boolean(focused) && line.dataset.storySpeaker !== focused);
+        line.classList.toggle("is-speaker-focused", Boolean(focused) && line.dataset.storySpeaker === focused);
+      });
+      document.querySelectorAll('[data-action="story-speaker-focus"]').forEach(control => control.setAttribute?.("aria-pressed", String(Boolean(focused) && control.dataset.storySpeaker === focused)));
+      return;
+    }
+    if (action === "story-speaker-focus-clear") {
+      const reader = document.querySelector(".story-reader-modal");
+      if (!reader) return;
+      reader.dataset.storySpeakerFocus = "";
+      const focusName = document.querySelector("[data-story-focus-name]");
+      if (focusName) focusName.textContent = "";
+      document.querySelectorAll(".story-reader-dialogue[data-story-speaker]").forEach(line => {
+        line.classList.toggle("is-speaker-muted", false);
+        line.classList.toggle("is-speaker-focused", false);
+      });
+      document.querySelectorAll('[data-action="story-speaker-focus"]').forEach(control => control.setAttribute?.("aria-pressed", "false"));
+      return;
+    }
+    if (action === "story-reader-jump" || action === "story-reader-next") {
       document.getElementById(`story-reader-scene-${Number(button.dataset.storyIndex) || 0}`)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
       return;
     }
@@ -1422,6 +1603,8 @@
       const servicesBefore = new Set(window.GuildServices.unlockedIds());
       const result = await window.GameClient.execute("story.readPending", { episodeId: button.dataset.episode });
       if (!result.ok) { toast(result.message, "error"); return; }
+      closeStoryReading(false);
+      window.StoryReaderBookmark.clear(button.dataset.episode);
       document.getElementById("modal-root").innerHTML = "";
       const unlockedServices = window.GuildServices.newlyUnlocked(servicesBefore);
       toast(unlockedServices.length ? unlockedServices.map(entry => entry.unlockMessage).join(" ") : result.message, "success");
@@ -1820,6 +2003,12 @@
       render();
       return;
     }
+    if (action === "finish-story-replay") {
+      closeStoryReading(false);
+      window.StoryReaderBookmark.clear(button.dataset.episode);
+      document.getElementById("modal-root").innerHTML = "";
+      return;
+    }
     if (action === "select-party-character") { selectedPartyCharacterId = button.dataset.character; openEquipmentModal(button.dataset.character, true); return; }
     if (action === "roster-page") { rosterView.page = Math.max(0, Number(button.dataset.page) || 0); renderAtListStart(".roster-browser"); return; }
     if (action === "party-overview-filter") {
@@ -2000,6 +2189,8 @@
       if (!pendingImport) return;
       const restored = await window.GameClient.execute("save.import", { state: pendingImport });
       if (!restored.ok) { toast(restored.message, "error"); return; }
+      closeStoryReading(false);
+      window.StoryReaderBookmark.clear();
       pendingImport = null;
       document.getElementById("modal-root").innerHTML = "";
       reloadExplorationChoices();
@@ -2088,8 +2279,8 @@
       document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop" data-action="close-modal"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="reset-title"><div class="modal-icon">!</div><h3 id="reset-title">セーブデータを初期化しますか？</h3><p>冒険者、装備、探索結果を含むすべての進行状況が失われます。</p><div class="modal-actions"><button class="button ghost" data-action="close-modal">キャンセル</button><button class="button danger" data-action="confirm-reset">初期化する</button></div></div></div>`;
       return;
     }
-    if (action === "close-modal") { pendingImport = null; pendingClassChange = null; pendingUnequipAll = null; importRequest += 1; equipmentReturnToParty = false; rememberEquipmentPickerView(); equipmentPicker.focusInstanceId = null; equipmentPicker.origin = null; dismissEquipmentChangeNotice(); document.getElementById("modal-root").innerHTML = ""; return; }
-    if (action === "confirm-reset") { const reset = await window.GameClient.execute("save.reset"); if (!reset.ok) { toast(reset.message, "error"); return; } equipmentPickerViews.clear(); Object.assign(equipmentPicker, { characterId: null, ...equipmentPickerDefaults, focusInstanceId: null, origin: null }); Object.assign(inventoryView, { kind: "all", set: "all", quality: "all", equipped: "all", lock: "all", sort: "newest", page: 0, focusInstanceId: null, focusLabel: null }); Object.assign(materialView, { query: "", sort: "count", page: 0 }); document.getElementById("modal-root").innerHTML = ""; currentPage = "home"; partyScreen = "overview"; partyOverviewFilter = "all"; partyViews.fill("formation"); reloadExplorationChoices(); archiveView = "commissions"; blacksmithScreen = "menu"; Object.assign(blacksmithView, { query: "", category: "all", material: "all", status: "all", sort: "ready", page: 0, focusRecipeIds: [], focusContext: "", lastCraftedInstanceId: null, lastCraftedSetDiscoveries: [] }); toast("セーブデータを初期化しました。"); renderNav(); render(); return; }
+    if (action === "close-modal") { closeStoryReading(true); pendingImport = null; pendingClassChange = null; pendingUnequipAll = null; importRequest += 1; equipmentReturnToParty = false; rememberEquipmentPickerView(); equipmentPicker.focusInstanceId = null; equipmentPicker.origin = null; dismissEquipmentChangeNotice(); document.getElementById("modal-root").innerHTML = ""; return; }
+    if (action === "confirm-reset") { const reset = await window.GameClient.execute("save.reset"); if (!reset.ok) { toast(reset.message, "error"); return; } closeStoryReading(false); window.StoryReaderBookmark.clear(); equipmentPickerViews.clear(); Object.assign(equipmentPicker, { characterId: null, ...equipmentPickerDefaults, focusInstanceId: null, origin: null }); Object.assign(inventoryView, { kind: "all", set: "all", quality: "all", equipped: "all", lock: "all", sort: "newest", page: 0, focusInstanceId: null, focusLabel: null }); Object.assign(materialView, { query: "", sort: "count", page: 0 }); document.getElementById("modal-root").innerHTML = ""; currentPage = "home"; partyScreen = "overview"; partyOverviewFilter = "all"; partyViews.fill("formation"); reloadExplorationChoices(); archiveView = "commissions"; blacksmithScreen = "menu"; Object.assign(blacksmithView, { query: "", category: "all", material: "all", status: "all", sort: "ready", page: 0, focusRecipeIds: [], focusContext: "", lastCraftedInstanceId: null, lastCraftedSetDiscoveries: [] }); toast("セーブデータを初期化しました。"); renderNav(); render(); return; }
     if (result && !result.ok) toast(result.message, "error");
     else if (result && result.message) toast(result.message, "success");
     if (preserveViewport) renderPreservingViewport();
@@ -2210,6 +2401,11 @@
     document.addEventListener("click", handleClick);
     document.addEventListener("submit", handleSubmit);
     document.addEventListener("input", (event) => {
+      if (event.target.hasAttribute?.("data-story-index-query")) {
+        const results = document.getElementById("story-index-results");
+        if (results) results.innerHTML = storyIndexResults(event.target.value);
+        return;
+      }
       if (event.target.hasAttribute?.("data-portrait-query")) {
         window.GameUIViews.portraits.refreshPicker(event.target.closest("#portrait-form"), true);
         return;

@@ -62,6 +62,16 @@ for (const dungeon of routes) {
   assert(links?.discoveryStoryId && data.storyScenes[links.discoveryStoryId]);
 }
 assert(data.config.upgrades.limits.some(entry => entry.chapterId === chapter.id && entry.maximum === 15));
+const openingScript = data.relations.storySceneScripts.blackwood_pilgrimage_opening.blocks;
+const clearScript = data.relations.storySceneScripts.blackwood_pilgrimage_clear.blocks;
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert(openingScript.some(entry => entry.speakerId === "rize" && entry.text.includes("返す日を決める")));
+assert(openingScript.some(entry => entry.speakerId === "shia" && entry.text.includes("瓶を運べるなら")));
+assert.strictEqual(clearScript[0].kind, "setting");
+assert.strictEqual(clearScript.at(-1).kind, "narration");
+assert(clearScript.some(entry => entry.speakerId === "rize" && entry.text.includes("優しい瓶も檻になる")));
+assert(clearScript.some(entry => entry.speakerId === "herbalist_olga" && entry.text.includes("以前と同じ人に戻れない")));
 const parsed = game.SaveTransfer.parse(JSON.stringify(state));
 assert(parsed.ok, parsed.message);
 console.log("Chapter seven test passed: five main blackwood routes, optional worldroot, poison counterplay, stories, materials, recipes, boss gear and upgrade cap");

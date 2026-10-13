@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    clockwork_desert_opening: { id: "clockwork_desert_opening", name: "海の底に残った一日", text: "鏡潮の宮殿で開いた門の先には、海ではなく白い砂漠が広がっていた。止まった時計がすべて同じ日を示している。リナは砂に埋もれた依頼書を拾い、『この街は滅びたのではなく、今日を終えられないようです』と告げた。" },
+    clockwork_desert_opening: { id: "clockwork_desert_opening", name: "海の底に残った一日", text: "鏡潮の宮殿で開いた門の先には、同じ夕暮れを繰り返す白い砂漠が広がっていた。止まった都の壁には、一日を忘れないため刻まれた無数の傷と、その数を読み続ける一人の機巧人が残されていた。" },
     tidal_gate_clear: { id: "tidal_gate_clear", name: "海を閉じた門", text: "巨像の胸から、海水を記憶玻璃へ変える機構が見つかった。門は侵入を防ぐものではなく、都市から海へ記憶が流れ出すのを止めていた。" },
     white_sand_road_clear: { id: "white_sand_road_clear", name: "足跡のない隊商", text: "白砂の下には、同じ道を何度も往復した隊商の車輪跡が重なっていた。彼らは王宮へ時砂を運び、一日が終わるたび出発地点へ戻されていた。" },
     stopped_clocktower_clear: { id: "stopped_clocktower_clear", name: "鳴らなかった最後の鐘", text: "時計塔の鐘は都市の終わりを告げる直前で止められていた。鐘楼の記録は、その命令が王宮ではなく歯車王の工房から届いたことを示す。" },
     royal_workshop_clear: { id: "royal_workshop_clear", name: "止めるために作られた王", text: "歯車王は反乱者ではなかった。女王の命令どおり、都市の時間を止める機械を作り続けていた。完成すれば人々の記憶まで時砂へ変わる。" },
-    clockwork_desert_clear: { id: "clockwork_desert_clear", name: "明日へ落ちた時砂", text: "時砂女王が手を離すと、止まっていた砂時計が初めて落ち切った。都市に朝が訪れ、人々の記憶は戻らなくとも、新しい一日を選べるようになった。" },
+    clockwork_desert_clear: { id: "clockwork_desert_clear", name: "明日へ落ちた時砂", text: "最後の一秒を留めていた女王が手を離すと、砂時計は初めて落ち切った。失われた人々が戻らない事実を抱えたまま、それでも都の住民は、記録にない最初の朝を自分たちで選んだ。" },
     forgotten_titan_clear: { id: "forgotten_titan_clear", name: "都市を歩かせた巨人", text: "忘却の時計巨人は墓ではなく、都市そのものを運ぶ動力だった。核に残された地図は、砂漠のさらに先にある黒い森と、そこへ向かった女王の使者を示している。" }
   });
   data.registry.entityList("storyChapters", [{

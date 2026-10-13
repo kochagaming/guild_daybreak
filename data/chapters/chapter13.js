@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    northern_star_tomb_opening: { id: "northern_star_tomb_opening", name: "凍った海の出口", text: "星海の黒い流れを追って北へ向かうと、雪原の下から青い波音が響いていた。リナは凍った水面に人影を見つける。『星の器とは道具ではなく、人の形をした何かなのでしょうか』。" },
+    northern_star_tomb_opening: { id: "northern_star_tomb_opening", name: "凍った海の出口", text: "星海の黒い流れを追って北へ向かうと、雪原の下から青い波音が響いていた。凍った水面には、揺籃を抜け出した一人の青年が立っている。台帳は彼を『第十三器』と呼んだが、青年は夢の中で見つけた『ノア』という名を自分で選んだ。役目も過去も思い出せないまま、それでも誰かに決められる前に自分の足で確かめたいと、一行へ加わった。" },
     frozen_starsea_shore_clear: { id: "frozen_starsea_shore_clear", name: "北天へ上がった星", text: "凍海岸の祭門は、地下から汲み上げた星力を人へ注ぐための入口だった。王朝は何代にもわたり、器になれる者を北へ送っていた。" },
     black_aurora_field_clear: { id: "black_aurora_field_clear", name: "名を失った墓標", text: "黒極光の下には、器になれなかった者の名が刻まれていた。そこには王族だけでなく、各地から集められた無数の子どもの名がある。" },
     fallen_star_grave_clear: { id: "fallen_star_grave_clear", name: "空から来なかった星", text: "墓標に使われた星殻は、すべて地下の星海で育ったものだった。王朝が語った『天より授かった力』は、長い支配を正当化するための物語にすぎない。" },
     vessel_fortress_clear: { id: "vessel_fortress_clear", name: "封鍵の内側", text: "氷城の記録には、最後の器が星力を拒み、自ら眠りについたとある。女王の使者は器を救うためではなく、その力で空への道を開こうとしていた。" },
-    northern_star_tomb_clear: { id: "northern_star_tomb_clear", name: "目覚めた器の言葉", text: "眠れる器は目を開き、自らを『ノア』と名乗った。使者に奪われた星核を取り戻さなければ、空の主が地上へ降りるという。黒い光はすでに王都へ向かっていた。" },
+    northern_star_tomb_clear: { id: "northern_star_tomb_clear", name: "ノアが選んだ名前", text: "中央揺籃の台帳が第十三器の番号を呼ぶたび、青年は自ら選んだ『ノア』という名で答えた。女王の使者は彼を器へ戻す代わりに星核を抜き取り、黒い光とともに王都へ去った。空の主が地上へ降りる前に星核を取り戻さなければならない。それでもノアは、奪われた力に急かされて追うのではなく、自分の名で相手の選択を問い直す旅として同行を願った。" },
     worldscar_glacier_clear: { id: "worldscar_glacier_clear", name: "古竜の記憶", text: "氷竜の記憶には、最初の器を拒んだ星が大地を裂く姿が残っていた。世界傷は戦いの跡ではなく、空の主が地上を覗き込んだ爪痕だった。" }
   });
   data.registry.entityList("storyChapters", [{

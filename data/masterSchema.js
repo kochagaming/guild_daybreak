@@ -11,9 +11,9 @@
       "companionSkillGrants", "companionProgressions", "companionStoryArcs",
       "itemSkillGrants", "monsterDifficultySkillGrants", "monsterDifficultyDropOverrides",
       "adventurerFamilies", "monsterFamilies", "monsterMaterialDrops", "monsterSignatureDrops",
-      "dungeonStoryLinks", "dungeonPartyRestrictions", "equipmentAffinities", "upgradeSkillProgression", "skillGrants", "storySceneOverlays", "storySceneScripts"
+      "dungeonStoryLinks", "dungeonPartyRestrictions", "equipmentAffinities", "upgradeSkillProgression", "skillGrants", "storySceneOverlays", "storyRouteConversations", "storySceneScripts"
     ]),
-    relationLists: freezeNames(["storyTriggers", "chapterUnlockAdditions"]),
+    relationLists: freezeNames(["storyTriggers", "chapterUnlockAdditions", "storyMysteries"]),
     derived: freezeNames(["weaponTypes", "armorTypes", "itemCombatStats", "monsterCombatStats", "monsterDifficultyDrops"])
   });
   const validatorManifest = freezeNames(["references"]);
@@ -23,7 +23,7 @@
   // config: システム全体の上限や既定値
   // relations: ID同士を結ぶ付与・発火・制限条件
   // derived: 元の定義を変更せず、共通ルールで補完した参照用データ
-  data.masterMeta = Object.freeze({ schemaVersion: 44, tables: tableManifest, validators: validatorManifest });
+  data.masterMeta = Object.freeze({ schemaVersion: 48, tables: tableManifest, validators: validatorManifest });
   data.config = data.config || {};
   data.relations = data.relations || {};
   data.derived = data.derived || {};
@@ -45,9 +45,11 @@
     upgradeSkillProgression: data.relations.upgradeSkillProgression || {},
     skillGrants: data.relations.skillGrants || {},
     storySceneOverlays: data.relations.storySceneOverlays || {},
+    storyRouteConversations: data.relations.storyRouteConversations || {},
     storySceneScripts: data.relations.storySceneScripts || {},
     storyTriggers: data.relations.storyTriggers || [],
-    chapterUnlockAdditions: data.relations.chapterUnlockAdditions || []
+    chapterUnlockAdditions: data.relations.chapterUnlockAdditions || [],
+    storyMysteries: data.relations.storyMysteries || []
   });
 
   const entityTables = new Set(tableManifest.entities);

@@ -46,6 +46,22 @@
     }).join("")}</div></details>`;
   }
 
+  function storyMysteryEntry(context, mystery) {
+    const latest = mystery.latestEvidence;
+    const currentText = mystery.resolved ? mystery.resolution : (latest?.note || mystery.clue);
+    const margin = !mystery.resolved && latest?.margin ? `<p class="story-mystery-margin"><b>帳面の余白</b>${context.escape(latest.margin)}</p>` : "";
+    const evidence = mystery.discoveredEvidence?.length ? `<details class="story-mystery-evidence"><summary>集めた記録 <b>${mystery.evidenceCount}/${mystery.evidenceTotal}</b></summary><ol>${mystery.discoveredEvidence.map((entry, index) => `<li><button type="button" data-action="replay-story-scene" data-scene="${context.escape(entry.sceneId)}"><small>記録 ${index + 1}</small><span>${context.escape(entry.scene?.name || mystery.title)}</span></button><p>${context.escape(entry.note)}</p></li>`).join("")}</ol></details>` : "";
+    return `<article class="${mystery.resolved ? "resolved" : "active"}"><span aria-hidden="true">${mystery.resolved ? "✓" : mystery.evidenceCount}</span><div><small>${mystery.resolved ? "解明した記録" : `手掛かり ${mystery.evidenceCount}/${mystery.evidenceTotal}`}</small><strong>${context.escape(mystery.title)}</strong><p>${context.escape(currentText)}</p>${margin}${evidence}</div></article>`;
+  }
+
+  function storyMysteryBoard(context, includeResolved = false) {
+    const mysteries = window.Story.mysteries().filter(mystery => includeResolved || !mystery.resolved);
+    if (!mysteries.length) return "";
+    const active = mysteries.filter(mystery => !mystery.resolved).length;
+    const entries = mysteries.map(mystery => storyMysteryEntry(context, mystery)).join("");
+    return `<details class="story-mystery-board"><summary><span><small>THREADS</small><strong>${includeResolved ? "物語の手掛かり帳" : "いま追っている手掛かり"}</strong></span><span class="badge ${active ? "" : "good"}">${active ? `${active}件を追跡中` : `${mysteries.length}件解明`}</span></summary><div class="story-mystery-list">${entries}</div></details>`;
+  }
+
   function eventRows(context, events, options = {}) {
     const filtered = events.filter(event => options.includeOptional || event.dungeon?.requiredForStory !== false);
     return `<div class="story-timeline">${filtered.map(event => {
@@ -54,6 +70,42 @@
       const label = finalChapterScene ? "攻略・章完結" : event.label;
       return `<article class="story-event ${event.kind}"><span class="story-event-marker" aria-hidden="true"></span><div><span class="story-event-label">${context.escape(label)} · ${context.escape(dungeonName)}</span>${companionStoryFocus(context, event.scene, true)}<h4>${context.escape(event.scene.name)}</h4><p>${context.escape(event.scene.text)}</p><button type="button" class="story-replay-button" data-action="replay-story-scene" data-scene="${context.escape(event.scene.id)}">会話と情景をすべて読む</button></div></article>`;
     }).join("")}</div>`;
+  }
+
+  function chapterReplayButton(context, chapter, events, label = "この章を最初から通して読む") {
+    if (!chapter || !events.length) return "";
+    return `<button type="button" class="story-chapter-replay" data-action="replay-story-chapter" data-chapter="${context.escape(chapter.id)}"><span><small>CHAPTER READER</small><strong>${context.escape(label)}</strong></span><em>${events.length}場面</em><i aria-hidden="true">›</i></button>`;
+  }
+
+  function chapterRecap(context, events) {
+    if (!events.length) return "";
+    const candidates = [
+      { label: "はじまり", event: events[0] },
+      { label: "転機", event: events[Math.floor((events.length - 1) / 2)] },
+      { label: "結末", event: events.at(-1) }
+    ];
+    const seen = new Set();
+    const beats = candidates.filter(({ event }) => event?.scene && !seen.has(event.scene.id) && seen.add(event.scene.id));
+    return `<section class="story-chapter-recap" aria-label="章のあらすじ"><header><span><small>CHAPTER SUMMARY</small><strong>章の節目を振り返る</strong></span><em>${beats.length}つの記録</em></header><ol>${beats.map(({ label, event }) => `<li><button type="button" data-action="replay-story-scene" data-scene="${context.escape(event.scene.id)}"><span>${context.escape(label)}</span><div><strong>${context.escape(event.scene.name)}</strong><p>${context.escape(event.scene.text)}</p></div><i aria-hidden="true">›</i></button></li>`).join("")}</ol></section>`;
+  }
+
+  function completeTimeline(context, events) {
+    if (!events.length) return "";
+    return `<details class="story-complete-timeline"><summary><span><small>FULL TIMELINE</small><strong>全${events.length}場面の記録を開く</strong></span><i aria-hidden="true">＋</i></summary>${eventRows(context, events)}</details>`;
+  }
+
+  function storyReplayBookmarks(context) {
+    const entries = (window.StoryReaderBookmark?.list?.() || []).filter(entry => entry.episodeId.startsWith("archive:chapter:"));
+    const records = entries.map(entry => {
+      const chapterId = entry.episodeId.slice("archive:chapter:".length);
+      const chapter = window.GameData.storyChapters.find(candidate => candidate.id === chapterId);
+      if (!chapter) return null;
+      const events = window.Story.chapterTimeline(chapter.id).filter(event => window.Story.hasReadScene(event.scene.id));
+      const event = events[Math.min(entry.sceneIndex, Math.max(0, events.length - 1))];
+      return event ? { entry, chapter, event, total: events.length } : null;
+    }).filter(Boolean).slice(0, 3);
+    if (!records.length) return "";
+    return `<section class="story-replay-bookmarks"><header><span><small>BOOKMARKS</small><strong>読みかけの章回想</strong></span><em>${records.length}件</em></header><div>${records.map(record => `<button type="button" data-action="replay-story-chapter" data-chapter="${context.escape(record.chapter.id)}"><span aria-hidden="true">◆</span><span><small>${context.escape(record.chapter.title)} · 場面 ${record.entry.sceneIndex + 1}/${record.total}</small><strong>${context.escape(record.event.scene.name)}から再開</strong></span><i aria-hidden="true">›</i></button>`).join("")}</div></section>`;
   }
 
   function story(context) {
@@ -76,6 +128,7 @@
       <div class="story-current-heading"><div><span class="label">${mainStoryComplete ? "MAIN STORY COMPLETE" : "GUILD CHRONICLE · CURRENT"}</span><h3 id="current-story-title">${mainStoryComplete ? "本編完結 — 星なき夜の果て" : chapter ? context.escape(chapter.title) : "ギルドの物語"}</h3></div><span class="badge ${focus.dungeon || mainStoryComplete ? "good" : ""}">${mainStoryComplete ? "15章 完結" : progress}</span></div>
       ${storyMemoryBrief(context, guide)}
       ${currentScene}
+      ${storyMysteryBoard(context)}
       ${mainStoryComplete ? `<div class="story-completion-summary"><span aria-hidden="true">✦</span><div><strong>名もなき宿から始まった物語を見届けました</strong><p>全${mainChapterCount}章を達成。クリア後は「${context.escape(postgameRoutes.find(route => !storyState.facts.clears.includes(route.id))?.name || postgameRoutes[0]?.name || "星後の神域")}」など、星後の遠征へ挑めます。</p><small>クリア後探索 ${postgameCleared}/${postgameRoutes.length}攻略</small></div></div>` : ""}
       ${chapter && !storyState.completed.includes(chapter.id) ? `<div class="story-next-step"><span>次の目的</span><strong>${context.escape(objective || "ギルドで次の依頼を待つ")}</strong>${focus.dungeon ? `<small>${context.escape(focus.dungeon.description)}</small>` : chapter.id === "prologue" ? `<small>冒険者雇用：${state.characters.length ? "達成" : "未達成"} ／ 初出発：${storyState.facts.departed ? "達成" : "未達成"}</small>` : ""}</div>${routeProgress(context, chapter, focus)}` : ""}
       <div class="story-primary-action">${episode ? `<button class="button primary story-read-button" data-action="open-story-reader">物語を読む</button><small>タップして開き、最後まで読んでください</small>` : `<button class="button primary" ${nextPage === "characters" ? 'data-nav="characters"' : `data-action="party-view" data-view="${nextView}"`}>${nextPage === "characters" ? "仲間を募集する" : nextView === "formation" ? "パーティを編成する" : mainStoryComplete ? "クリア後の探索へ" : "探索・攻略へ"}</button>`}</div>
@@ -89,10 +142,10 @@
     const current = window.Story.current();
     const chapterHtml = chapters.map(chapter => {
       const events = window.Story.chapterTimeline(chapter.id);
-      return `<details class="story-chapter" data-detail="story-${chapter.id}"><summary><span><b>${context.escape(chapter.title)}</b><small>${events.length}件の物語記録</small></span><span class="badge good">達成済み</span></summary><div class="story-chapter-body">${eventRows(context, events)}<div class="story-objective"><strong>この章の依頼</strong><p>${context.escape(chapter.objective)}</p><strong>解放内容・章報酬（受取済み）</strong><p>${context.escape(window.Story.chapterUnlockText(chapter))}</p></div></div></details>`;
+      return `<details class="story-chapter" data-detail="story-${chapter.id}"><summary><span><b>${context.escape(chapter.title)}</b><small>${events.length}件の物語記録</small></span><span class="badge good">達成済み</span></summary><div class="story-chapter-body">${chapterRecap(context, events)}${chapterReplayButton(context, chapter, events)}${completeTimeline(context, events)}<div class="story-objective"><strong>この章の依頼</strong><p>${context.escape(chapter.objective)}</p><strong>解放内容・章報酬（受取済み）</strong><p>${context.escape(window.Story.chapterUnlockText(chapter))}</p></div></div></details>`;
     }).join("");
     const currentEvents = current ? window.Story.chapterTimeline(current.id).filter(event => event.dungeon?.requiredForStory !== false && window.Story.hasReadScene(event.scene.id)) : [];
-    const currentHtml = current && currentEvents.length ? `<section class="story-in-progress"><div class="section-heading story-side-heading"><div><span class="label">IN PROGRESS</span><h3>進行中の記録</h3></div><span class="badge">${context.escape(current.title)}</span></div>${eventRows(context, currentEvents)}</section>` : "";
+    const currentHtml = current && currentEvents.length ? `<section class="story-in-progress"><div class="section-heading story-side-heading"><div><span class="label">IN PROGRESS</span><h3>進行中の記録</h3></div><span class="badge">${context.escape(current.title)}</span></div>${chapterRecap(context, currentEvents)}${chapterReplayButton(context, current, currentEvents, "ここまでの物語を通して読む")}${currentEvents.length > 3 ? completeTimeline(context, currentEvents) : eventRows(context, currentEvents)}</section>` : "";
     const optional = Object.values(window.GameData.dungeons).filter(dungeon => !dungeon.requiredForStory && window.Story.canEnter(dungeon.id));
     const optionalHtml = optional.length ? `<div class="section-heading story-side-heading"><div><span class="label">SIDE STORY</span><h3>寄り道の記録</h3></div><span class="badge">${optional.length}件</span></div>${optional.map(dungeon => {
       const cleared = storyState.facts.clears.includes(dungeon.id), discovered = storyState.facts.discoveries.includes(dungeon.id), opening = window.Story.dungeonOpeningScene(dungeon), discovery = window.Story.dungeonDiscoveryScene(dungeon), ending = window.Story.dungeonEndingScene(dungeon);
@@ -104,7 +157,8 @@
     }).join("")}` : "";
     const guide = window.Story.storyGuide();
     const bookmark = guide.latest ? `<div class="story-archive-bookmark"><span aria-hidden="true">◆</span><div><small>最後に読んだ記録</small><strong>${context.escape(guide.latest.scene.name)}</strong><p>${context.escape(guide.latest.scene.text)}</p></div><button type="button" class="button ghost" data-action="replay-story-scene" data-scene="${context.escape(guide.latest.scene.id)}">ここから思い出す</button></div>` : "";
-    return `<section class="panel story-archive" aria-labelledby="story-archive-title"><div class="section-heading"><div><span class="label">STORY ARCHIVE</span><h3 id="story-archive-title">これまでのストーリー</h3></div><span class="badge">${completed.length}/${window.GameData.storyChapters.length}章</span></div><p class="small-note">時系列だけでなく、登場人物からも過去の会話と情景を読み返せます。</p>${bookmark}${characterArchive(context)}${chapterHtml || '<p class="empty-line">まだ達成済みの章はありません。現在の依頼を達成すると、ここに章の記録が追加されます。</p>'}${currentHtml}${optionalHtml}</section>`;
+    const indexButton = guide.readCount ? `<button type="button" class="story-index-open" data-action="open-story-index"><span aria-hidden="true">⌕</span><span><small>STORY INDEX</small><strong>言葉や人物から記録を探す</strong></span><i aria-hidden="true">›</i></button>` : "";
+    return `<section class="panel story-archive" aria-labelledby="story-archive-title"><div class="section-heading"><div><span class="label">STORY ARCHIVE</span><h3 id="story-archive-title">これまでのストーリー</h3></div><span class="badge">${completed.length}/${window.GameData.storyChapters.length}章</span></div><p class="small-note">時系列、登場人物、章をまたぐ手掛かりから、過去の会話と情景を読み返せます。</p>${indexButton}${storyReplayBookmarks(context)}${bookmark}${storyMysteryBoard(context, true)}${characterArchive(context)}${chapterHtml || '<p class="empty-line">まだ達成済みの章はありません。現在の依頼を達成すると、ここに章の記録が追加されます。</p>'}${currentHtml}${optionalHtml}</section>`;
   }
 
   function page(context) { return story(context) + archive(context); }

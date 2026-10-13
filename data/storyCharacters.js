@@ -37,7 +37,9 @@
     boatman_ren: { id: "boatman_ren", name: "レン", title: "渡し守", description: "星海へ続く水路で旅人を渡してきた船頭。" },
     astronomer_adel: { id: "astronomer_adel", name: "アデル", title: "王都の天文官", description: "北天の星墓と王都の記録を照らし合わせる天文官。" },
     refugee_marek: { id: "refugee_marek", name: "マレク", title: "旧王都の住民", description: "帰れない王都の街並みを今も鮮明に覚える住民。" },
-    bell_keeper_anna: { id: "bell_keeper_anna", name: "アンナ", title: "町の鐘楼守", description: "星なき夜にも時刻と帰還を告げ続ける鐘楼守。" }
+    bell_keeper_anna: { id: "bell_keeper_anna", name: "アンナ", title: "町の鐘楼守", description: "星なき夜にも時刻と帰還を告げ続ける鐘楼守。" },
+    queens_messenger_eva: { id: "queens_messenger_eva", name: "エーファ", title: "女王の使者", description: "王妹イルマから継がれた使命を何代にもわたり受け取ってきた、現在の使者。役目に消されかけた自分の名を取り戻し、王朝を終わらせる道を選び直す。" },
+    reach_guide_rine: { id: "reach_guide_rine", name: "リーネ", title: "灰潮の渡り手", description: "五つの星後領域を標石で渡る案内人。観測者へ拾われないよう、自分で選んだ名だけを名乗る。" }
   };
 
   data.registry.entities("storyCharacters", storyCharacters);

@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    blackwood_pilgrimage_opening: { id: "blackwood_pilgrimage_opening", name: "砂漠の先で待つ黒い森", text: "時砂女王の使者が残した道標は、昼でも夜のように暗い森へ続いていた。リナは黒い葉を拾い、『森は侵入者を拒んでいるのではありません。何かを外へ出さないよう、道を閉じています』と告げた。" },
+    blackwood_pilgrimage_opening: { id: "blackwood_pilgrimage_opening", name: "砂漠の先で待つ黒い森", text: "時砂女王の使者が残した道標は、昼でも夜のように暗い森へ続いていた。森辺では眠りから戻れない人々と、その夢を小瓶へ預かる一人の妖精が、夜花の力が増す朝を待っていた。" },
     blackwood_border_clear: { id: "blackwood_border_clear", name: "内側へ向いた番人", text: "境の番人が向けていた刃は旅人ではなく、森の奥だった。根に刻まれた巡礼印は、夜花の聖域へ助けを求める道を示す。" },
     whispering_roots_clear: { id: "whispering_roots_clear", name: "根が運んだ警告", text: "古樹の年輪には『花を眠らせよ』という警告が何百年も繰り返されていた。囁きは死者の声ではなく、世界根そのものの記憶だった。" },
     witch_lantern_marsh_clear: { id: "witch_lantern_marsh_clear", name: "燃える夢の道標", text: "魔女火は旅人を惑わせる灯ではなく、記憶を奪う夜花から夢を守る結界だった。最後の火は棘冠の聖堂を指している。" },
     thorn_cathedral_clear: { id: "thorn_cathedral_clear", name: "茨になった誓い", text: "棘聖女は夜花を封じるため、自らと騎士たちを森へ繋いでいた。封印は弱まり、聖域から黒い花粉が流れ始めている。" },
-    blackwood_pilgrimage_clear: { id: "blackwood_pilgrimage_clear", name: "夜明けを選んだ花", text: "託宣者が眠りにつくと、夜花は記憶を夢へ閉じ込めることをやめた。黒樹海に細い朝日が差し、女王の使者が残した次の道標が北の山脈を指す。" },
+    blackwood_pilgrimage_clear: { id: "blackwood_pilgrimage_clear", name: "夜明けを選んだ花", text: "夜花に預けられていた夢は、持ち主の名を呼ぶ歌に乗って一つずつ帰っていった。黒樹海に差した細い朝日の下で、夢守リゼもまた、他者の記憶だけではない自分の物語を選び始めた。" },
     devouring_tree_pit_clear: { id: "devouring_tree_pit_clear", name: "森が隠した飢え", text: "世界根を喰らうものの腹から、王朝時代の採掘具が見つかった。怪物は森から生まれたのではない。誰かが世界根の力を掘り出すため、深穴へ放ったものだった。" }
   });
   data.registry.entityList("storyChapters", [{

@@ -12,6 +12,16 @@ assert(chapter && chapter.number === 9 && chapter.recommendedLevelRange[1] === 7
 assert.deepStrictEqual(Array.from(required, entry => entry.id), ["starroad_gate", "broken_sky_garden", "blackwing_cloister", "fallen_star_foundry", "eclipsed_throne"]);
 assert.deepStrictEqual(Array.from(optional, entry => entry.id), ["void_star_prison"]);
 assert.deepStrictEqual(Array.from(routes, entry => entry.recommendedLevel), [68, 70, 72, 74, 76, 80]);
+const openingScript = data.relations.storySceneScripts.falling_sky_castle_opening?.blocks || [];
+const endingScript = data.relations.storySceneScripts.falling_sky_castle_clear?.blocks || [];
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "kai" && block.text.includes("前だけ見れば侵攻、風を見れば退避")), "Kai reframes the apparent invasion using knowledge earned in the previous chapter");
+assert(openingScript.some(block => block.kind === "dialogue" && block.speakerId === "elena" && block.text.includes("避難名簿")), "Elena separates civilians from the ruler before the mission is defined");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "tio" && block.text.includes("十三分ごと")), "Tio identifies the black moon through observable behavior");
+assert(endingScript.some(block => block.kind === "dialogue" && block.speakerId === "guild_leader" && block.text.includes("別々に確かめる")), "The ending carries uncertainty rather than a rescue assumption into Chapter 10");
+assert.strictEqual(openingScript[0].kind, "setting");
+assert.strictEqual(openingScript.at(-1).kind, "narration");
+assert.strictEqual(endingScript[0].kind, "setting");
+assert.strictEqual(endingScript.at(-1).kind, "narration");
 
 require("./helpers").createCharacter(game, "空城の攻略者", "warrior");
 require("./helpers").completeThrough(game, "thunder_snow_peaks");

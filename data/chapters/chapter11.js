@@ -67,12 +67,12 @@
   ]);
 
   data.registry.entities("storyScenes", {
-    primordial_forest_opening: { id: "primordial_forest_opening", name: "王朝より古い森", text: "黒月の短剣が示した東の樹海では、夜になると根の間を星明かりが流れていた。リナは苔むした碑文をなぞる。『ここにあるのは王朝の始まりではありません。王朝が力を借りた、もっと古い何かです』。" },
+    primordial_forest_opening: { id: "primordial_forest_opening", name: "王朝より古い森", text: "黒月の短剣が示した東の樹海では、夜になると根の間を星明かりが流れていた。苔むした碑文には王名も年号もなく、指で触れると文字ではなく、雨の匂いと遠い鳥の声が返ってくる。ここに残るのは王朝の始まりではなく、王朝が力を借りるより前から続いてきた森自身の記憶だった。" },
     primal_root_gate_clear: { id: "primal_root_gate_clear", name: "門が覚えていた名", text: "樹門は女王の使者の名を知っていた。彼女は黒月で捨てた記憶を取り戻すためではなく、始原樹の心臓を止めるため森へ入ったという。" },
     starseed_nursery_clear: { id: "starseed_nursery_clear", name: "空から蒔かれた種", text: "苗床の琥珀には、地上へ落ちる無数の星種が閉じ込められていた。王朝の魔法は星を掘り当てたのではなく、森が育てた力を持ち去ったものだった。" },
     memory_moss_woods_clear: { id: "memory_moss_woods_clear", name: "最初の取引", text: "記憶苔が映したのは、初代王が森へ自らの幼い記憶を差し出す姿だった。星力の代価として、王統は代々少しずつ過去を失ってきた。" },
     ancestor_altar_clear: { id: "ancestor_altar_clear", name: "始祖巫女の警告", text: "巫女イルマは王へ、星の力はいずれ空の主を呼び戻すと警告していた。追放王が閉じようとした星路は、最初から帰還の道として作られていたのだ。" },
-    primordial_forest_clear: { id: "primordial_forest_clear", name: "地下へ伸びる星の根", text: "心臓の脈動を鎮めると、使者が開いた根門が現れた。根は地中深くの青い光へ続いている。古い碑文はその場所を『星海』と呼んでいた。" },
+    primordial_forest_clear: { id: "primordial_forest_clear", name: "地下へ伸びる星の根", text: "心臓の脈動を鎮めると、使者が開いた根門が現れた。森を傷つけるための穴ではない。太い根は地中深くの青い光を抱き、上へ流れすぎた力を長い年月かけて地底へ返していた。古い碑文ではなく、根に残る記憶がその場所を『星海』と呼んでいる。" },
     star_eater_rootpit_clear: { id: "star_eater_rootpit_clear", name: "森が育てた捕食者", text: "原星喰らいは災厄ではなく、星力が空へ戻らぬよう森が生み出した番犬だった。その牙には、地下の星海から上がってきた黒い鱗が挟まっている。" }
   });
   data.registry.entityList("storyChapters", [{
