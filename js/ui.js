@@ -168,6 +168,7 @@
     const ring = value => chart.keys.map((key, index) => point(index, value)).join(" ");
     const polygon = values => chart.keys.map((key, index) => point(index, values[key])).join(" ");
     const axes = chart.keys.map((key, index) => { const [x, y] = point(index, 100).split(","); return `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}"/>`; }).join("");
+    if (options.decorative) return `<svg class="reveal-portrait-radar" viewBox="0 0 240 240" aria-hidden="true" focusable="false"><g class="attribute-grid"><polygon points="${ring(100)}"/><polygon points="${ring(75)}"/><polygon points="${ring(50)}"/><polygon points="${ring(25)}"/>${axes}</g><polygon class="attribute-shape-base" points="${polygon(chart.base)}"/></svg>`;
     const labels = chart.keys.map((key, index) => {
       const angle = -Math.PI / 2 + index * Math.PI / 4, labelRadius = 103;
       const x = center + Math.cos(angle) * labelRadius, y = center + Math.sin(angle) * labelRadius;

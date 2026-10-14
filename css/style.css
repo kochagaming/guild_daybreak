@@ -823,9 +823,12 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .reveal-card-seal { position: absolute; z-index: 5; inset: 0; display: grid; place-items: center; align-content: center; gap: .4rem; color: #f5d78e; font-size: 2.4rem; font-style: normal; background: radial-gradient(circle at 50% 43%,#856b38,#172028 64%); text-shadow: 0 0 22px #ffdf8c; pointer-events: none; transform-origin: center; animation: recruitment-card-seal .72s var(--reveal-delay) cubic-bezier(.4,0,.2,1) both; }
 .reveal-card-seal span { width: 64px; height: 64px; display: grid; place-items: center; border: 1px solid #e5c77e; border-radius: 50%; box-shadow: 0 0 0 5px rgba(229,199,126,.12),0 0 24px #c79f4e; }.reveal-card-seal small { font-size: .48rem; letter-spacing: .16em; }
 .reveal-number { align-self: stretch; color: #9f9b8d; font-size: .55rem; letter-spacing: .13em; text-align: left; }
-.reveal-portrait { position: relative; margin: .25rem 0 .45rem; padding: 4px; background: linear-gradient(#d8bd79,#66542f); border-radius: 7px; }
-.reveal-portrait::after { content: ""; position: absolute; inset: 4px; pointer-events: none; box-shadow: inset 0 0 18px rgba(14,20,24,.22); border-radius: 4px; }
-.reveal-applicant .character-avatar { --portrait-width: 68px; margin: 0; background-color: #f3efdf; border-radius: 4px; }
+.reveal-portrait { position: relative; width: min(116px,100%); height: 118px; display: grid; place-items: end center; margin: .25rem 0 .45rem; overflow: hidden; background: radial-gradient(circle at 50% 47%,#fffdf4,#e5dcc7 72%); border: 4px solid #aa8a49; border-radius: 7px; box-shadow: inset 0 0 18px rgba(14,20,24,.16); isolation: isolate; }
+.reveal-portrait::after { content: ""; position: absolute; z-index: 3; inset: 0; pointer-events: none; box-shadow: inset 0 0 18px rgba(14,20,24,.2); border-radius: 3px; }
+.reveal-portrait-radar { position: absolute; z-index: 0; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); opacity: .28; transform: scale(1.14); pointer-events: none; }
+.reveal-portrait-radar .attribute-grid { stroke: #8c7443; stroke-width: 1.6; }
+.reveal-portrait-radar .attribute-shape-base { fill: rgba(84,111,123,.16); stroke: #607a84; stroke-width: 3; }
+.reveal-applicant .character-avatar { --portrait-width: 68px; z-index: 2; margin: 0; background-color: transparent; border-radius: 4px; }
 .reveal-job { color: #e5c981; font-size: .8rem; margin-bottom: .35rem; }
 .reveal-applicant h4 { margin-bottom: .2rem; font-size: 1rem; overflow-wrap: anywhere; }
 .recruitment-reveal .reveal-applicant p { min-height: 2.5em; margin: .3rem 0; font-size: .72rem; line-height: 1.4; }
