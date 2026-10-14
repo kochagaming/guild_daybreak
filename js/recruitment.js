@@ -33,7 +33,7 @@
     const job = pricing.jobCosts[applicant.jobId] || 0;
     const race = pricing.raceCosts[applicant.raceId] || 0;
     const ability = Object.keys(pricing.abilityWeights).reduce((total, key) => {
-      const amount = Math.max(0, (applicant.base[key] || 0) - pricing.abilityBaselines[key]);
+      const amount = Math.max(0, (applicant.attributes[key] || 0) - pricing.abilityBaselines[key]);
       return total + amount * pricing.abilityWeights[key];
     }, 0);
     const raw = pricing.base + job + race + ability;
@@ -86,13 +86,14 @@
       const jobId = prefer(random, availableIds("jobs"), normalized.jobId);
       const talentId = prefer(random, Object.keys(window.GameData.recruitmentTalents), normalized.focus);
       const identity = randomName(random);
-      const base = { hp: 45 + Math.floor(random() * 13), attack: 8 + Math.floor(random() * 5), defense: 6 + Math.floor(random() * 5) };
-      Object.entries(window.GameData.recruitmentTalents[talentId].bonus).forEach(([key, value]) => { base[key] += value; });
+      const range = window.GameData.config.characterGrowth.attributes.recruitmentRange;
+      const attributes = Object.fromEntries(window.GameData.config.characterGrowth.attributes.order.map(key => [key, range[0] + Math.floor(random() * (range[1] - range[0] + 1))]));
+      Object.entries(window.GameData.recruitmentTalents[talentId].bonus).forEach(([key, value]) => { attributes[key] += value; });
       const candidate = {
         id: `applicant-${number}-${index + 1}`, name: identity.name, gender: identity.gender, nameCulture: identity.culture, jobId,
         raceId: prefer(random, availableIds("races"), normalized.raceId),
         birthId: prefer(random, availableIds("births"), normalized.birthId),
-        talentId, base
+        talentId, attributes
       };
       candidate.portraitId = window.Characters.portraitId(candidate, random);
       return candidate;
@@ -123,7 +124,7 @@
       id, name: cleanName, gender: applicant.gender, nameCulture: applicant.nameCulture,
       jobId: applicant.jobId, raceId: applicant.raceId, birthId: applicant.birthId,
       portraitId: applicant.portraitId, talentId: applicant.talentId,
-      recruitmentId: pending.id, level: 1, exp: 0, base: Object.assign({}, applicant.base),
+      recruitmentId: pending.id, level: 1, exp: 0, attributes: Object.assign({}, applicant.attributes),
       source: { type: "recruitment", recruitmentId: pending.id },
       actionRates: defaultActionRates(), equipment: [], career: null, expeditionRecord: window.Characters.emptyExpeditionRecord(), recordTitleId: null, createdAt: window.GameRuntime.now()
     });

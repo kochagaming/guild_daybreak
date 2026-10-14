@@ -8,8 +8,8 @@
       roundTo: 10,
       minimum: 100,
       foundingSubsidies: [250, 150, 50],
-      abilityBaselines: { hp: 45, attack: 8, defense: 6 },
-      abilityWeights: { hp: 3, attack: 20, defense: 16 },
+      abilityBaselines: { vitality: 8, strength: 8, fortitude: 8, intelligence: 8, spirit: 8, dexterity: 8, agility: 8, luck: 8 },
+      abilityWeights: { vitality: 12, strength: 12, fortitude: 12, intelligence: 12, spirit: 12, dexterity: 12, agility: 12, luck: 12 },
       jobCosts: {
         warrior: 100, thief: 80, mage: 120, cleric: 110,
         knight: 180, ranger: 160, berserker: 190, monk: 160,
@@ -61,9 +61,9 @@
   };
   data.registry.config("recruitment", recruitment);
   const recruitmentTalents = {
-    hardy: { id: "hardy", name: "頑健", description: "基礎HPに+3。応募時の能力値に反映済み。", bonus: { hp: 3 } },
-    striker: { id: "striker", name: "攻撃が得意", description: "基礎攻撃に+1。応募時の能力値に反映済み。", bonus: { attack: 1 } },
-    steady: { id: "steady", name: "守りが得意", description: "基礎防御に+1。応募時の能力値に反映済み。", bonus: { defense: 1 } }
+    hardy: { id: "hardy", name: "生命力が強い", description: "生命+2・頑健+1。応募時の基礎能力に反映済み。", bonus: { vitality: 2, fortitude: 1 } },
+    striker: { id: "striker", name: "力と技に優れる", description: "筋力+2・技巧+1。応募時の基礎能力に反映済み。", bonus: { strength: 2, dexterity: 1 } },
+    steady: { id: "steady", name: "守りが堅い", description: "頑健+2・生命+1。応募時の基礎能力に反映済み。", bonus: { fortitude: 2, vitality: 1 } }
   };
   data.registry.entities("recruitmentTalents", recruitmentTalents);
   const chapterUnlockAdditions = recruitment.fields.filter(field => field.unlockAfter).map(field => ({

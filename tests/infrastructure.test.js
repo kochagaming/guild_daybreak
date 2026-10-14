@@ -56,6 +56,7 @@ async function run() {
   game.GameState.data.expeditions[0] = null;
   require("./helpers").completeThrough(game, "seal");
   game.GameState.data.unlockedPartyCount = 2;
+  game.GameState.data.gold += 10000;
   assert((await game.GameClient.execute("recruitment.post")).ok);
   const ally = (await game.GameClient.execute("recruitment.hire", { applicantId: game.Recruitment.state().pending.candidates[0].id, name: "もう一つの隊" })).id;
   game.Characters.get(created.id).level = 99;

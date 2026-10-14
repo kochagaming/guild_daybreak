@@ -327,7 +327,10 @@
         const treasureMasteryApplied = Boolean(challenge && masteredTreasureTiers.has(chest.id));
         const treasurePersonalPracticeApplied = Boolean(challenge && guide?.practiced);
         const masteryBonus = treasureMasteryApplied ? definitions.treasureMastery?.successChanceBonus || 0 : 0;
-        const openChance = challenge ? Math.min(challenge.maximumChance, challenge.baseChance + (guide?.bonus || 0) + masteryBonus) : 1;
+        const luckRule = window.GameData.config.characterGrowth?.attributes?.luck || {};
+        const guideLuckScore = Number(guide?.member?.stats?.luckScore) || 50;
+        const luckBonus = Math.max(0, guideLuckScore - 50) * (Number(luckRule.treasureChancePerPoint) || .002);
+        const openChance = challenge ? Math.min(challenge.maximumChance, challenge.baseChance + (guide?.bonus || 0) + masteryBonus + luckBonus) : 1;
         const opened = random() < openChance;
         const chestMeta = {
           treasureTierId: chest.id, treasureTierRank: chest.rank, treasureOpened: opened, treasureMasteryApplied, treasurePersonalPracticeApplied,

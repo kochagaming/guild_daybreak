@@ -46,7 +46,7 @@ Object.values(game.GameData.monsters).forEach(monster => {
   });
 });
 
-game.GameState.data.characters.push({ id: "hero", name: "試験者", level: 1, exp: 0, raceId: "human", jobId: "warrior", birthId: "common", portraitId: "legacy_01", equipment: [], career: null, actionRates: { attack: 100, technique: 0, spell: 0, healing: 0 }, base: { hp: 9999, attack: 999, defense: 99 } });
+game.GameState.data.characters.push({ id: "hero", name: "試験者", level: 1, exp: 0, raceId: "human", jobId: "warrior", birthId: "common", portraitId: "legacy_01", equipment: [], career: null, actionRates: { attack: 100, technique: 0, spell: 0, healing: 0 }, attributes: { vitality: 999, strength: 999, fortitude: 999, intelligence: 999, spirit: 999, dexterity: 999, agility: 999, luck: 999 }, source: { type: "recruitment" } });
 game.GameState.data.parties[0] = ["hero"];
 const started = game.Dungeon.start("meadow", 0, 2, "abyss");
 assert(started.ok);

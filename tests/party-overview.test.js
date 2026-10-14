@@ -48,8 +48,8 @@ async function run() {
   const a = require("./helpers").createCharacter(game, "鉱石収集隊").id;
   const b = require("./helpers").createCharacter(game, "洞窟攻略隊", "mage").id;
   game.Characters.get(a).level = 30; game.Characters.get(b).level = 30;
-  game.Characters.get(a).base = { hp: 9999, attack: 999, defense: 999 };
-  game.Characters.get(b).base = { hp: 9999, attack: 999, defense: 999 };
+  Object.keys(game.Characters.get(a).attributes).forEach(key => { game.Characters.get(a).attributes[key] = 999; });
+  Object.keys(game.Characters.get(b).attributes).forEach(key => { game.Characters.get(b).attributes[key] = 999; });
   require("./helpers").completeThrough(game, "seal");
   game.GameState.data.unlockedPartyCount = 2;
   game.Party.toggle(a, 0); game.Party.toggle(b, 1);

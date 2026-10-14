@@ -19,5 +19,23 @@
     spellblade: { id: "spellblade", name: "魔法剣士", icon: "⚔", unlockAfter: "starfall", hpMultiplier: 1.02, attackMultiplier: 1.12, defenseMultiplier: .98, weightMultiplier: 1.05, speed: 12, criticalRate: .1, magicAttackMultiplier: 1.18, magicDefenseMultiplier: 1.08, magicHealingMultiplier: .72, hitRate: .99, evasionRate: .07, description: "物理と魔法の両方を装備で伸ばせる万能攻撃役。" },
     summoner: { id: "summoner", name: "召喚士", icon: "◇", unlockAfter: "starfall", hpMultiplier: .84, attackMultiplier: .8, defenseMultiplier: .8, weightMultiplier: .78, speed: 10, criticalRate: .06, magicAttackMultiplier: 1.3, magicDefenseMultiplier: 1.14, magicHealingMultiplier: 1.08, healingPower: 1.04, hitRate: .96, evasionRate: .05, description: "召喚獣の連撃と精霊の回復を使い分ける。" }
   };
+  const attributeModifiers = {
+    warrior: { vitality: 2, strength: 1, fortitude: 3, intelligence: -2, spirit: -1, agility: -1 },
+    thief: { vitality: -1, fortitude: -1, intelligence: -1, spirit: -1, dexterity: 2, agility: 3, luck: 2 },
+    mage: { vitality: -2, strength: -2, fortitude: -2, intelligence: 4, spirit: 2, dexterity: 1, agility: 1 },
+    cleric: { strength: -1, intelligence: 1, spirit: 4 },
+    knight: { vitality: 3, strength: 1, fortitude: 4, intelligence: -2, spirit: 1, dexterity: -1, agility: -2, luck: -1 },
+    ranger: { strength: 1, fortitude: -1, dexterity: 3, agility: 2, luck: 1 },
+    berserker: { vitality: 3, strength: 4, fortitude: -1, intelligence: -3, spirit: -2, dexterity: -1, luck: 1 },
+    monk: { vitality: 1, strength: 2, fortitude: 1, intelligence: -1, spirit: 1, dexterity: 1, agility: 3 },
+    samurai: { vitality: 1, strength: 4, intelligence: -2, dexterity: 3, agility: 1, luck: 2 },
+    ninja: { vitality: -2, strength: 2, fortitude: -2, dexterity: 3, agility: 4, luck: 2 },
+    bard: { strength: -1, fortitude: -1, intelligence: 1, spirit: 2, dexterity: 2, agility: 2, luck: 1 },
+    druid: { vitality: 1, strength: -1, intelligence: 2, spirit: 3, agility: 1 },
+    hexer: { vitality: -2, strength: -2, fortitude: -2, intelligence: 4, spirit: 3, dexterity: 1, agility: 1 },
+    spellblade: { strength: 2, intelligence: 3, spirit: 1, dexterity: 1, agility: 1 },
+    summoner: { vitality: -2, strength: -2, fortitude: -1, intelligence: 4, spirit: 2, dexterity: 1, luck: 1 }
+  };
+  Object.entries(jobs).forEach(([id, job]) => { job.attributeModifiers = Object.freeze(Object.assign({}, attributeModifiers[id])); });
   window.GameData.registry.entities("jobs", jobs);
 })();

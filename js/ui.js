@@ -151,7 +151,35 @@
   }
 
   function characterStatChips(stats, maxWeight) {
-    return `<div class="bonus-chips character-stat-chips" data-character-stats>${characterStatEntries(stats, maxWeight).map(entry => `<span data-stat="${entry.key}">${entry.label} <strong>${entry.value}</strong></span>`).join("")}</div>`;
+    const radar = stats?._attributeCharacter ? attributeRadar(stats._attributeCharacter) : "";
+    return `${radar}<div class="bonus-chips character-stat-chips" data-character-stats>${characterStatEntries(stats, maxWeight).map(entry => `<span data-stat="${entry.key}">${entry.label} <strong>${entry.value}</strong></span>`).join("")}</div>`;
+  }
+
+  function attributeRadar(character, options = {}) {
+    const config = window.GameData.config.characterGrowth.attributes;
+    const chart = window.Characters.attributeChart(character, options.equipment);
+    const breakdown = window.Characters.attributeBreakdown(character, options.equipment);
+    const center = 120, radius = 78;
+    const point = (index, value) => {
+      const angle = -Math.PI / 2 + index * Math.PI / 4;
+      const scale = Math.max(0, Math.min(100, Number(value) || 0)) / 100;
+      return `${(center + Math.cos(angle) * radius * scale).toFixed(1)},${(center + Math.sin(angle) * radius * scale).toFixed(1)}`;
+    };
+    const ring = value => chart.keys.map((key, index) => point(index, value)).join(" ");
+    const polygon = values => chart.keys.map((key, index) => point(index, values[key])).join(" ");
+    const axes = chart.keys.map((key, index) => { const [x, y] = point(index, 100).split(","); return `<line x1="${center}" y1="${center}" x2="${x}" y2="${y}"/>`; }).join("");
+    const labels = chart.keys.map((key, index) => {
+      const angle = -Math.PI / 2 + index * Math.PI / 4, labelRadius = 103;
+      const x = center + Math.cos(angle) * labelRadius, y = center + Math.sin(angle) * labelRadius;
+      return `<text x="${x.toFixed(1)}" y="${(y + 4).toFixed(1)}" text-anchor="${Math.cos(angle) > .3 ? "start" : Math.cos(angle) < -.3 ? "end" : "middle"}">${escape(config.definitions[key].shortName)}</text>`;
+    }).join("");
+    const hasGearBonus = chart.keys.some(key => breakdown.equipment[key]);
+    const aria = chart.keys.map(key => `${config.definitions[key].name}${breakdown.total[key]}`).join("、");
+    const entries = chart.keys.map(key => {
+      const definition = config.definitions[key], gear = breakdown.equipment[key];
+      return `<details class="attribute-entry"><summary><span>${escape(definition.name)}</span><strong>${breakdown.total[key]}</strong>${gear ? `<small>${breakdown.base[key]}+${gear}</small>` : ""}</summary><p>${escape(definition.description)}</p></details>`;
+    }).join("");
+    return `<section class="attribute-radar-card ${options.compact ? "is-compact" : ""}"><div class="attribute-radar-heading"><div><span class="label">PRIMARY ATTRIBUTES</span><strong>基礎能力</strong></div><small>${hasGearBonus ? "淡色：素質・出自・成長　金色：装備込み" : "素質・出自・成長を反映"}</small></div><div class="attribute-radar-layout"><svg class="attribute-radar" viewBox="0 0 240 240" role="img" aria-label="${escape(aria)}"><g class="attribute-grid"><polygon points="${ring(100)}"/><polygon points="${ring(75)}"/><polygon points="${ring(50)}"/><polygon points="${ring(25)}"/>${axes}</g><polygon class="attribute-shape-base" points="${polygon(chart.base)}"/>${hasGearBonus ? `<polygon class="attribute-shape-total" points="${polygon(chart.total)}"/>` : ""}<g class="attribute-labels">${labels}</g></svg><div class="attribute-values">${entries}</div></div></section>`;
   }
 
   function skillDisclosure(skill, options = {}) {
@@ -389,7 +417,7 @@
   }
 
   function characterViewContext() {
-    return { applicantCard, characterStatChips, characterStatEntries, characterView, empty, equipmentSkillBadges, escape, portraitImage, recruitmentRequirementPreview, recruitmentSummary, skillDisclosure, statBar };
+    return { applicantCard, attributeRadar, characterStatChips, characterStatEntries, characterView, empty, equipmentSkillBadges, escape, portraitImage, recruitmentRequirementPreview, recruitmentSummary, skillDisclosure, statBar };
   }
 
   function openClassChangeModal(characterId) {
@@ -413,7 +441,7 @@
   }
 
   function recruitmentViewContext() {
-    return { characterStatChips, characterStatEntries, escape, navigate, originBonuses, portraitImage, skillDisclosure, toast };
+    return { attributeRadar, characterStatChips, characterStatEntries, escape, navigate, originBonuses, portraitImage, skillDisclosure, toast };
   }
 
   function charactersPage() {
@@ -873,7 +901,9 @@
     const stats = item?.id && window.GameData.items[item.id] === item && ["weapon", "armor"].includes(item.type)
       ? window.Items.standardEffects(item.id)
       : item;
+    const attributeNames = window.GameData.config.characterGrowth.attributes.definitions;
     return [
+      ...Object.entries(item?.attributeBonuses || {}).map(([key, value]) => [attributeNames[key]?.name || key, value, shopStatValue(value)]),
       ["HP", stats.hp, shopStatValue(stats.hp)],
       ["物攻", stats.attack, shopStatValue(stats.attack)],
       ["物防", stats.defense, shopStatValue(stats.defense)],

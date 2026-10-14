@@ -198,7 +198,49 @@
   function companionDefinition(character) {
     return character?.source?.type === "companion" ? window.Companions?.definition(character.source.companionId) || null : null;
   }
-  function baseStats(character) { return companionDefinition(character)?.baseStats || character.base; }
+  function attributeConfig() { return window.GameData.config.characterGrowth?.attributes || {}; }
+  function attributeKeys() { return attributeConfig().order || ["vitality", "strength", "fortitude", "intelligence", "spirit", "dexterity", "agility", "luck"]; }
+  function baseAttributes(character) { return companionDefinition(character)?.attributes || character.attributes; }
+  function attributeEquipmentBonuses(equipment) {
+    const bonuses = Object.fromEntries(attributeKeys().map(key => [key, 0]));
+    (equipment || []).map(entry => typeof entry === "string" ? window.Items.getInstance(entry) : entry).filter(Boolean).forEach(instance => {
+      const template = window.Items.template(instance.templateId);
+      Object.entries(template?.attributeBonuses || {}).forEach(([key, value]) => { if (key in bonuses) bonuses[key] += Number(value) || 0; });
+    });
+    return bonuses;
+  }
+  function attributeBreakdown(character, equipmentOverride) {
+    const config = attributeConfig(), keys = attributeKeys(), seed = baseAttributes(character) || {};
+    const job = window.GameData.jobs[character.jobId] || window.GameData.jobs.warrior;
+    const sources = identityLayers(character), growth = Math.max(0, (Number(character.level) || 1) - 1);
+    const equipment = equipmentOverride == null ? character.equipment : equipmentOverride;
+    const gear = attributeEquipmentBonuses(equipment);
+    const intrinsic = {}, total = {};
+    keys.forEach(key => {
+      const origin = sources.reduce((sum, source) => sum + (Number(source.data.attributeModifiers?.[key]) || 0), 0);
+      const jobGrowth = 1 + (Number(job.attributeModifiers?.[key]) || 0) * (Number(config.jobGrowthModifierPerPoint) || 0);
+      intrinsic[key] = Math.max(1, Math.round(((Number(seed[key]) || Number(config.expectedInitial) || 10) + origin + growth * (Number(config.growthPerLevel) || 0) * jobGrowth) * 10) / 10);
+      total[key] = Math.max(1, Math.round((intrinsic[key] + gear[key]) * 10) / 10);
+    });
+    return { base: intrinsic, equipment: gear, total };
+  }
+  function attributes(character, equipmentOverride) { return attributeBreakdown(character, equipmentOverride).total; }
+  function expectedAttribute(level) {
+    const config = attributeConfig();
+    return (Number(config.expectedInitial) || 10) + Math.max(0, (Number(level) || 1) - 1) * (Number(config.growthPerLevel) || 0);
+  }
+  function attributeChart(character, equipmentOverride) {
+    const config = attributeConfig(), breakdown = attributeBreakdown(character, equipmentOverride), expected = expectedAttribute(character.level);
+    const scale = value => Math.min(Number(config.chartMaximum) || 100, Math.max(0, Math.round(value / expected * (Number(config.chartStandard) || 50))));
+    return { keys: attributeKeys(), base: Object.fromEntries(attributeKeys().map(key => [key, scale(breakdown.base[key])])), total: Object.fromEntries(attributeKeys().map(key => [key, scale(breakdown.total[key])])) };
+  }
+  function luckAcquisitionMultiplier(characters) {
+    const members = (characters || []).filter(Boolean);
+    if (!members.length) return 1;
+    const luck = members.reduce((sum, character) => sum + attributeChart(character).total.luck, 0) / members.length;
+    const rule = attributeConfig().luck || {};
+    return Math.min(Number(rule.acquisitionMaximum) || 1.1, 1 + Math.max(0, luck - (Number(attributeConfig().chartStandard) || 50)) * (Number(rule.acquisitionPerChartPoint) || .002));
+  }
 
   const actionRateKeys = ["attack", "technique", "spell", "healing"];
   const defaultActionRates = () => Object.assign({}, window.GameData.config.combatRules.defaultActionRates);
@@ -272,12 +314,7 @@
     const result = { hpMultiplier: 1, attackMultiplier: 1, defenseMultiplier: 1, weightMultiplier: 1, magicAttackMultiplier: 1, magicDefenseMultiplier: 1, magicHealingMultiplier: 1, hitBonus: 0, evasionBonus: 0, skillPower: 1, healingPower: 1, speedBonus: 0, criticalBonus: 0, weaponAffinity: {}, armorAffinity: {}, elementModifiers: {}, statusResistances: {} };
     identityLayers(character).forEach((source) => {
       const layer = source.data;
-      ["hpMultiplier", "attackMultiplier", "defenseMultiplier", "weightMultiplier", "skillPower", "healingPower"].forEach((key) => { result[key] *= layer[key] == null ? 1 : layer[key]; });
-      result.speedBonus += layer.speedBonus || 0;
-      result.criticalBonus += layer.criticalBonus || 0;
-      ["magicAttackMultiplier", "magicDefenseMultiplier", "magicHealingMultiplier"].forEach(key => { result[key] *= layer[key] == null ? 1 : layer[key]; });
-      result.hitBonus += layer.hitBonus || 0;
-      result.evasionBonus += layer.evasionBonus || 0;
+      ["skillPower", "healingPower"].forEach((key) => { result[key] *= layer[key] == null ? 1 : layer[key]; });
       Object.entries(layer.elementModifiers || {}).forEach(([id, multiplier]) => { result.elementModifiers[id] = (result.elementModifiers[id] || 1) * multiplier; });
       Object.entries(layer.statusResistances || {}).forEach(([id, resistance]) => { result.statusResistances[id] = 1 - (1 - (result.statusResistances[id] || 0)) * (1 - resistance); });
       Object.entries(window.GameData.relations.equipmentAffinities[source.type][source.id] || {}).forEach(([type, multiplier]) => {
@@ -339,7 +376,9 @@
   function baseMaxWeight(level) { return equipmentCapacityAtLevel(level) * equipmentWeightUnitAtLevel(level); }
 
   function maxWeight(character) {
-    return Math.round(baseMaxWeight(character.level) * profile(character).weightMultiplier * 10) / 10;
+    const value = attributes(character), expected = expectedAttribute(character.level);
+    const factor = .7 + .18 * value.strength / expected + .12 * value.fortitude / expected;
+    return Math.round(baseMaxWeight(character.level) * Math.max(.45, factor) * 10) / 10;
   }
 
   function equipmentWeight(character) {
@@ -351,9 +390,16 @@
 
   function stats(character, equipmentOverride) {
     const job = window.GameData.jobs[character.jobId] || window.GameData.jobs.warrior;
-    const base = baseStats(character);
     const buffs = profile(character);
     const equipped = (equipmentOverride || character.equipment).map(entry => typeof entry === "string" ? window.Items.getInstance(entry) : entry).filter(Boolean);
+    const ability = attributes(character, equipped), expected = expectedAttribute(character.level), config = attributeConfig();
+    const ratio = key => ability[key] / expected;
+    const derivedValue = key => {
+      const definition = config.derived?.[key];
+      if (!definition) return 0;
+      const roleFactor = (Number(definition.floor) || 0) + Object.entries(definition.weights || {}).reduce((sum, [attribute, weight]) => sum + ratio(attribute) * Number(weight), 0);
+      return Math.max(1, Math.round(((Number(definition.base) || 0) + Math.max(0, character.level - 1) * (Number(definition.perLevel) || 0)) * roleFactor));
+    };
     const bonuses = equipped.reduce((total, instance) => {
       const effect = equipmentEffects(character, instance);
       total.hp += effect.hp;
@@ -368,31 +414,32 @@
       total.attackCount += effect.attackCount;
       return total;
     }, { hp: 0, attack: 0, defense: 0, magicAttack: 0, magicDefense: 0, magicHealing: 0, hitRate: 0, evasionRate: 0, speed: 0, attackCount: 0 });
-    const growth = character.level - 1;
     const gearSkills = window.EquipmentSkills.aggregate(equipped);
-    const speedParts = {
-      jobId: character.jobId,
-      job: job.speed,
-      level: Math.floor(growth / 3),
-      profile: buffs.speedBonus,
-      equipment: bonuses.speed,
-      equipmentSkills: gearSkills.bonuses.speed,
-      explicitBonus: bonuses.attackCount + gearSkills.bonuses.attackCount
+    const rates = config.rates || {};
+    const normalized = key => ratio(key) * (Number(config.expectedInitial) || 10);
+    const attributePower = key => {
+      const rule = config.powerMultipliers?.[key];
+      if (!rule) return 1;
+      const attributeRatio = ratio(rule.attribute);
+      const value = 1 + (attributeRatio - 1) * (Number(rule.coefficient) || 0);
+      return Math.min(Number(rule.maximum) || 1.5, Math.max(Number(rule.minimum) || .8, value));
     };
-    const speed = Math.max(1, speedParts.job + speedParts.level + speedParts.profile + speedParts.equipment + speedParts.equipmentSkills);
+    const speed = Math.max(1, Math.round((Number(rates.speedBase) || 2) + normalized("agility") * (Number(rates.speedAgility) || .8) + bonuses.speed + gearSkills.bonuses.speed));
     const raw = {
-      hp: Math.round((base.hp + growth * 9) * buffs.hpMultiplier) + bonuses.hp,
-      attack: Math.round((base.attack + growth * 3) * buffs.attackMultiplier) + bonuses.attack,
-      defense: Math.round((base.defense + growth * 2) * buffs.defenseMultiplier) + bonuses.defense,
-      magicAttack: Math.round(((base.magicAttack ?? base.attack) + growth * 3) * buffs.magicAttackMultiplier) + bonuses.magicAttack,
-      magicDefense: Math.round(((base.magicDefense ?? base.defense) + growth * 2) * buffs.magicDefenseMultiplier) + bonuses.magicDefense,
-      magicHealing: Math.round(((base.magicHealing ?? base.attack) + growth * 3) * buffs.magicHealingMultiplier) + bonuses.magicHealing,
-      hitRate: Math.min(1.2, Math.max(.1, (job.hitRate ?? .96) + buffs.hitBonus + bonuses.hitRate + gearSkills.bonuses.hitRate)),
-      evasionRate: Math.min(.6, Math.max(0, (job.evasionRate ?? .03) + buffs.evasionBonus + bonuses.evasionRate + gearSkills.bonuses.evasionRate)),
+      hp: derivedValue("hp") + bonuses.hp,
+      attack: derivedValue("attack") + bonuses.attack,
+      defense: derivedValue("defense") + bonuses.defense,
+      magicAttack: derivedValue("magicAttack") + bonuses.magicAttack,
+      magicDefense: derivedValue("magicDefense") + bonuses.magicDefense,
+      magicHealing: derivedValue("magicHealing") + bonuses.magicHealing,
+      hitRate: Math.min(Number(rates.hitMaximum) || 1.2, Math.max(Number(rates.hitMinimum) || .1, (Number(rates.hitBase) || .75) + normalized("dexterity") * (Number(rates.hitDexterity) || .015) + normalized("agility") * (Number(rates.hitAgility) || .005) + bonuses.hitRate + gearSkills.bonuses.hitRate)),
+      evasionRate: Math.min(Number(rates.evasionMaximum) || .6, Math.max(0, (Number(rates.evasionBase) || 0) + Math.max(0, normalized("agility") - (Number(rates.evasionOffset) || 5)) * (Number(rates.evasionAgility) || .012) + (normalized("dexterity") - (Number(config.expectedInitial) || 10)) * (Number(rates.evasionDexterity) || .003) + bonuses.evasionRate + gearSkills.bonuses.evasionRate)),
       speed,
-      attackCount: attackCountFor(speedParts),
-      criticalRate: Math.min(0.8, Math.max(0, job.criticalRate + buffs.criticalBonus + gearSkills.bonuses.criticalRate))
+      attackCount: attackCountForSpeed(speed, character.jobId, bonuses.attackCount + gearSkills.bonuses.attackCount),
+      criticalRate: Math.min(Number(rates.criticalMaximum) || .8, Math.max(0, (Number(rates.criticalBase) || .02) + normalized("luck") * (Number(rates.criticalLuck) || .005) + normalized("dexterity") * (Number(rates.criticalDexterity) || .003) + gearSkills.bonuses.criticalRate))
     };
+    raw.luck = ability.luck;
+    raw.luckScore = attributeChart(character, equipped).total.luck;
     const scaled = {};
     Object.keys(gearSkills.multipliers).forEach(key => { scaled[key] = raw[key] * gearSkills.multipliers[key]; });
     const converted = {};
@@ -402,10 +449,10 @@
     Object.keys(gearSkills.multipliers).forEach(key => {
       raw[key] = Math.max(1, Math.round(scaled[key] + (converted[key] || 0) * gearSkills.multipliers[key]));
     });
-    raw.physicalPower = gearSkills.physicalPower;
-    raw.magicPower = gearSkills.magicPower;
+    raw.physicalPower = attributePower("physicalPower") * gearSkills.physicalPower;
+    raw.magicPower = attributePower("magicPower") * gearSkills.magicPower;
     raw.skillPower = buffs.skillPower;
-    raw.healingPower = equipped.reduce((power, instance) => (window.Items.template(instance.templateId).specialEffects || []).filter(effect => effect.kind === "healing_boost").reduce((value, effect) => value * effect.multiplier, power), buffs.healingPower * gearSkills.healingPower);
+    raw.healingPower = equipped.reduce((power, instance) => (window.Items.template(instance.templateId).specialEffects || []).filter(effect => effect.kind === "healing_boost").reduce((value, effect) => value * effect.multiplier, power), attributePower("healingPower") * buffs.healingPower * gearSkills.healingPower);
     raw.elementModifiers = Object.assign({}, buffs.elementModifiers);
     raw.statusResistances = Object.assign({}, buffs.statusResistances);
     Object.entries(gearSkills.statusResistances).forEach(([id, resistance]) => {
@@ -513,5 +560,5 @@
     return { ok: true, message: "キャラクター画像を変更しました。" };
   }
 
-  window.Characters = { get, stats, statBreakdown, addExperience, emptyExpeditionRecord, expeditionRecord, bossRivalries, activeBossRivalries, recordBossEncounter, expeditionMilestones, routeExperience, routeSpecialties, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, bondMemories, recordBondMemory, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseStats, companionDefinition, attackCountFor, attackCountForSpeed };
+  window.Characters = { get, stats, statBreakdown, attributes, attributeBreakdown, attributeChart, expectedAttribute, attributeKeys, luckAcquisitionMultiplier, addExperience, emptyExpeditionRecord, expeditionRecord, bossRivalries, activeBossRivalries, recordBossEncounter, expeditionMilestones, routeExperience, routeSpecialties, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, recordBondMemory, bondMemories, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseAttributes, companionDefinition, attackCountFor, attackCountForSpeed };
 })();

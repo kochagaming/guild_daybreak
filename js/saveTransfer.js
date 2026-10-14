@@ -98,7 +98,8 @@
   }
   function validate(state) {
     const data = window.GameData;
-    check(object(state) && state.version === 11, "対応するセーブ形式はバージョン11です。");
+    check(object(state) && state.version === 12, "対応するセーブ形式はバージョン12です。");
+    const attributeIds = data.config.characterGrowth?.attributes?.order || ["vitality", "strength", "fortitude", "intelligence", "spirit", "dexterity", "agility", "luck"];
     window.GameState.ensureStory(state);
     window.GameState.ensureCharacterSources(state);
     window.GameState.ensureFacilities(state);
@@ -279,11 +280,11 @@
       if (character.source.type === "companion") {
         const companion = data.companionProfiles?.[character.source.companionId];
         check(companion && !companionCharacters.has(companion.id) && story.joinedCompanionIds.includes(companion.id), "物語加入者の参照または重複が不正です。");
-        check(!Object.prototype.hasOwnProperty.call(character, "base"), "物語加入者にマスター能力が重複保存されています。");
+        check(!Object.prototype.hasOwnProperty.call(character, "attributes"), "物語加入者にマスター能力が重複保存されています。");
         companionCharacters.add(companion.id);
       } else {
-        check(object(character.base) && ["hp", "attack", "defense"].every(key => integer(character.base[key])) && character.base.hp > 0, "冒険者の基礎能力が不正です。");
-        ["magicAttack", "magicDefense", "magicHealing"].forEach(key => check(character.base[key] == null || integer(character.base[key])));
+        check(object(character.attributes) && attributeIds.every(key => integer(character.attributes[key]) && character.attributes[key] > 0) && Object.keys(character.attributes).every(key => attributeIds.includes(key)), "冒険者の基礎能力が不正です。");
+        check(!Object.prototype.hasOwnProperty.call(character, "base"), "旧式の基礎能力が残っています。");
         check(character.source.recruitmentId == null || character.source.recruitmentId === character.recruitmentId, "募集記録の参照が不正です。");
       }
       check(Array.isArray(character.equipment));
@@ -358,8 +359,8 @@
         check(["male", "female"].includes(candidate.gender) && Object.prototype.hasOwnProperty.call(data.config.recruitment.names[candidate.gender], candidate.nameCulture), "応募者の名前情報が不正です。");
         check(data.config.recruitment.names[candidate.gender][candidate.nameCulture].includes(candidate.name), "応募者名が名前候補と一致しません。");
         check(optionUnlocked(data.jobs, candidate.jobId) && optionUnlocked(data.races, candidate.raceId) && optionUnlocked(data.births, candidate.birthId) && known(data.portraits, candidate.portraitId) && talentIds.includes(candidate.talentId));
-        check(object(candidate.base) && integer(candidate.base.hp) && candidate.base.hp >= 45 && candidate.base.hp <= 60 && integer(candidate.base.attack) && candidate.base.attack >= 8 && candidate.base.attack <= 13 && integer(candidate.base.defense) && candidate.base.defense >= 6 && candidate.base.defense <= 11);
-        ["magicAttack", "magicDefense", "magicHealing"].forEach(key => check(candidate.base[key] == null || integer(candidate.base[key])));
+        check(object(candidate.attributes) && attributeIds.every(key => integer(candidate.attributes[key]) && candidate.attributes[key] >= 8 && candidate.attributes[key] <= 15) && Object.keys(candidate.attributes).every(key => attributeIds.includes(key)));
+        check(!Object.prototype.hasOwnProperty.call(candidate, "base"), "応募者に旧式の基礎能力が残っています。");
       });
       check(pending.requirements.jobId === "any" || pending.candidates.some(candidate => candidate.jobId === pending.requirements.jobId), "希望職業の応募者が不足しています。");
     }
@@ -532,7 +533,7 @@
           ["hitRate", "evasionRate"].forEach(key => check(number(member.stats[key]) && member.stats[key] <= (key === "hitRate" ? 1.2 : .6)));
           check(member.stats.attackCount == null || integer(member.stats.attackCount) && member.stats.attackCount >= 1 && member.stats.attackCount <= 8, "探索中の攻撃回数が不正です。");
           ["skillPower", "healingPower"].forEach(key => check(member.stats[key] == null || number(member.stats[key])));
-          ["physicalPower", "magicPower"].forEach(key => check(member.stats[key] == null || number(member.stats[key]) && member.stats[key] >= 1 && member.stats[key] <= 3));
+          ["physicalPower", "magicPower"].forEach(key => check(member.stats[key] == null || number(member.stats[key]) && member.stats[key] >= .8 && member.stats[key] <= 3));
           check(validRates(member.actionRates), "探索中の行動率が不正です。");
           if (member.specialEquipment != null) check(Array.isArray(member.specialEquipment) && new Set(member.specialEquipment).size === member.specialEquipment.length && member.specialEquipment.every(id => known(data.items, id) && data.items[id].unique));
           if (member.loadout != null) check(object(member.loadout) && integer(member.loadout.equipmentCount) && number(member.loadout.equipmentWeight) && number(member.loadout.maximumWeight)

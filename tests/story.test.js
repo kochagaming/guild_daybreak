@@ -4,7 +4,7 @@ function load() {
   const context = vm.createContext({ window: {}, Date, Math, Blob, localStorage: {
     getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key)
   } });
-  ["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "data/recipes.js", "data/story.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/shop.js", "js/party.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/dungeon.js", "js/blacksmith.js", "js/story.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
+  ["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/skills.js", "data/jobs.js", "data/characterGrowth.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/monsters.js", "data/dungeons.js", "data/recipes.js", "data/story.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/shop.js", "js/party.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/dungeon.js", "js/blacksmith.js", "js/story.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
   return context.window;
 }
 let game = load();
@@ -41,6 +41,7 @@ assert.strictEqual(game.Dungeon.completeIfReady(), null);
 assert(game.Story.canCraft(game.GameData.recipes.find(recipe => recipe.id === "forge_fang_blade")));
 game.Characters.get(hero.id).level = 99;
 game.Dungeon.start("cave");
+Object.assign(game.GameState.data.expeditions[0].partySnapshot[0].stats, { hp: 9999, attack: 9999, defense: 9999, magicAttack: 9999, magicDefense: 9999, speed: 99, criticalRate: 0 });
 game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 assert(game.Dungeon.completeIfReady().success);
 while (game.Story.pendingEpisode()) game.Story.readPending();
@@ -50,7 +51,7 @@ assert(game.Story.canCraft(game.GameData.recipes.find(recipe => recipe.id === "f
 const completedGold = game.GameState.data.gold;
 game.Story.recordResult({ success: true, dungeonId: "cave" });
 assert.strictEqual(game.GameState.data.gold, completedGold);
-assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
+{ const parsed = game.SaveTransfer.parse(JSON.stringify(game.GameState.data)); assert(parsed.ok, parsed.message); }
 const bad = JSON.parse(JSON.stringify(game.GameState.data));
 bad.story.completed = ["seal"];
 assert(!game.SaveTransfer.parse(JSON.stringify(bad)).ok);

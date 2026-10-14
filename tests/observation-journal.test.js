@@ -74,7 +74,7 @@ async function run() {
   }
   const masteryRequired = game.GameData.config.explorationEvents.routeMastery.successes;
   game.Story.ensure().facts.routeEvents[routeEventId] = { encounters: masteryRequired - 1, successes: masteryRequired - 1, rumorMatches: 0 };
-  game.Characters.get(id).base = { hp: 99999, attack: 99999, defense: 99999, magicAttack: 99999, magicDefense: 99999, magicHealing: 99999, speed: 999 };
+  Object.keys(game.Characters.get(id).attributes).forEach(key => { game.Characters.get(id).attributes[key] = 999; });
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
   const masteryExpedition = game.GameState.data.expeditions[0], meadow = game.GameData.dungeons.meadow;
   let masteryRouteEvent = null;

@@ -7,7 +7,7 @@ exports.createCharacter = function (game, name, jobId = "warrior", raceId = "hum
     id, name, jobId, raceId, birthId, level: 1, exp: 0,
     portraitId: game.Characters.portraitId({ jobId, portraitId: selectedPortraitId }),
     actionRates: Object.assign({}, game.GameData.config.combatRules.defaultActionRates),
-    base: { hp: 48 + variance * 3, attack: 9 + variance, defense: 7 + (2 - variance) },
+    attributes: { vitality: 10 + variance, strength: 10 + variance, fortitude: 12 - variance, intelligence: 10, spirit: 10, dexterity: 10, agility: 10, luck: 10 },
     source: { type: "recruitment" },
     equipment: [], career: null, expeditionRecord: game.Characters.emptyExpeditionRecord(), recordTitleId: null, createdAt: game.GameRuntime.now()
   });

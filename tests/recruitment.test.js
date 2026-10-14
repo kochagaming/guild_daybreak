@@ -73,7 +73,7 @@ async function run() {
   const invalid = mutate => { const state = clone(); mutate(state); assert(!game.SaveTransfer.parse(JSON.stringify(state)).ok); };
   invalid(state => { state.recruitment.pending.candidates = []; });
   invalid(state => { state.recruitment.pending.candidates.push(...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates, ...state.recruitment.pending.candidates); });
-  invalid(state => { state.recruitment.pending.candidates[0].base.attack = 999; });
+  invalid(state => { state.recruitment.pending.candidates[0].attributes.strength = 999; });
   invalid(state => { state.recruitment.pending.candidates[0].id = "applicant-999-1"; });
   invalid(state => { state.recruitment.pending.requirements.raceId = "elf"; });
   invalid(state => { state.recruitment.nextId = 1; });
@@ -84,7 +84,7 @@ async function run() {
   assert(hiringCost > 0 && hiringCost < 500);
   assert.strictEqual(breakdown.subsidy, 250, "The first hire receives the largest founding-guild subsidy");
   assert.strictEqual(breakdown.total, breakdown.subtotal - breakdown.subsidy);
-  assert(game.Recruitment.cost(Object.assign({}, applicant, { base: Object.assign({}, applicant.base, { attack: applicant.base.attack + 1 }) })) > hiringCost, "Higher initial ability raises the hiring cost");
+  assert(game.Recruitment.cost(Object.assign({}, applicant, { attributes: Object.assign({}, applicant.attributes, { strength: applicant.attributes.strength + 1 }) })) > hiringCost, "Higher initial ability raises the hiring cost");
   assert.notStrictEqual(game.Recruitment.cost(Object.assign({}, applicant, { jobId: "mage" })), game.Recruitment.cost(Object.assign({}, applicant, { jobId: "thief" })), "Jobs have distinct contract costs");
   assert.notStrictEqual(game.Recruitment.cost(Object.assign({}, applicant, { raceId: "human" })), game.Recruitment.cost(Object.assign({}, applicant, { raceId: "beastkin" })), "Races have distinct contract costs");
   game.GameState.data.gold = hiringCost - 1; game.GameState.save();
@@ -109,7 +109,7 @@ async function run() {
   assert.strictEqual(hero.name, "新しい仲間"); assert.strictEqual(hero.portraitId, applicant.portraitId);
   assert.strictEqual(hero.gender, applicant.gender); assert.strictEqual(hero.nameCulture, applicant.nameCulture);
   assert.strictEqual(hero.jobId, applicant.jobId); assert.strictEqual(hero.raceId, applicant.raceId); assert.strictEqual(hero.birthId, applicant.birthId);
-  assert.strictEqual(JSON.stringify(hero.base), JSON.stringify(applicant.base));
+  assert.strictEqual(JSON.stringify(hero.attributes), JSON.stringify(applicant.attributes));
   assert.strictEqual(JSON.stringify(game.Characters.stats(hero)), JSON.stringify(game.Characters.stats(game.Recruitment.preview(applicant))));
   assert.strictEqual(hero.level, 1); assert.strictEqual(hero.exp, 0);
   assert.strictEqual(hired.cost, hiringCost);
@@ -159,8 +159,8 @@ async function run() {
     assert(current.candidates.some(candidate => candidate.jobId === "mage"));
     for (const candidate of current.candidates) {
       total++; raceMatches += candidate.raceId === "elf"; birthMatches += candidate.birthId === "arcane"; focusMatches += candidate.talentId === "striker";
-      bases.add(JSON.stringify(candidate.base));
-      assert(candidate.base.hp >= 45 && candidate.base.hp <= 60 && candidate.base.attack >= 8 && candidate.base.attack <= 13 && candidate.base.defense >= 6 && candidate.base.defense <= 11);
+      bases.add(JSON.stringify(candidate.attributes));
+      assert(game.GameData.config.characterGrowth.attributes.order.every(key => candidate.attributes[key] >= 8 && candidate.attributes[key] <= 15));
     }
     assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
     assert((await command("recruitment.dismiss")).ok);

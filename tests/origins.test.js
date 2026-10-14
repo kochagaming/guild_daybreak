@@ -39,7 +39,7 @@ for (const group of ["race", "birth"]) Object.values(game.GameData.relations.ski
 for (const race of Object.keys(game.GameData.races)) {
   for (const job of Object.keys(game.GameData.jobs)) {
     for (const birth of Object.keys(game.GameData.births)) {
-      const character = { id: "combination", name: "組み合わせ", jobId: job, raceId: race, birthId: birth, level: 1, exp: 0, base: { hp: 50, attack: 10, defense: 8 }, equipment: [], career: null };
+      const character = { id: "combination", name: "組み合わせ", jobId: job, raceId: race, birthId: birth, level: 1, exp: 0, attributes: { vitality: 10, strength: 10, fortitude: 10, intelligence: 10, spirit: 10, dexterity: 10, agility: 10, luck: 10 }, equipment: [], career: null };
       const stats = game.Characters.stats(character);
       Object.values(stats).filter(value => typeof value === "number").forEach(value => assert(Number.isFinite(value) && value >= 0));
       Object.values(stats.elementModifiers).forEach(value => assert(Number.isFinite(value) && value > 0));
@@ -52,10 +52,24 @@ for (const race of Object.keys(game.GameData.races)) {
   }
 }
 assert.strictEqual(count, 3375);
-const milestone = { id: "milestone", name: "節目", jobId: "warrior", raceId: "human", birthId: "common", level: 1, exp: 0, base: { hp: 50, attack: 10, defense: 8 }, equipment: [], career: null };
+const milestone = { id: "milestone", name: "節目", jobId: "warrior", raceId: "human", birthId: "common", level: 1, exp: 0, attributes: { vitality: 10, strength: 10, fortitude: 10, intelligence: 10, spirit: 10, dexterity: 10, agility: 10, luck: 10 }, equipment: [], career: null };
+assert.deepStrictEqual(Array.from(game.Characters.attributeKeys()), ["vitality", "strength", "fortitude", "intelligence", "spirit", "dexterity", "agility", "luck"]);
+const chart = game.Characters.attributeChart(milestone);
+assert(Object.values(chart.total).every(value => value >= 0 && value <= 100), "Radar values stay within the display scale");
+const withAttribute = (key, value) => ({ ...milestone, attributes: { ...milestone.attributes, [key]: value } });
+assert(game.Characters.stats(withAttribute("strength", 14)).physicalPower > game.Characters.stats(withAttribute("strength", 8)).physicalPower, "Strength should increase final physical power");
+assert(game.Characters.stats(withAttribute("intelligence", 14)).magicPower > game.Characters.stats(withAttribute("intelligence", 8)).magicPower, "Intelligence should increase final spell power");
+assert(game.Characters.stats(withAttribute("spirit", 14)).healingPower > game.Characters.stats(withAttribute("spirit", 8)).healingPower, "Spirit should increase final healing power");
+assert(game.Characters.stats(withAttribute("strength", 1000)).physicalPower <= game.GameData.config.characterGrowth.attributes.powerMultipliers.physicalPower.maximum, "Attribute power bonuses stay bounded");
+const rareBow = game.Items.createInstance("wolf_fang_bow", { source: "drop" });
+const rareBreakdown = game.Characters.attributeBreakdown(milestone, [rareBow]);
+assert.strictEqual(rareBreakdown.equipment.dexterity, 1);
+assert.strictEqual(rareBreakdown.equipment.luck, 1);
+assert.strictEqual(game.GameData.items.wooden_sword.attributeBonuses, undefined, "Ordinary equipment does not alter primary attributes");
+const lucky = { ...milestone, attributes: { ...milestone.attributes, luck: 20 } };
+assert(game.Characters.luckAcquisitionMultiplier([lucky]) > 1 && game.Characters.luckAcquisitionMultiplier([lucky]) <= 1.1, "Party-average luck provides a bounded acquisition bonus");
 const startingWeightUnit = game.Characters.equipmentWeightUnitAtLevel(1);
-assert.strictEqual(game.Characters.maxWeight(milestone), Math.round(startingWeightUnit * game.GameData.jobs.warrior.weightMultiplier * 10) / 10, "Lv.1 warrior capacity should use the early-game reference weight plus its job bonus");
-assert.strictEqual(game.Characters.maxWeight({ ...milestone, jobId: "mage" }), Math.round(startingWeightUnit * game.GameData.jobs.mage.weightMultiplier * 10) / 10, "Lv.1 mage capacity should stay below one early-game reference item");
+assert(game.Characters.maxWeight(milestone) > game.Characters.maxWeight({ ...milestone, jobId: "mage" }), "Strength and fortitude should give warriors more capacity than mages");
 assert(game.Characters.maxWeight(milestone) < game.Characters.averageEquipmentWeight(), "Lv.1 warrior should no longer receive an all-tier equipment weight allowance");
 const learnedAt = level => { milestone.level = level; return new Set(game.Characters.learnedSkills(milestone).map(skill => skill.id)); };
 assert(!learnedAt(1).has("power_strike") && learnedAt(1).has("adaptive_strike") && learnedAt(1).has("birth_common_resolve"));
@@ -75,8 +89,8 @@ assert(learnedAt(70).has("iron_guard"));
 assert(learnedAt(100).has("progression_job_warrior_mastery") && learnedAt(100).has("progression_race_human_trueblood") && learnedAt(100).has("progression_birth_common_legacy"));
 const elf = game.Characters.get(require("./helpers").createCharacter(game, "弓使い", "thief", "elf", "hunter").id);
 assert(Math.abs(game.Characters.profile(elf).weaponAffinity.bow - 1.518) < 1e-9);
-assert.strictEqual(game.Characters.stats(elf).speed, 19);
-assert(Math.abs(game.Characters.stats(elf).criticalRate - .25) < 1e-9);
+assert(game.Characters.stats(elf).speed > game.Characters.stats(milestone).speed);
+assert(game.Characters.stats(elf).criticalRate > game.Characters.stats(milestone).criticalRate);
 const bow = game.Items.createInstance("short_bow", { source: "shop" });
 assert.strictEqual(game.Characters.equipmentEffects(elf, bow).attack, Math.round(game.Items.effects(bow).attack * 1.518));
 assert.strictEqual(game.Characters.equipmentEffects(elf, bow).weight, game.Items.effects(bow).weight);
@@ -89,11 +103,12 @@ assert(Math.abs(game.Characters.profile(warrior).armorAffinity.heavy - 1.584) < 
 const healer = game.Characters.get(require("./helpers").createCharacter(game, "回復魔術師", "mage", "elf", "sacred").id);
 healer.level = 20;
 assert(game.Characters.learnedSkills(healer).some(skill => skill.id === "heal"));
-assert.strictEqual(game.Characters.stats(healer).healingPower, 1.2);
+const healerPower = game.Characters.stats(healer).healingPower;
+assert(healerPower > 1.2, "Spirit and sacred-origin healing bonuses should stack");
 game.Party.toggle(healer.id);
 assert(game.Dungeon.start("meadow").ok);
 assert(game.GameState.data.expeditions[0].partySnapshot[0].skillIds.includes("heal"));
-assert.strictEqual(game.GameState.data.expeditions[0].partySnapshot[0].stats.healingPower, 1.2);
+assert.strictEqual(game.GameState.data.expeditions[0].partySnapshot[0].stats.healingPower, healerPower);
 assert(game.GameState.data.expeditions[0].partySnapshot[0].skillIds.includes("birth_sacred_care"));
 const veteran = game.Characters.get(require("./helpers").createCharacter(game, "古参", "warrior", "giantkin", "mercenary").id);
 veteran.level = 70;

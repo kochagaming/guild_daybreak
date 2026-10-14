@@ -66,6 +66,6 @@ async function startupError() {
   assert(node("save-load-error").textContent.includes("旧形式"));
   node('[data-action="reset-save"]').listeners.click();
   assert.strictEqual(raw, before); assert.strictEqual(writes, count);
-  console.log("Current save test passed: version-11 round trip, no direct creation API, old versions rejected without writes, required fields, no story bypass, explicit reset and blocked startup/cancelled reset");
+  console.log("Current save test passed: version-12 round trip, no direct creation API, old versions rejected without writes, required fields, no story bypass, explicit reset and blocked startup/cancelled reset");
 }
 startupError().catch(error => { console.error(error); process.exitCode = 1; });

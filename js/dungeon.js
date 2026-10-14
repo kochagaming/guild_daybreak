@@ -199,6 +199,7 @@
       knownRouteMasteryIds,
       knownTreasureMasteryIds,
       acquisitionBonuses,
+      luckAcquisitionMultiplier: window.Characters.luckAcquisitionMultiplier(members),
       rumor,
       accessDurationMultiplier,
       trackedItemId: itemTarget?.itemId || null,
@@ -316,6 +317,11 @@
     let autoSellGold = 0;
     const acquisitionApi = window.AcquisitionSkills || { normalize: () => ({ qualityRate: { multiplier: 1, flat: 0 } }), memberExperience: base => base };
     const acquisitionBonuses = acquisitionApi.normalize(expedition.acquisitionBonuses);
+    const luckMultiplier = Number(expedition.luckAcquisitionMultiplier) || 1;
+    acquisitionBonuses.itemRate = acquisitionBonuses.itemRate || { multiplier: 1, flat: 0 };
+    acquisitionBonuses.qualityRate = acquisitionBonuses.qualityRate || { multiplier: 1, flat: 0 };
+    acquisitionBonuses.itemRate.multiplier *= luckMultiplier;
+    acquisitionBonuses.qualityRate.multiplier *= luckMultiplier;
     const qualityRate = acquisitionBonuses.qualityRate;
     outcome.drops.forEach((drop, dropIndex) => {
       const newDiscovery = window.Encyclopedia ? !window.Encyclopedia.item(drop.itemId) : false;
@@ -359,7 +365,7 @@
           ["magicAttack", statsAfter.magicAttack - statsBefore.magicAttack], ["magicDefense", statsAfter.magicDefense - statsBefore.magicDefense],
           ["magicHealing", statsAfter.magicHealing - statsBefore.magicHealing], ["speed", statsAfter.speed - statsBefore.speed],
           ["maxWeight", Math.round((weightAfter - weightBefore) * 10) / 10]
-        ].filter(([, value]) => value));
+        ].filter(([, value]) => value > 0));
         levelUps.push({ name: character.name, levels: gained, level: character.level, newSkillIds, statChanges });
       }
     });

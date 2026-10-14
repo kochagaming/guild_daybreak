@@ -12,6 +12,18 @@
     const itemTypes = new Set(["weapon", "armor", "material"]);
     const itemCombatFields = ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "speed", "criticalRate", "attackCount"];
     const itemSpecialEffectKinds = new Set(["critical_followup", "weight_defense", "healing_boost"]);
+    const attributeIds = new Set(master.config.characterGrowth?.attributes?.order || []);
+    const powerMultiplierIds = new Set(["physicalPower", "magicPower", "healingPower"]);
+    const powerMultipliers = master.config.characterGrowth?.attributes?.powerMultipliers || {};
+    powerMultiplierIds.forEach(id => {
+      const rule = powerMultipliers[id];
+      if (!rule) errors.push(`config.characterGrowth.attributes.powerMultipliers.${id} がありません`);
+      else {
+        if (!attributeIds.has(rule.attribute)) errors.push(`config.characterGrowth.attributes.powerMultipliers.${id}.attribute は未定義の基礎能力です`);
+        if (!Number.isFinite(Number(rule.coefficient)) || Number(rule.coefficient) <= 0) errors.push(`config.characterGrowth.attributes.powerMultipliers.${id}.coefficient は0より大きい数で指定してください`);
+        if (!Number.isFinite(Number(rule.minimum)) || !Number.isFinite(Number(rule.maximum)) || Number(rule.minimum) <= 0 || Number(rule.maximum) < Number(rule.minimum)) errors.push(`config.characterGrowth.attributes.powerMultipliers.${id} の上下限が不正です`);
+      }
+    });
     Object.entries(master.items).forEach(([itemId, item]) => {
       const source = `items.${itemId}`;
       if (item.id !== itemId) errors.push(`${source}.id は登録IDと一致させてください`);
@@ -34,6 +46,10 @@
         if (item[field] != null && !Number.isFinite(Number(item[field]))) errors.push(`${source}.${field} が不正です`);
       });
       if (item.attackCount != null && !Number.isInteger(item.attackCount)) errors.push(`${source}.attackCount は整数で指定してください`);
+      Object.entries(item.attributeBonuses || {}).forEach(([attributeId, value]) => {
+        if (!attributeIds.has(attributeId)) errors.push(`${source}.attributeBonuses.${attributeId} は未定義の基礎能力です`);
+        if (!Number.isFinite(Number(value)) || Number(value) === 0) errors.push(`${source}.attributeBonuses.${attributeId} は0以外の数で指定してください`);
+      });
       ["craftOnly", "dropOnly", "unique"].forEach(field => {
         if (item[field] != null && typeof item[field] !== "boolean") errors.push(`${source}.${field} は真偽値で指定してください`);
       });
@@ -499,9 +515,9 @@
     (recruitment.pricing?.foundingSubsidies || []).forEach((value, index) => {
       if (!Number.isFinite(Number(value)) || Number(value) < 0) errors.push(`config.recruitment.pricing.foundingSubsidies.${index} は0以上の数で指定してください`);
     });
-    ["hp", "attack", "defense"].forEach(stat => {
-      if (!Number.isFinite(Number(recruitment.pricing?.abilityBaselines?.[stat]))) errors.push(`config.recruitment.pricing.abilityBaselines.${stat} が不正です`);
-      if (!Number.isFinite(Number(recruitment.pricing?.abilityWeights?.[stat])) || Number(recruitment.pricing.abilityWeights[stat]) < 0) errors.push(`config.recruitment.pricing.abilityWeights.${stat} は0以上の数で指定してください`);
+    attributeIds.forEach(attributeId => {
+      if (!Number.isFinite(Number(recruitment.pricing?.abilityBaselines?.[attributeId]))) errors.push(`config.recruitment.pricing.abilityBaselines.${attributeId} が不正です`);
+      if (!Number.isFinite(Number(recruitment.pricing?.abilityWeights?.[attributeId])) || Number(recruitment.pricing.abilityWeights[attributeId]) < 0) errors.push(`config.recruitment.pricing.abilityWeights.${attributeId} は0以上の数で指定してください`);
     });
     [["jobCosts", master.jobs], ["raceCosts", master.races]].forEach(([costName, table]) => {
       Object.keys(table).forEach(id => {
@@ -555,8 +571,8 @@
         if (typeof talent[field] !== "string" || !talent[field].trim()) errors.push(`${source}.${field} がありません`);
       });
       if (!talent.bonus || !Object.keys(talent.bonus).length) errors.push(`${source}.bonus がありません`);
-      Object.entries(talent.bonus || {}).forEach(([stat, value]) => {
-        if (!["hp", "attack", "defense"].includes(stat) || !Number.isFinite(Number(value))) errors.push(`${source}.bonus.${stat} が不正です`);
+      Object.entries(talent.bonus || {}).forEach(([attributeId, value]) => {
+        if (!attributeIds.has(attributeId) || !Number.isFinite(Number(value))) errors.push(`${source}.bonus.${attributeId} が不正です`);
       });
     });
     master.relations.chapterUnlockAdditions.forEach(addition => {
@@ -887,6 +903,11 @@
           if (typeof owner[field] !== "string" || !owner[field].trim()) errors.push(`${source}.${field} がありません`);
         });
         if (owner.unlockAfter) requireRef(chapters, owner.unlockAfter, `${source}.unlockAfter`);
+        if (!owner.attributeModifiers || typeof owner.attributeModifiers !== "object" || Array.isArray(owner.attributeModifiers)) errors.push(`${source}.attributeModifiers がありません`);
+        Object.entries(owner.attributeModifiers || {}).forEach(([attributeId, value]) => {
+          if (!attributeIds.has(attributeId)) errors.push(`${source}.attributeModifiers.${attributeId} は未定義の基礎能力です`);
+          if (!Number.isFinite(Number(value))) errors.push(`${source}.attributeModifiers.${attributeId} が不正です`);
+        });
         originMultiplierFields.forEach(field => {
           if (owner[field] != null && (!Number.isFinite(Number(owner[field])) || Number(owner[field]) <= 0)) errors.push(`${source}.${field} は0より大きい数で指定してください`);
         });
@@ -1032,8 +1053,8 @@
         if (Object.prototype.hasOwnProperty.call(companion, field)) errors.push(`${source}.${field} はstoryCharacters側だけに定義してください`);
       });
       if (!Number.isInteger(companion.initialLevel) || companion.initialLevel < 1) errors.push(`${source}.initialLevel は1以上の整数で指定してください`);
-      ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing"].forEach(stat => {
-        if (!Number.isFinite(Number(companion.baseStats?.[stat])) || Number(companion.baseStats[stat]) <= 0) errors.push(`${source}.baseStats.${stat} は0より大きい数で指定してください`);
+      attributeIds.forEach(attributeId => {
+        if (!Number.isFinite(Number(companion.attributes?.[attributeId])) || Number(companion.attributes[attributeId]) <= 0) errors.push(`${source}.attributes.${attributeId} は0より大きい数で指定してください`);
       });
       const personalGrants = master.relations.companionSkillGrants[companion.id];
       if (!Array.isArray(personalGrants) || !personalGrants.length) errors.push(`relations.companionSkillGrants.${companion.id} がありません`);
@@ -1089,7 +1110,7 @@
         if (typeof character[field] !== "string" || !character[field].trim()) errors.push(`${source}.${field} がありません`);
       });
       if (character.portraitId) requireRef(master.portraits, character.portraitId, `${source}.portraitId`);
-      ["joinable", "jobId", "raceId", "birthId", "initialLevel", "baseStats"].forEach(field => {
+      ["joinable", "jobId", "raceId", "birthId", "initialLevel", "attributes"].forEach(field => {
         if (Object.prototype.hasOwnProperty.call(character, field)) errors.push(`${source}.${field} は人物の身元ではなくcompanionProfiles側に定義してください`);
       });
     });

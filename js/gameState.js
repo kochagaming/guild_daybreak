@@ -114,7 +114,7 @@
 
   function initialState() {
     return {
-      version: 11,
+      version: 12,
       story: { version: 1, completed: [], readSceneIds: [], joinedCompanionIds: [], companionStages: {}, facts: { departed: false, clears: [], difficultyClears: [], discoveries: [], companionMoments: [], routeEvents: {}, treasureTiers: {}, teamSurveys: 0 } },
       gold: 500,
       facilities: initialFacilities(),
@@ -148,7 +148,7 @@
   }
 
   const saved = window.SaveSystem.load();
-  const loadError = window.SaveSystem.loadError || (saved && (saved.version !== 11 || ["story", "facilities", "recruitment", "commissions", "recurringMissions", "presets", "inventory", "characters", "accessCodes", "parties", "unlockedPartyCount", "expeditions", "partyResults", "meta"].some(key => saved[key] == null)
+  const loadError = window.SaveSystem.loadError || (saved && (saved.version !== 12 || ["story", "facilities", "recruitment", "commissions", "recurringMissions", "presets", "inventory", "characters", "accessCodes", "parties", "unlockedPartyCount", "expeditions", "partyResults", "meta"].some(key => saved[key] == null)
     || saved.recruitment?.version !== 2 || saved.autoSell?.version !== 2 || saved.facilities?.version !== 3
     || !Array.isArray(saved.inventory?.equipment) || saved.inventory.equipment.some(item => item.ultraRareTitleId === undefined || Object.prototype.hasOwnProperty.call(item, "equipmentSkills"))))
     ? "旧形式または不完全なセーブは読み込めません。保存データは変更していません。" : null;

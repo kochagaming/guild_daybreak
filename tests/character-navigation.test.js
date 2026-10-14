@@ -48,7 +48,7 @@ async function run() {
   html = node("app").innerHTML;
   assert(html.includes('data-action="open-character"') && !html.includes("character-detail-card"));
   assert.strictEqual(node(".main-area").scrollTop, 420);
-  game.Characters.get(character.id).base = { hp: 9999, attack: 9999, defense: 9999 };
+  Object.keys(game.Characters.get(character.id).attributes).forEach(key => { game.Characters.get(character.id).attributes[key] = 999; });
   assert(game.Party.toggle(character.id).ok);
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
   game.GameState.data.expeditions[0].endsAt = Date.now() - 1;

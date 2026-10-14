@@ -36,7 +36,9 @@
     if (!definition || target.currentHp <= 0) return { applied: false, reason: "invalid" };
     const baseChance = Math.min(1, Math.max(0, Number(effect.chance ?? 1)));
     const resistanceValue = resistance(target, effect.statusId);
-    const chance = baseChance * (1 - resistanceValue);
+    const luckRule = window.GameData.config.characterGrowth?.attributes?.luck || {};
+    const luckBonus = source?.side === "hero" ? Math.max(0, (Number(source.luckScore) || 50) - 50) * (Number(luckRule.statusChancePerPoint) || .002) : 0;
+    const chance = Math.min(1, (baseChance + luckBonus) * (1 - resistanceValue));
     if (source?.side === "enemy" && source.observation && !source.observation.statusAttacks.includes(effect.statusId)) source.observation.statusAttacks.push(effect.statusId);
     const roll = random();
     if (roll >= chance) {

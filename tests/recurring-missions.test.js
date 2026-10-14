@@ -43,7 +43,7 @@ async function run() {
   const created = require("./helpers").createCharacter(game, "日課隊", "warrior", "human", "common");
   const hero = game.Characters.get(created.id);
   hero.level = 100;
-  hero.base = { hp: 99999, attack: 99999, defense: 99999, magicAttack: 99999, magicDefense: 99999, magicHealing: 99999, accuracy: 99999, evasion: 99999, speed: 99999, criticalRate: 100, maxWeight: 99999 };
+  Object.keys(hero.attributes).forEach(key => { hero.attributes[key] = 999; });
   game.Party.toggle(hero.id, 0);
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
   if (daily().selectedIds.includes("departure")) assert.strictEqual(daily().progress.departure, 1);

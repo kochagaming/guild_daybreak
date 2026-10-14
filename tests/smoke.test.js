@@ -31,7 +31,7 @@ const created = require("./helpers").createCharacter(game, "テスト冒険者",
 assert(created.ok, "冒険者を作成できること");
 assert(game.Characters.get(created.id).jobId === "cleric", "作成時に職業を選択できること");
 const startingWeightUnit = game.Characters.equipmentWeightUnitAtLevel(1);
-assert(game.Characters.maxWeight(game.Characters.get(created.id)) === Math.round(startingWeightUnit * 10) / 10, "Lv.1の標準職は序盤向け装備1個分から始まること");
+assert(game.Characters.maxWeight(game.Characters.get(created.id)) >= startingWeightUnit && game.Characters.maxWeight(game.Characters.get(created.id)) < startingWeightUnit * 1.25, "Lv.1の標準職は筋力・頑健を反映しつつ序盤向け装備約1個分から始まること");
 const initialWeapon = game.Items.available("weapon")[0];
 assert(game.Items.equip(created.id, initialWeapon.id).ok, "武器個体を装備できること");
 assert(game.Characters.equipmentWeight(game.Characters.get(created.id)) === 2, "装備重量が反映されること");
@@ -43,7 +43,7 @@ assert(game.Items.effects(featherlight).attack === Math.round(game.Items.standar
 const capacityBeforeLevel = game.Characters.maxWeight(game.Characters.get(created.id));
 game.Characters.get(created.id).level += 1;
 const levelTwoExpectedWeight = game.Characters.equipmentCapacityAtLevel(2) * game.Characters.equipmentWeightUnitAtLevel(2);
-assert(game.Characters.maxWeight(game.Characters.get(created.id)) === Math.round(levelTwoExpectedWeight * 10) / 10 && capacityBeforeLevel === Math.round(startingWeightUnit * 10) / 10, "節目の間も装備可能重量が滑らかに増えること");
+assert(game.Characters.maxWeight(game.Characters.get(created.id)) > capacityBeforeLevel && levelTwoExpectedWeight > startingWeightUnit, "節目の間も装備可能重量が滑らかに増えること");
 game.Characters.get(created.id).level = 10;
 assert(game.Characters.learnedSkills(game.Characters.get(created.id)).some((skill) => skill.id === "heal"), "レベルアップで職業スキルを習得すること");
 const rolled = game.Items.createInstance("iron_sword", { source: "drop", seed: 12345 });

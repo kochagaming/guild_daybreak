@@ -18,6 +18,23 @@
     celestial: { id: "celestial", name: "天翼人", unlockAfter: "starfall", description: "魔法防御と回復に優れる空の民。", hpMultiplier: .92, magicAttackMultiplier: 1.08, magicDefenseMultiplier: 1.28, magicHealingMultiplier: 1.3, speedBonus: 2, evasionBonus: .05, weightMultiplier: .82, elementModifiers: { lightning: .8, dark: 1.2 }, statusResistances: { paralysis: .2 } },
     undead: { id: "undead", name: "不死者", unlockAfter: "starfall", description: "高い耐久と魔法耐性を持つが、行動は遅い。", hpMultiplier: 1.2, defenseMultiplier: 1.05, magicDefenseMultiplier: 1.3, magicHealingMultiplier: .6, weightMultiplier: 1.08, speedBonus: -2, criticalBonus: .02, elementModifiers: { dark: .7, fire: 1.15 }, statusResistances: { poison: 1 } }
   };
+  const raceAttributeModifiers = {
+    human: {},
+    elf: { vitality: -1, strength: -1, fortitude: -1, intelligence: 2, spirit: 2, dexterity: 2, agility: 1, luck: 1 },
+    dwarf: { vitality: 2, strength: 1, fortitude: 3, spirit: 1, dexterity: 1, agility: -2 },
+    beastkin: { vitality: 1, strength: 2, intelligence: -1, dexterity: 1, agility: 3, luck: 1 },
+    halfling: { vitality: -2, strength: -2, fortitude: -1, dexterity: 2, agility: 4, luck: 3 },
+    gnome: { vitality: -1, strength: -2, intelligence: 3, spirit: 2, dexterity: 3, agility: 1, luck: 1 },
+    orc: { vitality: 3, strength: 4, fortitude: 2, intelligence: -3, spirit: -2, dexterity: -1, agility: -1 },
+    goblin: { vitality: -1, strength: -2, fortitude: -2, spirit: -1, dexterity: 2, agility: 4, luck: 3 },
+    dragonewt: { vitality: 3, strength: 2, fortitude: 2, intelligence: 1, spirit: 2, agility: -1 },
+    fairy: { vitality: -4, strength: -4, fortitude: -3, intelligence: 4, spirit: 3, dexterity: 2, agility: 4, luck: 2 },
+    automaton: { vitality: 2, strength: 1, fortitude: 4, intelligence: 1, dexterity: 2, agility: -2, luck: -2 },
+    giantkin: { vitality: 5, strength: 5, fortitude: 2, intelligence: -3, spirit: -2, dexterity: -2, agility: -3, luck: -1 },
+    demonkin: { strength: 1, fortitude: -1, intelligence: 4, spirit: 2, dexterity: 1, agility: 1, luck: 2 },
+    celestial: { strength: -2, fortitude: -1, intelligence: 2, spirit: 4, dexterity: 1, agility: 2, luck: 1 },
+    undead: { vitality: 3, strength: 1, fortitude: 2, intelligence: 1, spirit: 4, dexterity: -1, agility: -2, luck: -2 }
+  };
   const births = {
     common: { id: "common", name: "平凡な家", description: "特別な補正がない、自由な出自。" },
     guard: { id: "guard", name: "衛兵の家", description: "HP・防御・重量上限と剣・重装備・盾を伸ばす。", hpMultiplier: 1.08, defenseMultiplier: 1.08, weightMultiplier: 1.1 },
@@ -35,6 +52,17 @@
     alchemist: { id: "alchemist", name: "錬金工房", unlockAfter: "starfall", description: "魔力と精密作業を学び、魔法・命中・小手に優れる。", magicAttackMultiplier: 1.12, magicHealingMultiplier: 1.08, hitBonus: .03, statusResistances: { poison: .25, burn: .15 } },
     dragon_ward: { id: "dragon_ward", name: "竜守の里", unlockAfter: "starfall", description: "竜との戦いに備え、HP・魔法防御・重装備を鍛える。", hpMultiplier: 1.1, attackMultiplier: 1.05, magicDefenseMultiplier: 1.15, weightMultiplier: 1.12, elementModifiers: { fire: .85, lightning: .9 } }
   };
+  const birthAttributeModifiers = {
+    common: {}, guard: { vitality: 1, strength: 1, fortitude: 2 }, hunter: { dexterity: 2, agility: 1, luck: 1 },
+    arcane: { intelligence: 2, spirit: 1, dexterity: 1 }, sacred: { intelligence: 1, spirit: 3 },
+    noble: { fortitude: 1, intelligence: 1, spirit: 1 }, mercenary: { vitality: 1, strength: 2, fortitude: 1 },
+    merchant: { dexterity: 1, agility: 1, luck: 2 }, blacksmith: { strength: 1, fortitude: 2, dexterity: 1 },
+    scholar: { intelligence: 2, spirit: 1, dexterity: 2 }, frontier: { vitality: 2, fortitude: 1, agility: 1 },
+    orphan: { vitality: -1, dexterity: 2, agility: 2, luck: 2 }, troupe: { spirit: 1, dexterity: 1, agility: 2, luck: 1 },
+    alchemist: { intelligence: 2, spirit: 1, dexterity: 2, luck: 1 }, dragon_ward: { vitality: 2, strength: 1, fortitude: 1, spirit: 2 }
+  };
+  Object.entries(races).forEach(([id, race]) => { race.attributeModifiers = Object.freeze(Object.assign({}, raceAttributeModifiers[id])); });
+  Object.entries(births).forEach(([id, birth]) => { birth.attributeModifiers = Object.freeze(Object.assign({}, birthAttributeModifiers[id])); });
   data.registry.entities("races", races);
   data.registry.entities("births", births);
 })();

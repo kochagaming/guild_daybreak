@@ -11,6 +11,11 @@ const validStoryEffect = effect => effect?.type === "joinCompanion"
     && has(data.companionProfiles, effect.companionId)
     && has(data.relations.companionProgressions?.[effect.companionId]?.stages, effect.stageId);
 const growth = data.config.characterGrowth;
+assert.deepStrictEqual(Object.keys(growth.attributes.powerMultipliers).sort(), ["healingPower", "magicPower", "physicalPower"]);
+Object.values(growth.attributes.powerMultipliers).forEach(rule => {
+  assert(growth.attributes.order.includes(rule.attribute));
+  assert(Number.isFinite(rule.coefficient) && rule.coefficient > 0 && rule.minimum > 0 && rule.maximum >= rule.minimum);
+});
 const actualAverageWeight = growth.averageEquipmentWeight;
 assert(Number.isFinite(actualAverageWeight) && actualAverageWeight > 0, "Reference equipment weight must remain an explicit, stable balance constant");
 assert.strictEqual(data.config.equipmentBalance.efficiencyGrowthPerTier, .04, "Tier equipment efficiency growth must be an explicit balance constant");
@@ -236,7 +241,7 @@ for (const [id, companion] of Object.entries(data.companionProfiles)) {
   assert(companion.id === id && companion.characterId === id && identity, `${id} has an invalid stable character identity`);
   assert(has(data.jobs, companion.jobId) && has(data.races, companion.raceId) && has(data.births, companion.birthId) && has(data.portraits, identity.portraitId), `${id} has invalid combat profile references`);
   assert(["name", "title", "description", "portraitId"].every(field => !Object.prototype.hasOwnProperty.call(companion, field)), `${id} must not duplicate story identity fields in its combat profile`);
-  assert(Number.isInteger(companion.initialLevel) && companion.initialLevel >= 1 && companion.baseStats.hp > 0, `${id} has invalid initial ability data`);
+  assert(Number.isInteger(companion.initialLevel) && companion.initialLevel >= 1 && data.config.characterGrowth.attributes.order.every(key => companion.attributes[key] > 0), `${id} has invalid initial ability data`);
   const grants = data.relations.companionSkillGrants[id];
   assert(Array.isArray(grants) && grants.length && grants.every(grant => grant.initial && grant.level === 1 && has(data.skills, grant.skillId)), `${id} has invalid personal skill grants`);
   const progression = data.relations.companionProgressions[id];
@@ -248,7 +253,7 @@ for (const [id, companion] of Object.entries(data.companionProfiles)) {
     assert(Object.entries(stage.replacements || {}).every(([fromId, toId]) => has(data.skills, fromId) && has(data.skills, toId)), `${id}:${stageId} has invalid skill replacements`);
   }
 }
-assert.strictEqual(data.masterMeta.schemaVersion, 48, "The master schema version is explicit");
+assert.strictEqual(data.masterMeta.schemaVersion, 50, "The master schema version is explicit");
 assert(data.storyCharacters.road_warden_karl && !data.companionProfiles.road_warden_karl, "A named story character may exist before receiving a recruitable combat profile");
 assert.strictEqual(game.Companions.definition("mina").name, data.storyCharacters.mina.name, "Recruitable definitions merge identity and combat profile through one stable character ID");
 assert.strictEqual(data.config.guildServices.pages.blacksmith.unlock.sceneId, "meadow_clear", "Facility availability is driven by story readership");
@@ -691,7 +696,7 @@ const state = game.GameState.data;
 for (const masterKey of ["items", "skills", "jobs", "races", "births", "recipes", "dungeons", "monsters"]) assert(!(masterKey in state), `save state contains master table ${masterKey}`);
 state.inventory.equipment.forEach(instance => ["name", "type", "price", "attack", "defense", "weight", "equipmentSkills"].forEach(key => assert(!(key in instance), `equipment instance duplicates master field ${key}`)));
 state.characters.forEach(character => ["job", "race", "birth", "skills"].forEach(key => assert(!(key in character), `character duplicates master field ${key}`)));
-assert.strictEqual(state.version, 11);
+assert.strictEqual(state.version, 12);
 assert.strictEqual(game.GameData.config.partyProgression.partySlots.maximum, 8);
 assert.deepStrictEqual(Array.from(game.GameData.config.partyProgression.partySlots.unlocks.filter(entry => !entry.codeOnly), entry => entry.chapterNumber), [1, 2, 3, 4, 5, 6]);
 assert.strictEqual(game.GameData.config.partyProgression.partySlots.unlocks.filter(entry => entry.codeOnly).length, 1);

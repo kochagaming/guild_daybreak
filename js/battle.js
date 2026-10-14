@@ -282,6 +282,10 @@
           : Math.min(8, Math.max(1, 1 + Math.floor(Math.max(0, (member.stats.speed || 10) - 8) / 8)))),
         criticalRate: member.stats.criticalRate == null ? 0.05 : member.stats.criticalRate
       }));
+      heroes.forEach((hero, index) => {
+        hero.luck = expedition.partySnapshot[index].stats.luck || 10;
+        hero.luckScore = expedition.partySnapshot[index].stats.luckScore || 50;
+      });
       return applyBondFormation(heroes);
   }
 

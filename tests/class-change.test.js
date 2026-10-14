@@ -17,7 +17,7 @@ assert.strictEqual(Object.keys(game.GameData.config.classChanges).length, 15);
 Object.keys(game.GameData.jobs).forEach(id => assert(game.GameData.config.classChanges[id] && game.GameData.skills[game.GameData.config.classChanges[id].masterSkillId]));
 const hero = game.Characters.get(create(game, "転職試験", "warrior").id);
 hero.level = 10;
-hero.base = { hp: 150, attack: 40, defense: 35, magicAttack: 50, magicDefense: 40, magicHealing: 45 };
+hero.attributes = { vitality: 30, strength: 30, fortitude: 30, intelligence: 30, spirit: 30, dexterity: 30, agility: 30, luck: 30 };
 const sword = game.Items.add("wooden_sword", 1, { source: "test", modifiers: { hp: 0, attack: 0, defense: 0 }, equipmentSkills: ["physical_power_3"] }).instances[0];
 hero.equipment.push(sword.id);
 const quote = game.ClassChange.quote(hero.id, "mage");

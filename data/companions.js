@@ -7,31 +7,31 @@
   const companionProfiles = {
     mina: {
       id: "mina", characterId: "mina", jobId: "warrior", raceId: "dwarf", birthId: "blacksmith", previousPortraitIds: ["birth-blacksmith-1"], initialLevel: 14,
-      baseStats: { hp: 62, attack: 10, defense: 13, magicAttack: 4, magicDefense: 8, magicHealing: 3 }
+      attributes: { vitality: 12, strength: 11, fortitude: 13, intelligence: 7, spirit: 9, dexterity: 10, agility: 8, luck: 9 }
     },
     elena: {
       id: "elena", characterId: "elena", jobId: "mage", raceId: "elf", birthId: "scholar", previousPortraitIds: ["job-mage-2"], initialLevel: 20,
-      baseStats: { hp: 40, attack: 6, defense: 5, magicAttack: 15, magicDefense: 13, magicHealing: 7 }
+      attributes: { vitality: 8, strength: 7, fortitude: 7, intelligence: 14, spirit: 12, dexterity: 12, agility: 11, luck: 10 }
     },
     garm: {
       id: "garm", characterId: "garm", jobId: "knight", raceId: "human", birthId: "guard", previousPortraitIds: ["job-knight-3"], initialLevel: 30,
-      baseStats: { hp: 68, attack: 13, defense: 15, magicAttack: 4, magicDefense: 9, magicHealing: 3 }
+      attributes: { vitality: 13, strength: 12, fortitude: 14, intelligence: 7, spirit: 10, dexterity: 9, agility: 8, luck: 8 }
     },
     shia: {
       id: "shia", characterId: "shia", jobId: "bard", raceId: "beastkin", birthId: "troupe", previousPortraitIds: ["job-bard-2"], initialLevel: 37,
-      baseStats: { hp: 48, attack: 7, defense: 7, magicAttack: 10, magicDefense: 12, magicHealing: 14 }
+      attributes: { vitality: 9, strength: 8, fortitude: 8, intelligence: 11, spirit: 14, dexterity: 12, agility: 13, luck: 12 }
     },
     tio: {
       id: "tio", characterId: "tio", jobId: "thief", raceId: "automaton", birthId: "alchemist", previousPortraitIds: ["race-automaton-2"], initialLevel: 46,
-      baseStats: { hp: 54, attack: 12, defense: 11, magicAttack: 10, magicDefense: 10, magicHealing: 5 }
+      attributes: { vitality: 11, strength: 11, fortitude: 12, intelligence: 11, spirit: 9, dexterity: 14, agility: 12, luck: 8 }
     },
     rize: {
       id: "rize", characterId: "rize", jobId: "druid", raceId: "fairy", birthId: "frontier", previousPortraitIds: ["job-druid-3"], initialLevel: 56,
-      baseStats: { hp: 46, attack: 6, defense: 7, magicAttack: 13, magicDefense: 13, magicHealing: 14 }
+      attributes: { vitality: 9, strength: 7, fortitude: 8, intelligence: 13, spirit: 14, dexterity: 10, agility: 12, luck: 11 }
     },
     kai: {
       id: "kai", characterId: "kai", jobId: "ranger", raceId: "dragonewt", birthId: "dragon_ward", previousPortraitIds: ["job-ranger-1"], initialLevel: 66,
-      baseStats: { hp: 60, attack: 15, defense: 11, magicAttack: 7, magicDefense: 10, magicHealing: 5 }
+      attributes: { vitality: 11, strength: 14, fortitude: 11, intelligence: 8, spirit: 10, dexterity: 14, agility: 13, luck: 10 }
     },
     noah: {
       id: "noah",
@@ -40,7 +40,7 @@
       birthId: "arcane",
       previousPortraitIds: ["race-celestial-2"],
       initialLevel: 97,
-      baseStats: { hp: 52, attack: 11, defense: 9, magicAttack: 14, magicDefense: 13, magicHealing: 8 }
+      attributes: { vitality: 10, strength: 12, fortitude: 10, intelligence: 14, spirit: 12, dexterity: 12, agility: 11, luck: 13 }
     }
   };
 
