@@ -46,6 +46,7 @@ async function run() {
   advance(2199); assert(modal().includes("演出をスキップ"));
   advance(1); assert(modal().includes("全員の詳細を比較する") && modal().includes("reveal-applicants") && modal().includes("reveal-confetti"));
   assert(modal().includes("ADVENTURER REGISTRY") && modal().includes("APPLICATION 1"));
+  assert(modal().includes("attribute-radar-card") && modal().includes("is-chart-only") && modal().includes("PRIMARY ATTRIBUTES"), "Recruitment reveal cards show compact primary-attribute radar charts");
   assert(modal().includes('data-action="quick-hire-applicant"') && modal().includes("reveal-stats"));
   const statOrder = ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "criticalRate", "speed", "attackCount", "physicalPower", "magicPower", "skillPower", "healingPower", "maxWeight"];
   for (const label of ["HP", "物攻", "物防", "魔攻", "魔防", "魔回", "命中", "回避", "会心", "速度", "回数", "物威力", "魔威力", "技威力", "回復力", "重量"]) assert(modal().includes(`<small>${label}</small>`));

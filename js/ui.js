@@ -179,7 +179,7 @@
       const definition = config.definitions[key], gear = breakdown.equipment[key];
       return `<details class="attribute-entry"><summary><span>${escape(definition.name)}</span><strong>${breakdown.total[key]}</strong>${gear ? `<small>${breakdown.base[key]}+${gear}</small>` : ""}</summary><p>${escape(definition.description)}</p></details>`;
     }).join("");
-    return `<section class="attribute-radar-card ${options.compact ? "is-compact" : ""}"><div class="attribute-radar-heading"><div><span class="label">PRIMARY ATTRIBUTES</span><strong>基礎能力</strong></div><small>${hasGearBonus ? "淡色：素質・出自・成長　金色：装備込み" : "素質・出自・成長を反映"}</small></div><div class="attribute-radar-layout"><svg class="attribute-radar" viewBox="0 0 240 240" role="img" aria-label="${escape(aria)}"><g class="attribute-grid"><polygon points="${ring(100)}"/><polygon points="${ring(75)}"/><polygon points="${ring(50)}"/><polygon points="${ring(25)}"/>${axes}</g><polygon class="attribute-shape-base" points="${polygon(chart.base)}"/>${hasGearBonus ? `<polygon class="attribute-shape-total" points="${polygon(chart.total)}"/>` : ""}<g class="attribute-labels">${labels}</g></svg><div class="attribute-values">${entries}</div></div></section>`;
+    return `<section class="attribute-radar-card ${options.compact ? "is-compact" : ""} ${options.chartOnly ? "is-chart-only" : ""}"><div class="attribute-radar-heading"><div><span class="label">PRIMARY ATTRIBUTES</span><strong>基礎能力</strong></div><small>${hasGearBonus ? "淡色：素質・出自・成長　金色：装備込み" : "素質・出自・成長を反映"}</small></div><div class="attribute-radar-layout"><svg class="attribute-radar" viewBox="0 0 240 240" role="img" aria-label="${escape(aria)}"><g class="attribute-grid"><polygon points="${ring(100)}"/><polygon points="${ring(75)}"/><polygon points="${ring(50)}"/><polygon points="${ring(25)}"/>${axes}</g><polygon class="attribute-shape-base" points="${polygon(chart.base)}"/>${hasGearBonus ? `<polygon class="attribute-shape-total" points="${polygon(chart.total)}"/>` : ""}<g class="attribute-labels">${labels}</g></svg>${options.chartOnly ? "" : `<div class="attribute-values">${entries}</div>`}</div></section>`;
   }
 
   function skillDisclosure(skill, options = {}) {
@@ -558,7 +558,7 @@
     const modalRoot = document.getElementById("modal-root");
     const previousModal = typeof modalRoot.querySelector === "function" ? modalRoot.querySelector(".equipment-modal") : null;
     const previousScrollTop = settings.preserveScroll && previousModal ? previousModal.scrollTop : 0;
-    window.GameUIViews.equipment.render({ actionRatePresets, effectModifierText, empty, equipmentChangeNotice, equipmentPicker, equipmentReturnToParty, equipmentSkillBadges, escape, portraitEditButton });
+    window.GameUIViews.equipment.render({ actionRatePresets, attributeRadar, effectModifierText, empty, equipmentChangeNotice, equipmentPicker, equipmentReturnToParty, equipmentSkillBadges, escape, portraitEditButton });
     const nextModal = typeof modalRoot.querySelector === "function" ? modalRoot.querySelector(".equipment-modal") : null;
     if (settings.preserveScroll && nextModal) nextModal.scrollTop = previousScrollTop;
     if (equipmentChangeNotice && nextModal && typeof nextModal.addEventListener === "function") {

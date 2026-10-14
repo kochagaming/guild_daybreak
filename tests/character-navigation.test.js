@@ -39,6 +39,7 @@ async function run() {
 
   await click("open-equipment", { character: character.id });
   assert(node("modal-root").innerHTML.includes("導線確認の戦士の装備"));
+  assert(node("modal-root").innerHTML.includes("attribute-radar-card") && node("modal-root").innerHTML.includes("PRIMARY ATTRIBUTES"), "Equipment screen keeps the primary-attribute radar visible");
   await click("close-modal");
   await click("request-class-change", { character: character.id });
   assert(node("modal-root").innerHTML.includes("導線確認の戦士の転職"));
