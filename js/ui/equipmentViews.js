@@ -36,9 +36,9 @@
       ["hp", "HP"], ["attack", "物攻"], ["defense", "物防"],
       ["magicAttack", "魔攻"], ["magicDefense", "魔防"], ["magicHealing", "魔回"],
       ["hitRate", "命中", "percent"], ["evasionRate", "回避", "percent"],
-      ["criticalRate", "会心", "percent"], ["speed", "速度"], ["attackCount", "回数"],
+      ["criticalRate", "会心", "percent"], ["statusChanceBonus", "異常成功", "percent"], ["speed", "速度"], ["attackCount", "回数"],
       ["physicalPower", "物理威力", "percent"], ["magicPower", "魔法威力", "percent"],
-      ["skillPower", "技威力", "percent"], ["healingPower", "回復威力", "percent"]
+      ["skillPower", "技威力", "percent"], ["healingPower", "回復威力", "percent"], ["healingReceived", "被回復", "percent"]
     ];
     return fields.map(([key, label, format]) => {
       const raw = (Number(after[key]) || 0) - (Number(current[key]) || 0);
@@ -47,6 +47,45 @@
       const value = format === "percent" ? `${rounded((Number(after[key]) || 0) * 100, 1)}%` : rounded(after[key], 1);
       return `<span><b>${label}</b><strong>${value}</strong><em class="${delta > 0 ? "positive" : "negative"}">${delta > 0 ? "+" : ""}${delta}${format === "percent" ? "pt" : ""}</em></span>`;
     }).filter(Boolean).join("");
+  }
+
+  function candidateAttributeComparison(character, equipment, escape) {
+    const current = window.Characters.attributeBreakdown(character).total;
+    const after = window.Characters.attributeBreakdown(character, equipment).total;
+    const config = window.GameData.config.characterGrowth.attributes;
+    const rows = window.Characters.attributeKeys().map(key => {
+      const delta = rounded((Number(after[key]) || 0) - (Number(current[key]) || 0), 1);
+      if (!delta) return "";
+      const name = config.definitions[key]?.shortName || config.definitions[key]?.name || key;
+      return `<span><b>${escape(name)}</b><strong>${rounded(current[key], 1)} → ${rounded(after[key], 1)}</strong><em class="${delta > 0 ? "positive" : "negative"}">${delta > 0 ? "+" : ""}${delta}</em></span>`;
+    }).filter(Boolean).join("");
+    return rows ? `<div class="equipment-picker-attribute-diff"><small>基礎能力の変化</small>${rows}</div>` : "";
+  }
+
+  function candidateAttributeSummary(instance, escape) {
+    const config = window.GameData.config.characterGrowth.attributes;
+    const values = window.Items.attributeBonuses(instance);
+    const entries = config.order.filter(key => Number(values[key] || 0) !== 0).map(key => `${config.definitions[key]?.shortName || key}${Number(values[key]) > 0 ? "+" : ""}${values[key]}`);
+    return entries.length ? ` · 基礎 ${escape(entries.join("・"))}` : "";
+  }
+
+  function candidateTraitComparison(current, after, escape) {
+    const rows = [];
+    const statusIds = new Set([...Object.keys(current.statusResistances || {}), ...Object.keys(after.statusResistances || {})]);
+    statusIds.forEach(id => {
+      const before = Number(current.statusResistances?.[id]) || 0, next = Number(after.statusResistances?.[id]) || 0;
+      const delta = rounded((next - before) * 100, 1);
+      if (!delta) return;
+      rows.push(`<span><b>${escape(window.GameData.statusEffects[id]?.name || id)}耐性</b><strong>${rounded(before * 100, 1)}% → ${rounded(next * 100, 1)}%</strong><em class="${delta > 0 ? "positive" : "negative"}">${delta > 0 ? "+" : ""}${delta}pt</em></span>`);
+    });
+    const elementIds = new Set([...Object.keys(current.elementModifiers || {}), ...Object.keys(after.elementModifiers || {})]);
+    elementIds.forEach(id => {
+      const before = Number(current.elementModifiers?.[id] ?? 1), next = Number(after.elementModifiers?.[id] ?? 1);
+      const delta = rounded((next - before) * 100, 1);
+      if (!delta) return;
+      rows.push(`<span><b>${escape(window.GameData.elements[id]?.name || id)}被害</b><strong>${rounded(before * 100, 1)}% → ${rounded(next * 100, 1)}%</strong><em class="${delta < 0 ? "positive" : "negative"}">${delta > 0 ? "+" : ""}${delta}pt</em></span>`);
+    });
+    return rows.length ? `<div class="equipment-picker-trait-diff"><small>耐性・属性の変化</small>${rows.join("")}</div>` : "";
   }
 
   function candidateSetPreview(character, instance, escape) {
@@ -66,16 +105,22 @@
       ["hp", "最大HP"], ["attack", "物理攻撃"], ["defense", "物理防御"],
       ["magicAttack", "魔法攻撃"], ["magicDefense", "魔法防御"], ["magicHealing", "魔法回復"],
       ["hitRate", "命中率", "percent"], ["evasionRate", "回避率", "percent"],
-      ["criticalRate", "会心率", "percent"], ["speed", "行動速度"], ["attackCount", "攻撃回数"],
+      ["criticalRate", "会心率", "percent"], ["statusChanceBonus", "状態異常成功補正", "percent"], ["speed", "行動速度"], ["attackCount", "攻撃回数"],
       ["physicalPower", "物理攻撃威力", "percent"], ["magicPower", "魔法攻撃威力", "percent"],
-      ["skillPower", "スキル威力", "percent"], ["healingPower", "回復威力", "percent"]
+      ["skillPower", "スキル威力", "percent"], ["healingPower", "回復威力", "percent"], ["healingReceived", "被回復量", "percent"]
     ];
     const statRows = stats.map(([key, label, format]) => `<div class="equipment-breakdown-row" role="row"><span class="equipment-breakdown-name" role="rowheader">${label}</span><span class="equipment-breakdown-values" role="cell"><span>${breakdownValue(breakdown.base[key], format)}</span><i>${breakdown.equipment[key] < 0 ? "−" : "+"}</i><b class="${breakdown.equipment[key] < 0 ? "negative" : breakdown.equipment[key] > 0 ? "positive" : ""}">${breakdownDelta(breakdown.equipment[key], format)}</b><i>=</i><strong>${breakdownValue(breakdown.total[key], format)}</strong></span></div>`).join("");
     const learnedSkills = window.Characters.learnedSkills(character);
-    const abilityRow = (kind, kindClass, name, description, source) => `<li><details class="equipment-ability-entry"><summary><span class="equipment-ability-kind ${kindClass || ""}">${escape(kind)}</span><strong>${escape(name)}</strong><i aria-hidden="true">›</i></summary><div class="equipment-ability-detail"><p>${escape(description)}</p>${source ? `<small>${escape(source)}</small>` : ""}</div></details></li>`;
+    const masteryBySkillId = new Map(window.Characters.signatureSkills(character).map(entry => [entry.skillId, entry]));
+    const abilityRow = (kind, kindClass, name, description, source, mastery) => {
+      const masteryLabel = mastery?.mastery.current ? `<em class="equipment-skill-mastery">${escape(mastery.mastery.current.name)} · ${mastery.uses}回</em>` : "";
+      const masteryDetail = mastery?.mastery.current
+        ? `<small class="equipment-skill-mastery-detail">実戦で発動 ${mastery.uses}回${mastery.mastery.next ? ` · 次の呼び名「${escape(mastery.mastery.next.name)}」まで${mastery.mastery.remaining}回` : " · この技能は十八番として記録されています"}</small>` : "";
+      return `<li><details class="equipment-ability-entry"><summary><span class="equipment-ability-kind ${kindClass || ""}">${escape(kind)}</span><strong><span>${escape(name)}</span>${masteryLabel}</strong><i aria-hidden="true">›</i></summary><div class="equipment-ability-detail"><p>${escape(description)}</p>${source ? `<small>${escape(source)}</small>` : ""}${masteryDetail}</div></details></li>`;
+    };
     const skillRow = skill => {
       const cooldown = skill.activation?.type === "active" ? ` 再使用：${skill.activation.cooldownTurns}ターン。` : "";
-      return abilityRow(window.GameData.config.skillCategories[skill.category] || "スキル", skill.category === "passive" ? "passive" : skill.category === "reaction" ? "reaction" : "", skill.name, `${skill.description}${cooldown}`, `習得元：${skill.sources.join("・")}`);
+      return abilityRow(window.GameData.config.skillCategories[skill.category] || "スキル", skill.category === "passive" ? "passive" : skill.category === "reaction" ? "reaction" : "", skill.name, `${skill.description}${cooldown}`, `習得元：${skill.sources.join("・")}`, masteryBySkillId.get(skill.id));
     };
     const techniques = learnedSkills.filter(skill => skill.category === "technique"), spells = learnedSkills.filter(skill => skill.category === "spell"), healing = learnedSkills.filter(skill => skill.category === "healing");
     const inherentTraits = learnedSkills.filter(skill => skill.category === "passive" || skill.category === "reaction");
@@ -144,8 +189,9 @@
       const template = window.Items.template(instance.templateId);
       const typeName = template.type === "weapon" ? window.GameData.derived.weaponTypes[template.weaponType] : window.GameData.derived.armorTypes[template.armorType];
       const rangeName = template.type === "weapon" ? (template.range === "ranged" ? "遠距離" : "近接") : "防具";
-      const after = window.Characters.stats(character, [...character.equipment, instance.id]);
-      return `<div class="equipment-picker-row equipment-stack compact-record quality-border-${grade.color} ${focused ? "is-focused-equipment" : ""}"><details class="equipment-picker-disclosure" ${focused ? "open" : ""}><summary class="record-summary"><span class="record-name"><span class="quality-label quality-${grade.color}">${escape(typeName)} · 品質：${escape(window.Items.qualityCompact(instance))}</span><strong>${escape(window.Items.displayName(instance))}</strong><small>${focused ? "選択した装備 · " : ""}${rangeName} · 重${effect.weight}</small></span><strong class="equipment-stack-count">×${group.instances.length}</strong><span class="record-stats"><b>HP ${effect.hp ? `+${effect.hp}` : "—"}</b><b>攻 ${effect.attack ? `+${effect.attack}` : "—"}</b><b>防 ${effect.defense ? `+${effect.defense}` : "—"}</b><b>命中 ${effect.hitRate ? `+${Math.round(effect.hitRate * 100)}pt` : "—"}</b><b>回数 ${effect.attackCount ? `${effect.attackCount > 0 ? "+" : ""}${effect.attackCount}` : "—"}</b></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="equipment-picker-detail"><div class="equipment-picker-diff"><small>装備後に変わる能力</small>${candidateComparison(current, after)}</div><div class="equipment-picker-skill">${candidateSetPreview(character, instance, escape)}${equipmentSkillBadges(instance)}${Object.values(instance.modifiers || {}).some(Boolean) ? `<small>${escape(effectModifierText(instance))}</small>` : ""}</div><button class="button primary" data-action="equip-instance" data-character="${characterId}" data-instance="${instance.id}" ${check.ok ? "" : "disabled"}>${check.ok ? `1個装備する（残り${group.instances.length}）` : escape(check.message)}</button></div></details><button type="button" class="button primary equipment-quick-equip" data-action="equip-instance" data-character="${characterId}" data-instance="${instance.id}" ${check.ok ? "" : "disabled"}>${check.ok ? "装備" : "不可"}</button></div>`;
+      const equipmentAfter = [...character.equipment, instance.id];
+      const after = window.Characters.stats(character, equipmentAfter);
+      return `<div class="equipment-picker-row equipment-stack compact-record quality-border-${grade.color} ${focused ? "is-focused-equipment" : ""}"><details class="equipment-picker-disclosure" ${focused ? "open" : ""}><summary class="record-summary"><span class="record-name"><span class="quality-label quality-${grade.color}">${escape(typeName)} · 品質：${escape(window.Items.qualityCompact(instance))}</span><strong>${escape(window.Items.displayName(instance))}</strong><small>${focused ? "選択した装備 · " : ""}${rangeName} · 重${effect.weight}${candidateAttributeSummary(instance, escape)}</small></span><strong class="equipment-stack-count">×${group.instances.length}</strong><span class="record-stats"><b>HP ${effect.hp ? `+${effect.hp}` : "—"}</b><b>攻 ${effect.attack ? `+${effect.attack}` : "—"}</b><b>防 ${effect.defense ? `+${effect.defense}` : "—"}</b><b>命中 ${effect.hitRate ? `+${Math.round(effect.hitRate * 100)}pt` : "—"}</b><b>回数 ${effect.attackCount ? `${effect.attackCount > 0 ? "+" : ""}${effect.attackCount}` : "—"}</b></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="equipment-picker-detail">${candidateAttributeComparison(character, equipmentAfter, escape)}${candidateTraitComparison(current, after, escape)}<div class="equipment-picker-diff"><small>装備後に変わる能力</small>${candidateComparison(current, after)}</div><div class="equipment-picker-skill">${candidateSetPreview(character, instance, escape)}${equipmentSkillBadges(instance)}${Object.values(instance.modifiers || {}).some(Boolean) ? `<small>${escape(effectModifierText(instance))}</small>` : ""}</div><button class="button primary" data-action="equip-instance" data-character="${characterId}" data-instance="${instance.id}" ${check.ok ? "" : "disabled"}>${check.ok ? `1個装備する（残り${group.instances.length}）` : escape(check.message)}</button></div></details><button type="button" class="button primary equipment-quick-equip" data-action="equip-instance" data-character="${characterId}" data-instance="${instance.id}" ${check.ok ? "" : "disabled"}>${check.ok ? "装備" : "不可"}</button></div>`;
     }).join("");
     const equipped = character.equipment.map(window.Items.getInstance).filter(Boolean).map(instance => {
       const template = window.Items.template(instance.templateId), effect = window.Items.effects(instance);
@@ -167,7 +213,8 @@
     const partyIndex = window.GameState.data.parties.findIndex(party => party.includes(character.id));
     const routeActions = equipmentPicker.origin === "inventory" ? `<div class="equipment-route-actions"><button class="button ghost" data-action="close-modal">所持品へ戻る</button><button class="button primary" data-action="review-equipped-character" data-character="${character.id}">${partyIndex >= 0 ? "パーティ編成で確認" : "冒険者詳細で確認"}</button></div>` : "";
     const changeNotice = equipmentChangeNotice ? `<aside id="equipment-change-notice" class="equipment-change-notice" role="status" aria-live="polite"><strong>${escape(equipmentChangeNotice.title)}</strong><div>${equipmentChangeNotice.rows.length ? equipmentChangeNotice.rows.map(row => `<span><b>${escape(row.label)}</b><small>${escape(row.before)} → ${escape(row.after)}</small><em class="${row.tone}">${escape(row.delta)}</em></span>`).join("") : '<span><b>能力値</b><small>変化なし</small></span>'}</div><p>重量 ${escape(equipmentChangeNotice.weight)}</p>${routeActions}</aside>` : "";
-    const characterControls = `<div class="equipment-persistent-weight" aria-label="現在の装備重量"><span>装備重量</span><strong>${currentWeight} / ${maxWeight}</strong><small>残り ${Math.max(0, Math.round((maxWeight - currentWeight) * 10) / 10)}</small></div>${changeNotice}${attributeRadar(character, { compact: true })}<details class="equipment-character-settings" open><summary>${portraitEditButton(character)}<span><strong>${escape(character.name)}</strong><small>Lv.${character.level} · ${escape(window.Characters.jobName(character))} · 能力・技・呪文・回復・特性</small></span><i>›</i></summary>${characterAbilitySheet(character, escape)}<form class="action-rate-form" data-character="${character.id}"><div class="action-rate-heading"><strong>行動率</strong><output class="action-rate-total is-valid" data-action-rate-total>優先順 回復 → 呪文 → 技 → 攻撃</output></div>${actionRatePresets()}${rateFields}<p class="action-rate-guide">使用可能な行動を優先順に個別判定します。すべての判定に失敗した場合は防御します。合計値の制限はありません。</p><button class="button secondary" type="submit">保存</button></form></details>`;
+    const raceName = window.GameData.races[character.raceId]?.name || "", birthName = window.GameData.births[character.birthId]?.name || "";
+    const characterControls = `<div class="equipment-character-identity">${portraitEditButton(character)}<span><strong>${escape(character.name)}</strong><small>Lv.${character.level} · ${escape(raceName)} / ${escape(window.Characters.jobName(character))} / ${escape(birthName)}</small></span></div><div class="equipment-persistent-weight" aria-label="現在の装備重量"><span>装備重量</span><strong>${currentWeight} / ${maxWeight}</strong><small>残り ${Math.max(0, Math.round((maxWeight - currentWeight) * 10) / 10)}</small></div>${changeNotice}${attributeRadar(character, { compact: true })}<details class="equipment-character-settings" open><summary><span><strong>戦闘能力・スキル・行動率</strong><small>装備を含む現在の詳細</small></span><i>›</i></summary>${characterAbilitySheet(character, escape)}<form class="action-rate-form" data-character="${character.id}"><div class="action-rate-heading"><strong>行動率</strong><output class="action-rate-total is-valid" data-action-rate-total>優先順 回復 → 呪文 → 技 → 攻撃</output></div>${actionRatePresets()}${rateFields}<p class="action-rate-guide">使用可能な行動を優先順に個別判定します。すべての判定に失敗した場合は防御します。合計値の制限はありません。</p><button class="button secondary" type="submit">保存</button></form></details>`;
     document.getElementById("modal-root").innerHTML = `<div class="modal-backdrop equipment-modal-backdrop ${equipmentReturnToParty ? "party-equipment-route" : ""}" data-action="close-modal"><div class="modal equipment-modal" role="dialog" aria-modal="true" aria-labelledby="equipment-title"><div class="modal-heading equipment-modal-heading"><div><span class="label">${equipmentReturnToParty ? `第${window.Party.selected() + 1}パーティ › CHARACTER EQUIPMENT` : "EQUIPMENT"}</span><h3 id="equipment-title">${escape(character.name)}の装備</h3></div><button class="modal-close party-equipment-back" data-action="close-modal" aria-label="${equipmentReturnToParty ? "メンバー編成へ戻る" : "閉じる"}">${equipmentReturnToParty ? "‹ 編成へ" : "×"}</button></div>${characterControls}<div class="equipment-picker-summary"><div><span>装備数</span><strong>${character.equipment.length}</strong></div><div><span>重量</span><strong>${window.Characters.equipmentWeight(character)} / ${window.Characters.maxWeight(character)}</strong></div><div><span>候補</span><strong>${candidateGroups.length}種 · ${candidates.length}点</strong></div></div><details class="equipped-compact" ${character.equipment.length ? "open" : ""}><summary>装備中 ${character.equipment.length}点　<span>タップして確認・外す</span></summary><div>${equipped || '<p class="empty-line">未装備</p>'}</div><footer class="equipped-compact-actions">${partyIndex >= 0 ? `<button class="button secondary" type="button" data-action="open-party-presets" data-party="${partyIndex}">編成プリセット</button>` : ""}<button class="button ghost" type="button" data-action="request-unequip-all" data-character="${character.id}" ${character.equipment.length ? "" : "disabled"}>装備をすべて外す</button></footer></details><form id="equipment-picker-form" class="equipment-picker-controls"><label class="equipment-search">検索<input id="equipment-picker-query" value="${escape(equipmentPicker.query)}" placeholder="装備名・スキル名"></label><label>装備種別<select id="equipment-picker-kind" data-equipment-filter="kind"><option value="all">すべて</option>${equipmentTypeOptions}</select></label><label>装備組合せ<select id="equipment-picker-set" data-equipment-filter="set">${setOptions}</select></label><label>品質<select id="equipment-picker-quality" data-equipment-filter="quality"><option value="all">すべて</option>${qualityOptions}</select></label><label>重量条件<select id="equipment-picker-fit" data-equipment-filter="fit"><option value="all">すべて</option><option value="available" ${equipmentPicker.fit === "available" ? "selected" : ""}>装備可能</option><option value="overweight" ${equipmentPicker.fit === "overweight" ? "selected" : ""}>重量超過</option></select></label><label>順序<select id="equipment-picker-sort" data-equipment-filter="sort"><option value="recommended" ${equipmentPicker.sort === "recommended" ? "selected" : ""}>おすすめ</option><option value="attack" ${equipmentPicker.sort === "attack" ? "selected" : ""}>攻撃性能</option><option value="defense" ${equipmentPicker.sort === "defense" ? "selected" : ""}>防御性能</option><option value="weight" ${equipmentPicker.sort === "weight" ? "selected" : ""}>軽い順</option><option value="newest" ${equipmentPicker.sort === "newest" ? "selected" : ""}>入手順</option></select></label><button class="button secondary equipment-search-button" type="submit">検索</button><button class="button ghost equipment-reset-button" type="button" data-action="reset-equipment-filters" ${filtersActive ? "" : "disabled"}>条件を解除</button></form><p class="mobile-equipment-guide">装備種別・組合せ・品質・重量条件を重ねて候補を絞り込めます。</p>${candidates.length ? `<div class="equipment-picker-list">${cards}</div><nav class="pagination" aria-label="装備候補のページ"><button class="button ghost" data-action="equipment-page" data-page="${equipmentPicker.page - 1}" ${equipmentPicker.page === 0 ? "disabled" : ""}>前へ</button><span>${equipmentPicker.page + 1} / ${pages}ページ · ${candidateGroups.length}種</span><button class="button ghost" data-action="equipment-page" data-page="${equipmentPicker.page + 1}" ${equipmentPicker.page >= pages - 1 ? "disabled" : ""}>次へ</button></nav>` : empty("条件に合う装備がありません", "記憶している条件を解除すると、所持しているすべての装備へ戻れます。", '<button class="button secondary" type="button" data-action="reset-equipment-filters">すべての装備を表示</button>')}</div></div>`;
   }
 

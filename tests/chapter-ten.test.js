@@ -49,6 +49,8 @@ for (const id of ["moonchain_katana", "dreamweave_robe", "jailer_shield"]) {
 }
 assert.strictEqual(data.monsters.chain_matriarch.bossDrop.itemId, "moonwarden_gauntlets");
 assert.strictEqual(data.monsters.exiled_king.bossDrop.itemId, "exiled_king_blade");
+assert.deepStrictEqual({ ...data.items.moonwarden_gauntlets.attributeBonuses }, { strength: 2, dexterity: 3 });
+assert.deepStrictEqual({ ...data.items.exiled_king_blade.attributeBonuses }, { strength: 4, fortitude: 2 });
 for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
   assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }

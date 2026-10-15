@@ -6,6 +6,21 @@
     const id = typeof monsterOrId === "string" ? monsterOrId : monsterOrId?.baseMonsterId || monsterOrId?.id;
     return (window.GameData.relations?.monsterMaterialDrops?.[id] || []).slice();
   }
+  function fixedDropIds(monsterOrId, difficultyId = "normal") {
+    const id = typeof monsterOrId === "string" ? monsterOrId : monsterOrId?.baseMonsterId || monsterOrId?.id;
+    const base = window.GameData.monsters[id];
+    if (!base) return [];
+    const monster = window.DungeonDifficulty?.monster(id, difficultyId) || base;
+    const signatureIds = (monster.signatureDropTiers || []).flatMap(entry => [
+      ...(entry.drops?.materials || []).map(drop => drop.itemId),
+      entry.drops?.equipment?.itemId
+    ]).filter(Boolean);
+    return Array.from(new Set([
+      ...materialDrops(id).map(drop => drop.itemId),
+      ...signatureIds,
+      base.bossDrop?.itemId
+    ].filter(Boolean)));
+  }
   function familyIds(unit) {
     if (Array.isArray(unit?.familyIds)) return unit.familyIds;
     return unit?.side === "enemy" ? familyIdsForMonster(unit.id) : familyIdsForRace(unit?.raceId);
@@ -60,5 +75,5 @@
   }); }
 
   window.CreatureFamilies = { familyIdsForRace, familyIdsForMonster, familyIds, labels };
-  window.MonsterLoot = { materialDrops, standardPool, candidates, roll, preview };
+  window.MonsterLoot = { materialDrops, fixedDropIds, standardPool, candidates, roll, preview };
 })();

@@ -73,9 +73,10 @@
   }
 
   function ensureCharacterSources(target) {
-    if (!target.adventurerBonds || typeof target.adventurerBonds !== "object" || Array.isArray(target.adventurerBonds)) target.adventurerBonds = { version: 1, pairs: {}, memories: {} };
+    if (!target.adventurerBonds || typeof target.adventurerBonds !== "object" || Array.isArray(target.adventurerBonds)) target.adventurerBonds = { version: 1, pairs: {}, memories: {}, huntLedgers: {} };
     if (!target.adventurerBonds.pairs || typeof target.adventurerBonds.pairs !== "object" || Array.isArray(target.adventurerBonds.pairs)) target.adventurerBonds.pairs = {};
     if (!target.adventurerBonds.memories || typeof target.adventurerBonds.memories !== "object" || Array.isArray(target.adventurerBonds.memories)) target.adventurerBonds.memories = {};
+    if (!target.adventurerBonds.huntLedgers || typeof target.adventurerBonds.huntLedgers !== "object" || Array.isArray(target.adventurerBonds.huntLedgers)) target.adventurerBonds.huntLedgers = {};
     target.characters.forEach(character => {
       if (!character.source) character.source = { type: "recruitment", ...(character.recruitmentId ? { recruitmentId: character.recruitmentId } : {}) };
       if (character.expeditionRecord && typeof character.expeditionRecord === "object") {
@@ -84,6 +85,10 @@
         if (!character.expeditionRecord.bossRivalries || typeof character.expeditionRecord.bossRivalries !== "object" || Array.isArray(character.expeditionRecord.bossRivalries)) character.expeditionRecord.bossRivalries = {};
         if (!Number.isInteger(character.expeditionRecord.treasureOpenings)) character.expeditionRecord.treasureOpenings = 0;
         if (!Number.isInteger(character.expeditionRecord.teamSurveys)) character.expeditionRecord.teamSurveys = 0;
+        if (!Number.isInteger(character.expeditionRecord.targetedHarvestAttempts)) character.expeditionRecord.targetedHarvestAttempts = 0;
+        if (!Number.isInteger(character.expeditionRecord.targetedHarvestSuccesses)) character.expeditionRecord.targetedHarvestSuccesses = 0;
+        if (!Number.isInteger(character.expeditionRecord.targetedHarvestItems)) character.expeditionRecord.targetedHarvestItems = 0;
+        if (!character.expeditionRecord.targetedHarvestRecords || typeof character.expeditionRecord.targetedHarvestRecords !== "object" || Array.isArray(character.expeditionRecord.targetedHarvestRecords)) character.expeditionRecord.targetedHarvestRecords = {};
       }
       if (character.source.type === "companion") {
         const profile = window.GameData.companionProfiles?.[character.source.companionId];
@@ -121,14 +126,14 @@
       recruitment: { version: 2, nextId: 1, pending: null },
       commissions: { version: 1, progress: {}, claimed: [] },
       recurringMissions: window.RecurringMissions ? window.RecurringMissions.initialState() : { version: 1, groups: {} },
-      encyclopedia: { version: 9, items: { wooden_sword: 1, cloth_clothes: 1 }, bestQualities: { wooden_sword: "standard", cloth_clothes: "standard" }, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null },
+      encyclopedia: { version: 13, items: { wooden_sword: 1, cloth_clothes: 1 }, itemDiscoveries: {}, bestQualities: { wooden_sword: "standard", cloth_clothes: "standard" }, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null, monsterTarget: null },
       observationJournal: { version: 1, readIds: [] },
       dailyShop: { version: 1, dateKey: null, offers: [] },
       autoSell: { version: 2, enabled: false, nextId: 1, rules: [] },
       accessCodes: { version: 1, redeemedIds: [] },
       presets: { version: 1, slots: [null, null, null, null, null, null] },
       characters: [],
-      adventurerBonds: { version: 1, pairs: {}, memories: {} },
+      adventurerBonds: { version: 1, pairs: {}, memories: {}, huntLedgers: {} },
       inventory: {
         equipment: [plainInstance("item-1", "wooden_sword"), plainInstance("item-2", "cloth_clothes")],
         materials: { guild_seal: 4 }

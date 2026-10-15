@@ -70,10 +70,10 @@
       .sort((a, b) => b.score - a.score || a.index - b.index)[0]?.skill || null;
   }
 
-  function healingAmount(hero, skill) {
+  function healingAmount(hero, skill, target) {
     const healing = effect(skill, "heal");
     if (!healing) return 0;
-    return window.SkillCombat.healingAmount(hero, healing);
+    return window.SkillCombat.healingAmount(hero, healing, target);
   }
 
   function missingHp(unit) {
@@ -88,9 +88,9 @@
 
   function healingTargets(skill, hero, heroes) {
     const allies = living(heroes);
-    const amount = healingAmount(hero, skill);
     const cleanse = effect(skill, "cleanse");
     const score = target => {
+      const amount = healingAmount(hero, skill, target);
       const effectiveHealing = Math.min(amount, missingHp(target));
       const cleansed = cleanse ? window.StatusCombat.cleanseableStatusIds(target, cleanse).length : 0;
       return effectiveHealing + cleansed * Math.max(12, amount * .35);
@@ -103,11 +103,10 @@
   }
 
   function healingScore(skill, hero, heroes) {
-    const amount = healingAmount(hero, skill);
     const cleanse = effect(skill, "cleanse");
     const targets = healingTargets(skill, hero, heroes);
-    const effectiveHealing = targets.reduce((sum, target) => sum + Math.min(amount, missingHp(target)), 0);
-    const cleanseValue = cleanse ? targets.reduce((sum, target) => sum + window.StatusCombat.cleanseableStatusIds(target, cleanse).length, 0) * Math.max(12, amount * .35) : 0;
+    const effectiveHealing = targets.reduce((sum, target) => sum + Math.min(healingAmount(hero, skill, target), missingHp(target)), 0);
+    const cleanseValue = cleanse ? targets.reduce((sum, target) => sum + window.StatusCombat.cleanseableStatusIds(target, cleanse).length * Math.max(12, healingAmount(hero, skill, target) * .35), 0) : 0;
     return effectiveHealing + cleanseValue;
   }
 

@@ -51,6 +51,8 @@ for (const id of ["heavensplit_rapier", "firstlight_robe", "constellation_leathe
 }
 assert.strictEqual(data.monsters.lord_beyond_sky.bossDrop.itemId, "nameless_staff");
 assert.strictEqual(data.monsters.afterstar_abomination.bossDrop.itemId, "afterstar_armor");
+assert.deepStrictEqual({ ...data.items.nameless_staff.attributeBonuses }, { intelligence: 4, spirit: 4, luck: 2 });
+assert.deepStrictEqual({ ...data.items.afterstar_armor.attributeBonuses }, { vitality: 5, fortitude: 4, strength: 1 });
 for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
   assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }

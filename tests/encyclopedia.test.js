@@ -29,6 +29,12 @@ async function run() {
   const higherQuality = game.Items.add("iron_sword", 1, { source: "test", qualityId: "fine", modifiers: { hp: 0, attack: 0, defense: 0 } });
   assert.strictEqual(higherQuality.newBestQualityId, "fine");
   assert.strictEqual(game.Encyclopedia.bestQuality("iron_sword"), "fine");
+  const firstDiscovery = game.Encyclopedia.recordItemDiscovery("iron_ore", { characterId: "scout-1", name: "リタ", roleTitle: "道標を拾う者", dungeonId: "cave", difficultyId: "normal", completedAt: now });
+  assert.strictEqual(firstDiscovery.name, "リタ");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.itemDiscovery("iron_ore"))), { characterId: "scout-1", name: "リタ", roleTitle: "道標を拾う者", dungeonId: "cave", difficultyId: "normal", completedAt: now });
+  assert.deepStrictEqual(Array.from(game.Encyclopedia.recentItemDiscoveries(1), entry => [entry.itemId, entry.name]), [["iron_ore", "リタ"]]);
+  assert.deepStrictEqual(Array.from(game.Encyclopedia.itemDiscoveriesByCharacter("scout-1"), entry => entry.itemId), ["iron_ore"]);
+  assert.strictEqual(game.Encyclopedia.recordItemDiscovery("iron_ore", { characterId: "scout-2", name: "別人", dungeonId: "meadow", completedAt: now + 1 }), null, "The first carrier record is never overwritten");
   assert(!(await game.GameClient.execute("encyclopedia.trackItem", { itemId: "steel_sword" })).ok, "Undiscovered items cannot become exploration targets");
   assert((await game.GameClient.execute("encyclopedia.trackRequirement", { itemId: "slime_gel", targetQuantity: 2 })).ok, "Materials named by an unlocked recipe are valid targets before discovery");
   assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "slime_gel", quantity: 2, progress: 0 });
@@ -61,6 +67,8 @@ async function run() {
   assert.strictEqual(game.Encyclopedia.bestQuality("iron_sword"), "fine", "Selling must not erase the best-quality record");
 
   game.GameState.reset();
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.habitatSurvey("meadow", "normal"))), { dungeonId: "meadow", difficultyId: "normal", confirmed: 0, total: 4, complete: false });
+  const sealsBeforeHabitatSurvey = game.Items.count("guild_seal");
   const heroId = require("./helpers").createCharacter(game, "図鑑調査隊", "warrior").id;
   game.Characters.get(heroId).level = 50;
   game.Party.toggle(heroId);
@@ -72,6 +80,14 @@ async function run() {
   const collected = await game.GameClient.execute("expedition.collect");
   assert(collected.ok && collected.result);
   const result = game.GameState.data.lastResult;
+  assert(result.newMonsterHabitats.length > 0 && result.newMonsterHabitats.every(entry => entry.dungeonId === "meadow" && entry.difficultyId === "normal" && entry.encountered > 0), "A return report announces each newly confirmed habitat at the exact route difficulty");
+  assert.strictEqual(game.Encyclopedia.habitatInsights(result.monsterEncounters, "meadow", "normal").length, 0, "An already recorded habitat is not announced again");
+  const meadowSurvey = game.Encyclopedia.habitatSurvey("meadow", "normal");
+  assert.strictEqual(Boolean(result.newMonsterHabitatSurvey), meadowSurvey.complete, "Completing every known species at a route difficulty is recorded on the expedition that closes the survey");
+  if (result.newMonsterHabitatSurvey) {
+    assert.strictEqual(result.newMonsterHabitatSurvey.sealReward, 1, "A completed normal-route survey grants one guild seal");
+    assert(game.Items.count("guild_seal") >= sealsBeforeHabitatSurvey + result.newMonsterHabitatSurvey.sealReward, "The survey reward is added to the inventory once when the final habitat is confirmed");
+  }
   assert.strictEqual(result.trackedItemId, "wooden_sword");
   assert.strictEqual(result.trackedItemGoal, 3);
   assert.strictEqual(result.trackedItemQuantity, result.drops.filter(drop => drop.itemId === "wooden_sword").reduce((sum, drop) => sum + drop.quantity, 0));
@@ -81,10 +97,146 @@ async function run() {
     assert(entry && entry.encountered >= count);
     assert(entry.defeated >= (result.monsterCounts[id] || 0));
     assert(entry.observations && entry.observations.incomingAttempts >= entry.observations.incomingHits);
+    assert(game.Encyclopedia.monsterHabitats(id).some(habitat => habitat.dungeonId === "meadow" && habitat.difficultyId === "normal" && habitat.encountered >= count), "Encounter records retain the exact dungeon and difficulty instead of revealing every possible habitat");
   }
+  assert(result.newMonsterFirstDefeats.length > 0, "The first defeated species are announced on the same return report");
+  for (const first of result.newMonsterFirstDefeats) {
+    const record = game.Encyclopedia.monster(first.monsterId).firstDefeat;
+    assert(record && record.partyName === game.Party.name(0) && record.dungeonId === "meadow");
+    assert(record.members.some(member => member.characterId === heroId && member.name === "図鑑調査隊"), "The entire returning party is credited in the first-defeat record");
+  }
+  const recentFirstVictory = game.Encyclopedia.recentMonsterFirstDefeats(1);
+  assert.strictEqual(recentFirstVictory.length, 1);
+  assert(result.newMonsterFirstDefeats.some(entry => entry.monsterId === recentFirstVictory[0].monsterId), "Recent first victories can be surfaced as a compact guild chronicle");
+  const targetMonsterId = Object.keys(result.monsterCounts)[0];
+  assert.deepStrictEqual(Array.from(game.Encyclopedia.huntMarks(targetMonsterId), mark => mark.threshold), [10, 30, 100]);
+  assert.deepStrictEqual(Array.from(game.Encyclopedia.huntMarks(targetMonsterId), mark => mark.fixedLootMultiplier), [1.1, 1.25, 1.5]);
+  assert.deepStrictEqual(Array.from(game.Encyclopedia.crossedHuntMarks(targetMonsterId, 9, 10), mark => [mark.threshold, mark.sealReward]), [[10, 1]]);
+  assert.deepStrictEqual(Array.from(game.Encyclopedia.crossedHuntMarks(targetMonsterId, 10, 29), mark => mark.threshold), []);
+  assert(!(await game.GameClient.execute("encyclopedia.trackMonster", { monsterId: "missing_monster", targetQuantity: 2 })).ok, "Unknown monsters cannot become hunt targets");
+  assert((await game.GameClient.execute("encyclopedia.trackMonster", { monsterId: targetMonsterId, targetQuantity: 2 })).ok);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedMonsterTarget())), { monsterId: targetMonsterId, quantity: 2, progress: 0 });
+  assert(!game.GameData.monsters[targetMonsterId].boss, "The ordinary target used by this test can be followed through field records");
+  const meadowMonsterIds = Array.from(new Set(game.GameData.dungeons.meadow.encounters.flatMap(encounter => encounter.groups.flat())));
+  const unrecordedMeadowMonsters = meadowMonsterIds.filter(monsterId => !game.Encyclopedia.monsterHabitats(monsterId).some(habitat => habitat.dungeonId === "meadow" && habitat.difficultyId === "normal"));
+  if (unrecordedMeadowMonsters.length) {
+    game.Encyclopedia.recordBattle(Object.fromEntries(unrecordedMeadowMonsters.map(monsterId => [monsterId, 1])), {}, {}, "normal", { dungeonId: "meadow" });
+  }
+  assert(game.Encyclopedia.habitatSurvey("meadow", "normal").complete, "A complete field survey is available before testing trail guidance");
+  const trackedHarvestItemId = game.MonsterLoot.fixedDropIds(targetMonsterId, "normal")
+    .find(itemId => game.GameData.items[itemId]?.type === "material");
+  assert(trackedHarvestItemId, "The hunt target has a fixed material that can become a combined field objective");
+  game.Items.add(trackedHarvestItemId, 1);
+  game.Encyclopedia.recordBattle({ [targetMonsterId]: 1 }, {}, { [targetMonsterId]: { drops: [trackedHarvestItemId] } }, "normal", { dungeonId: "meadow" });
+  assert(!(await game.GameClient.execute("encyclopedia.trackHarvest", { itemId: "wooden_sword", monsterId: targetMonsterId })).ok, "Ordinary shop equipment cannot be paired with a monster as a fixed harvest");
+  assert((await game.GameClient.execute("encyclopedia.trackHarvest", { itemId: trackedHarvestItemId, monsterId: targetMonsterId })).ok, "One observed fixed drop can prepare both field targets at once");
+  assert.strictEqual(game.Encyclopedia.trackedTarget().itemId, trackedHarvestItemId);
+  assert.strictEqual(game.Encyclopedia.trackedMonsterTarget().monsterId, targetMonsterId);
+  const defeatsToNine = Math.max(0, 9 - game.Encyclopedia.monster(targetMonsterId).defeated);
+  if (defeatsToNine) game.Encyclopedia.recordBattle({ [targetMonsterId]: defeatsToNine }, { [targetMonsterId]: defeatsToNine }, {}, "normal");
+  assert.strictEqual(game.Encyclopedia.monster(targetMonsterId).defeated, 9);
+  assert.strictEqual(game.Encyclopedia.huntFamiliarity(targetMonsterId).fixedLootMultiplier, 1);
+  const practicedHunter = game.Characters.get(heroId);
+  practicedHunter.expeditionRecord.targetedHarvestAttempts = 12;
+  practicedHunter.expeditionRecord.targetedHarvestSuccesses = 9;
+  practicedHunter.expeditionRecord.targetedHarvestItems = 9;
+  practicedHunter.expeditionRecord.targetedHarvestRecords[`${targetMonsterId}::${trackedHarvestItemId}`] = { attempts: 12, successes: 9, items: 9, lastAt: now };
+  const sealsBeforeHuntMark = game.Items.count("guild_seal");
+  assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0, timeMultiplier: 1 })).ok);
+  assert.strictEqual(game.GameState.data.expeditions[0].trackedMonsterId, targetMonsterId, "The hunt target is snapshotted when the party departs");
+  assert.strictEqual(game.GameState.data.expeditions[0].trackedMonsterGoal, 2);
+  assert.strictEqual(game.GameState.data.expeditions[0].trackedMonsterTrailId, targetMonsterId, "A completed local survey lets the expedition follow the ordinary hunt target's trail");
+  assert.strictEqual(game.GameState.data.expeditions[0].trackedItemHarvestId, trackedHarvestItemId, "A known fixed drop from the local hunt target is snapshotted as a targeted harvest");
+  assert.strictEqual(game.GameState.data.expeditions[0].trackedItemHarvestMonsterId, targetMonsterId);
+  assert(game.GameState.data.expeditions[0].trackedHarvestPractice?.characterId === heroId && game.GameState.data.expeditions[0].trackedHarvestPractice.tierId === "known_quarry", "An exact monster-and-item success record is snapshotted from the most practiced party member");
+  assert(game.GameState.data.expeditions[0].trackedHarvestPersistence?.characterId === heroId && game.GameState.data.expeditions[0].trackedHarvestPersistence.tierId === "trace_reader", "Repeated misses against the exact pair are snapshotted as field persistence");
+  assert.strictEqual(game.Battle.trackedHarvestMultiplier(game.GameState.data.expeditions[0], targetMonsterId, trackedHarvestItemId), 1.82);
+  assert.strictEqual(game.Battle.trackedHarvestMultiplier(game.GameState.data.expeditions[0], targetMonsterId, "wooden_sword"), 1);
+  assert.strictEqual(game.GameState.data.expeditions[0].knownMonsterDefeats[targetMonsterId], 9, "Hunting familiarity is snapshotted when the party departs");
+  assert.strictEqual(game.Battle.huntDropMultiplier(game.GameState.data.expeditions[0], targetMonsterId), 1);
+  const invalidHuntKnowledge = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHuntKnowledge.expeditions[0].knownMonsterDefeats.missing_monster = 100;
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHuntKnowledge)).ok);
+  const invalidHarvestTarget = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHarvestTarget.expeditions[0].trackedItemHarvestId = "wooden_sword";
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHarvestTarget)).ok, "An unrelated standard item cannot be forged into a targeted-harvest snapshot");
+  now += 30000;
+  const huntCollected = await game.GameClient.execute("expedition.collect");
+  assert(huntCollected.ok && huntCollected.result);
+  const huntResult = game.GameState.data.lastResult;
+  assert.strictEqual(huntResult.trackedMonsterId, targetMonsterId);
+  assert.strictEqual(huntResult.trackedMonsterTrailId, targetMonsterId);
+  assert.strictEqual(huntResult.trackedItemHarvestId, trackedHarvestItemId);
+  assert.strictEqual(huntResult.trackedItemHarvestMonsterId, targetMonsterId);
+  assert.strictEqual(huntResult.trackedHarvestPractice?.characterId, heroId, "The practiced hunter remains named in the return report");
+  assert.strictEqual(huntResult.trackedHarvestPersistence?.characterId, heroId, "The hunter who learned from failed attempts remains named in the return report");
+  assert.strictEqual(huntResult.trackedMonsterGoal, 2);
+  assert.strictEqual(huntResult.trackedMonsterQuantity, huntResult.monsterCounts[targetMonsterId] || 0);
+  const huntHistory = game.GameState.data.partyHistory[0][0].targetedHarvest;
+  assert(huntHistory && huntHistory.itemId === trackedHarvestItemId && huntHistory.monsterId === targetMonsterId, "A paired hunt remains identifiable in expedition history");
+  assert.strictEqual(huntHistory.persistence?.tierId, "trace_reader", "Expedition history keeps the failed-attempt field clue that was used");
+  assert.strictEqual(huntHistory.itemQuantity, huntResult.trackedItemQuantity);
+  assert.strictEqual(huntHistory.monsterQuantity, huntResult.trackedMonsterQuantity);
+  assert.strictEqual(huntHistory.itemGoal, huntResult.trackedItemGoal);
+  assert.strictEqual(huntHistory.itemProgress, huntResult.trackedItemProgress);
+  assert.strictEqual(huntHistory.monsterGoal, huntResult.trackedMonsterGoal);
+  assert.strictEqual(huntHistory.monsterProgress, huntResult.trackedMonsterProgress);
+  const hunterRecord = game.Characters.expeditionRecord(game.Characters.get(heroId));
+  assert.strictEqual(hunterRecord.targetedHarvestAttempts, 13, "Every returning member remembers participating in the targeted harvest");
+  assert.strictEqual(hunterRecord.targetedHarvestSuccesses, 9 + (huntResult.trackedItemQuantity > 0 ? 1 : 0));
+  assert.strictEqual(hunterRecord.targetedHarvestItems, 9 + huntResult.trackedItemQuantity);
+  const exactHarvestRecord = game.Characters.targetedHarvestRecords(game.Characters.get(heroId)).find(entry => entry.monsterId === targetMonsterId && entry.itemId === trackedHarvestItemId);
+  assert(exactHarvestRecord && exactHarvestRecord.attempts === 13 && exactHarvestRecord.successes === hunterRecord.targetedHarvestSuccesses, "Personal hunting memory stays attached to the exact quarry and fixed drop");
+  const expectedPracticeTierId = huntResult.trackedItemQuantity > 0 ? "seasoned_harvester" : "known_quarry";
+  assert.strictEqual(game.Characters.targetedHarvestPractice(game.Characters.get(heroId), targetMonsterId, trackedHarvestItemId).tier.id, expectedPracticeTierId);
+  assert.strictEqual(huntResult.newTargetedHarvestPractices.length, huntResult.trackedItemQuantity > 0 ? 1 : 0, "A newly crossed exact-pair practice tier is announced only after a successful harvest");
+  if (huntResult.newTargetedHarvestPractices.length) {
+    const practiceEntry = huntResult.newTargetedHarvestPractices[0];
+    assert(practiceEntry.characterId === heroId && practiceEntry.monsterId === targetMonsterId && practiceEntry.itemId === trackedHarvestItemId && practiceEntry.tierId === "seasoned_harvester");
+    const practicePanel = game.GameUIViews.results.targetedHarvestPracticePanel(huntResult, { escape: value => String(value) });
+    assert(practicePanel.includes("HUNTING PRACTICE") && practicePanel.includes("採り方を心得る") && practicePanel.includes('data-action="open-adventurer-record"'), "The return report celebrates the named adventurer's new hunting practice and links to that personal record");
+  }
+  assert(huntResult.trackedMonsterQuantity >= 1, "Following the trail guarantees an additional road encounter opportunity without adding another battle");
+  assert(huntResult.battleLog.some(entry => entry.kind === "hunt" && entry.trackedMonsterTrailId === targetMonsterId), "The battle log states that the field record was used");
+  assert(huntResult.battleLog.some(entry => entry.kind === "hunt" && entry.text.includes("採取目標") && entry.text.includes("獲物の癖を知る") && entry.text.includes("空振りの痕跡を読む")), "The battle log states whose successes and misses guided harvesting");
+  assert.strictEqual(huntResult.trackedMonsterProgress, game.Encyclopedia.trackedMonsterTarget().progress);
+  assert(huntResult.newMonsterHuntMarks.some(entry => entry.monsterId === targetMonsterId && entry.threshold === 10), "Crossing a hunting milestone is announced on the same return report");
+  assert.strictEqual(game.Encyclopedia.huntFamiliarity(targetMonsterId).fixedLootMultiplier, 1.1, "The first hunting milestone improves that monster's fixed-drop finding rate on future departures");
+  assert.strictEqual(game.Battle.huntDropMultiplier({ knownMonsterDefeats: { [targetMonsterId]: game.Encyclopedia.monster(targetMonsterId).defeated } }, targetMonsterId), 1.1);
+  assert.strictEqual(huntResult.monsterHuntSealReward, 1);
+  assert(game.Items.count("guild_seal") >= sealsBeforeHuntMark + huntResult.monsterHuntSealReward, "Hunting milestones grant their finite guild-seal research reward");
+  assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok, "The hunt target and its expedition snapshot are valid save data");
+  const invalidNewHarvestPractice = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidNewHarvestPractice.lastResult.newTargetedHarvestPractices = [{
+    characterId: heroId, name: practicedHunter.name, monsterId: targetMonsterId, itemId: trackedHarvestItemId,
+    tierId: "known_quarry", tierName: "存在しない手覚え", successes: 9
+  }];
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidNewHarvestPractice)).ok, "A forged hunting-practice announcement with a mismatched label is rejected");
+  const invalidHarvestPersistence = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHarvestPersistence.lastResult.trackedHarvestPersistence.tierName = "存在しない痕跡";
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHarvestPersistence)).ok, "A forged failed-harvest field clue is rejected");
+  const persistenceMisses = hunterRecord.targetedHarvestAttempts - hunterRecord.targetedHarvestSuccesses;
+  const validNewHarvestPersistence = JSON.parse(JSON.stringify(game.GameState.data));
+  validNewHarvestPersistence.lastResult.newTargetedHarvestPersistences = [{
+    characterId: heroId, name: practicedHunter.name, monsterId: targetMonsterId, itemId: trackedHarvestItemId,
+    tierId: "trace_reader", tierName: "空振りの痕跡を読む", misses: persistenceMisses
+  }];
+  assert(game.SaveTransfer.parse(JSON.stringify(validNewHarvestPersistence)).ok, "A genuine newly learned failed-harvest clue survives save validation");
+  validNewHarvestPersistence.lastResult.newTargetedHarvestPersistences[0].tierName = "存在しない手掛かり";
+  assert(!game.SaveTransfer.parse(JSON.stringify(validNewHarvestPersistence)).ok, "A forged failed-harvest clue announcement is rejected");
+  const invalidHarvestHistory = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHarvestHistory.partyHistory[0][0].targetedHarvest.itemId = "wooden_sword";
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHarvestHistory)).ok, "Expedition history cannot claim an unrelated standard item as a targeted harvest");
+  assert((await game.GameClient.execute("encyclopedia.clearTrackedMonster", {})).ok);
+  assert.strictEqual(game.Encyclopedia.trackedMonsterTarget(), null);
   assert(Object.keys(result.monsterObservations).length > 0, "Battle observations are persisted for staged research");
   assert(game.Encyclopedia.unreadMonsters().length > 0, "First encounters remain unread until the monster codex is opened");
   for (const drop of result.drops) assert(game.Encyclopedia.item(drop.itemId) >= drop.quantity);
+  for (const itemId of result.newItemIds) {
+    const discovery = game.Encyclopedia.itemDiscovery(itemId);
+    assert(discovery && discovery.dungeonId === "meadow" && discovery.characterId === heroId, "Every new expedition find remembers who first carried it home");
+  }
+  if (result.newItemIds.length) assert(result.newAdventurerMilestones.some(entry => entry.characterId === heroId && entry.milestoneIds.includes("first_item_discovery")), "A first find awards its personal record on the same return report");
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
 
   const invalidCount = JSON.parse(JSON.stringify(game.GameState.data));
@@ -105,6 +257,42 @@ async function run() {
   const invalidTrackedItem = JSON.parse(JSON.stringify(game.GameState.data));
   invalidTrackedItem.encyclopedia.itemTarget = { itemId: "unknown_relic", quantity: 5, progress: 0 };
   assert(!game.SaveTransfer.parse(JSON.stringify(invalidTrackedItem)).ok);
+  const invalidTrackedMonster = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidTrackedMonster.encyclopedia.monsterTarget = { monsterId: "unknown_monster", quantity: 5, progress: 0 };
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidTrackedMonster)).ok);
+  const invalidTrackedTrail = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidTrackedTrail.lastResult.trackedMonsterTrailId = "missing_monster";
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidTrackedTrail)).ok);
+  const invalidTrackedHarvest = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidTrackedHarvest.lastResult.trackedItemHarvestId = "missing_item";
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidTrackedHarvest)).ok);
+  const invalidDiscovery = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidDiscovery.encyclopedia.itemDiscoveries.unknown_relic = { characterId: heroId, name: "図鑑調査隊", roleTitle: null, dungeonId: "meadow", difficultyId: "normal", completedAt: now };
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidDiscovery)).ok);
+  const invalidFirstDefeat = JSON.parse(JSON.stringify(game.GameState.data));
+  const firstDefeatMonsterId = result.newMonsterFirstDefeats[0].monsterId;
+  invalidFirstDefeat.encyclopedia.monsters[firstDefeatMonsterId].firstDefeat.members = [];
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidFirstDefeat)).ok);
+  const invalidHabitat = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHabitat.encyclopedia.monsters[firstDefeatMonsterId].habitats.missing_dungeon = { normal: { encountered: 1, defeated: 0 } };
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHabitat)).ok);
+  const invalidNewHabitat = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidNewHabitat.lastResult.newMonsterHabitats = [{ monsterId: firstDefeatMonsterId, dungeonId: "cave", difficultyId: "normal", encountered: 1 }];
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidNewHabitat)).ok);
+  const invalidHabitatSurvey = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHabitatSurvey.lastResult.newMonsterHabitatSurvey = { dungeonId: "meadow", difficultyId: "normal", total: 999, sealReward: 1 };
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHabitatSurvey)).ok);
+  const invalidHabitatSurveyReward = JSON.parse(JSON.stringify(game.GameState.data));
+  if (invalidHabitatSurveyReward.lastResult.newMonsterHabitatSurvey) {
+    invalidHabitatSurveyReward.lastResult.newMonsterHabitatSurvey.sealReward = 99;
+    assert(!game.SaveTransfer.parse(JSON.stringify(invalidHabitatSurveyReward)).ok);
+  }
+  const invalidHuntMark = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHuntMark.lastResult.newMonsterHuntMarks = [{ monsterId: targetMonsterId, threshold: 999 }];
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHuntMark)).ok);
+  const invalidHuntReward = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidHuntReward.lastResult.monsterHuntSealReward += 1;
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidHuntReward)).ok);
 
   game.Items.add("wooden_sword", 1, { source: "drop", qualityId: "standard", ultraRareTitleId: "worldbreaker", modifiers: { hp: 0, attack: 0, defense: 0 } });
   const priorV8 = JSON.parse(JSON.stringify(game.GameState.data));
@@ -113,7 +301,7 @@ async function run() {
   delete priorV8.encyclopedia.itemTarget;
   storage.set(game.SaveSystem.exportKey, JSON.stringify(priorV8));
   game = load();
-  assert.strictEqual(game.GameState.data.encyclopedia.version, 9);
+  assert.strictEqual(game.GameState.data.encyclopedia.version, 13);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "wooden_sword", quantity: 1, progress: 0 });
   assert.strictEqual(game.Encyclopedia.bestQuality("wooden_sword"), "standard");
   assert(game.Encyclopedia.ultraRareTitle("worldbreaker"), "Version 8 archives retain ultra-rare discoveries while migrating the exploration target");

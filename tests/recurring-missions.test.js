@@ -10,7 +10,7 @@ for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").ma
 }
 const game = context.window, daily = () => game.RecurringMissions.state().groups.daily, weekly = () => game.RecurringMissions.state().groups.weekly;
 assert.strictEqual(game.GameData.config.recurringMissions.groups[0].missions.length, 6);
-assert.strictEqual(game.GameData.config.recurringMissions.groups[1].missions.length, 4);
+assert.strictEqual(game.GameData.config.recurringMissions.groups[1].missions.length, 8);
 assert.strictEqual(new Set(game.GameData.config.recurringMissions.groups.map(group => group.id)).size, game.GameData.config.recurringMissions.groups.length);
 game.GameData.config.recurringMissions.groups.forEach(group => {
   assert(["daily", "weekly"].includes(group.schedule.type));
@@ -18,6 +18,7 @@ game.GameData.config.recurringMissions.groups.forEach(group => {
   assert.strictEqual(new Set(group.missions.map(mission => mission.id)).size, group.missions.length);
   group.missions.forEach(mission => {
     assert(typeof mission.trigger === "string" && Number.isInteger(mission.target) && mission.target > 0);
+    assert(game.GameData.storyCharacters[mission.issuerCharacterId] && typeof mission.flavor === "string" && mission.flavor.length > 0 && typeof mission.completionFlavor === "string" && mission.completionFlavor.length > 0, "Every recurring request has a known issuer and distinct request/completion lines");
     Object.keys(mission.rewards.materials || {}).forEach(itemId => assert.strictEqual(game.GameData.items[itemId].type, "material"));
   });
 });
@@ -26,6 +27,8 @@ assert.strictEqual(daily().claimed.length, 0);
 assert(daily().selectedIds.includes("login") && daily().selectedIds.length === 3, "login should be pinned beside two rotating daily requests");
 assert.strictEqual(weekly().selectedIds.length, 2);
 assert.strictEqual(weekly().claimed.length, 0);
+const weeklyVariants = game.RecurringMissions.active("weekly").map(entry => entry.variantGroup).filter(Boolean);
+assert.strictEqual(new Set(weeklyVariants).size, weeklyVariants.length, "Two weekly requests never select easy and hard variants of the same activity together");
 assert.strictEqual(game.RecurringMissions.readyCount(), 1, "The login reward is initially claimable");
 
 async function run() {
@@ -51,14 +54,14 @@ async function run() {
   const collected = await game.GameClient.execute("expedition.collect");
   assert(collected.ok && collected.result.success);
   if (daily().selectedIds.includes("clear")) assert.strictEqual(daily().progress.clear, 1);
-  assert(game.RecurringMissions.active("weekly").some(entry => (weekly().progress[entry.id] || 0) === 1), "weekly departures and clears should share expedition events");
-  ["facility_collect", "shop_purchase", "craft"].forEach(trigger => game.RecurringMissions.record(trigger));
+  const expeditionWeeklies = game.RecurringMissions.active("weekly").filter(entry => ["departure", "clear"].includes(entry.trigger));
+  expeditionWeeklies.forEach(entry => assert.strictEqual(weekly().progress[entry.id], 1, "Weekly exploration requests share the same real departure and clear events as daily requests"));
+  ["facility_collect", "shop_purchase", "craft", "equipment_upgrade"].forEach(trigger => game.RecurringMissions.record(trigger));
   const beforeBulkClaim = game.GameState.data.inventory.materials.guild_seal;
   assert((await game.GameClient.execute("recurringMission.claimAll", { groupId: "daily" })).ok);
   assert.strictEqual(daily().claimed.length, 3);
   assert.strictEqual(game.GameState.data.inventory.materials.guild_seal, beforeBulkClaim + 2);
-  game.RecurringMissions.record("departure", 20);
-  game.RecurringMissions.record("clear", 20);
+  game.RecurringMissions.active("weekly").forEach(entry => game.RecurringMissions.record(entry.trigger, entry.target));
   assert(game.RecurringMissions.active("weekly").every(entry => game.RecurringMissions.ready("weekly", entry)));
   const weeklyGold = game.GameState.data.gold, weeklySeals = game.GameState.data.inventory.materials.guild_seal;
   assert((await game.GameClient.execute("recurringMission.claimAll", { groupId: "weekly" })).ok);
@@ -85,6 +88,6 @@ async function run() {
 
   const invalid = JSON.parse(JSON.stringify(game.GameState.data)); invalid.recurringMissions.groups.daily.progress.missing = 1;
   assert(!game.SaveTransfer.parse(JSON.stringify(invalid)).ok);
-  console.log("Recurring missions test passed: daily and weekly cycles, deterministic pool selection, rewards, reset, additive groups, validation and rollback");
+  console.log("Recurring missions test passed: daily and varied weekly cycles, non-duplicate variants, deterministic pool selection, rewards, reset, additive groups, validation and rollback");
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

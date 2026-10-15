@@ -31,13 +31,36 @@ async function run() {
   }
   heroes[0].source = { type: "companion", companionId: "mina" };
   heroes[1].source = { type: "companion", companionId: "tio" };
+  heroes.forEach(hero => game.Characters.learnedSkills(hero).filter(skill => skill.activation?.type === "active").forEach(skill => {
+    hero.expeditionRecord.skillRecords[skill.id] = { uses: 9, damage: 0, healing: 0, statuses: 0 };
+  }));
+  game.GameState.data.partyHistory[1] = Array.from({ length: 3 }, (_, index) => ({
+    id: `role-seed-${index}`, completedAt: now - index - 1, dungeonId: "cave", difficultyId: "normal", success: true,
+    memberHighlights: [
+      { kind: "damage", memberId: heroes[0].id, name: heroes[0].name, value: 1 },
+      { kind: "status", memberId: heroes[1].id, name: heroes[1].name, value: 1 }
+    ],
+    battle: { members: [{ id: heroes[0].id, name: heroes[0].name }, { id: heroes[1].id, name: heroes[1].name }] }
+  }));
+  game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: { incomingAttempts: 1, incomingHits: 1 } }, "normal");
+  game.Encyclopedia.setTrackedMonster("slime", 20);
+  game.Encyclopedia.recordMonsterTargetProgress("slime", 2);
   assert(game.Dungeon.start("meadow", 0, 2).ok);
   const expedition = game.GameState.data.expeditions[0];
+  assert.strictEqual(expedition.trackedMonsterProgressAtDeparture, 2, "A departure snapshots existing hunt progress for the live journal");
   assert(expedition.rumor && expedition.rumor.dungeonId === "meadow", "An enterable route carries the current traveler rumor into the expedition snapshot");
   assert.deepStrictEqual(Array.from(expedition.knownCompanionMomentKeys), [], "A departure snapshots the travel memories known at that moment");
   assert.deepStrictEqual(Array.from(expedition.partySnapshot.slice(0, 2), member => member.companionStageId), ["base", "base"], "A departure snapshots each story companion's growth stage");
+  assert.strictEqual(expedition.partySnapshot[0].reputation.title, "先陣", "A departure snapshots an established reputation instead of recomputing it later");
+  assert.strictEqual(expedition.partySnapshot[1].reputation.title, "撹乱役", "More than one established reputation can travel with the same party");
+  const reputationConversation = game.Characters.expeditionRoleConversation(heroes);
+  assert(reputationConversation && reputationConversation.label === "撹乱役 × 先陣" && reputationConversation.memberNames.join("・") === "術師・盾役", "The current party can describe its emergent atmosphere without adding saved state or combat bonuses");
   const planned = game.ExpeditionLog.preview(expedition);
   const kinds = planned.battleLog.map(entry => entry.kind);
+  assert(planned.battleLog.some(entry => entry.kind === "encounter" && entry.encounteredMonsterIds?.includes("slime")), "Encounter records preserve monster identities for hunt highlighting");
+  assert(planned.battleLog.some(entry => entry.kind === "reputation" && entry.text.includes("先陣の盾役")), "An established reputation becomes a narrative departure beat");
+  assert(planned.battleLog.some(entry => entry.kind === "reputation" && entry.text.includes("合図で守りを崩す") && entry.text.includes("その隙をもらう")), "Complementary reputations create a short departure conversation between actual adventurers");
+  assert(planned.partyReturnMoment && planned.partyReturnMoment.label === "撹乱役 × 先陣" && planned.battleLog.some(entry => entry.kind === "reputation" && entry.text === planned.partyReturnMoment.text), "A complementary pair also reflects together on the actual success or retreat during the journey home");
   assert(kinds.includes("arrival") && kinds.includes("explore") && kinds.includes("companion") && kinds.includes("story") && kinds.includes("treasure") && kinds.includes("stairs"));
   assert(["secret", "camp", "hazard", "lore", "gather"].some(kind => kinds.includes(kind)), "Every departure includes one non-combat route event");
   const companionMoment = planned.battleLog.find(entry => entry.kind === "companion");
@@ -54,6 +77,7 @@ async function run() {
   const middle = game.ExpeditionLog.active(expedition, expedition.startedAt + (expedition.endsAt - expedition.startedAt) * .5);
   assert(middle.events.length > 0 && middle.events[0].entries.some(entry => entry.kind === "encounter"));
   assert(middle.events.every(event => event.entries.every(entry => entry.encounter === event.number)));
+  assert(middle.huntTarget && middle.huntTarget.monsterId === "slime" && middle.huntTarget.progressAtDeparture === 2, "The live journal exposes only the snapshotted hunt and revealed defeats");
   const observations = game.ExpeditionLog.observations([
     { kind: "enemy-skill", text: "【敵技】粘液波" },
     { kind: "skill", text: "【リアクション】即時調薬" },
@@ -62,12 +86,17 @@ async function run() {
   assert(observations.some(group => group.label === "敵の特殊行動" && group.entries[0].includes("粘液波")));
   assert(observations.some(group => group.label === "即応" && group.entries[0].includes("即時調薬")));
 
-  game.UI.init(); game.UI.navigate("party"); await click("party-view", { view: "adventure" });
+  game.UI.init(); game.UI.navigate("party");
+  assert(node("app").innerHTML.includes("fleet-party-mood") && node("app").innerHTML.includes("隊の空気") && node("app").innerHTML.includes("撹乱役 × 先陣") && node("app").innerHTML.includes("合図で守りを崩す"), "The party overview reveals established chemistry in a compact disclosure before departure");
+  await click("party-view", { view: "adventure" });
   now = expedition.startedAt + (expedition.endsAt - expedition.startedAt) * .5;
   game.UI.render();
   let html = node("app").innerHTML;
   assert(html.includes("LIVE ADVENTURE LOG") && html.includes("探索の記録"));
   assert(html.includes("journey-entry journey-encounter") && html.includes("battle-log-entry") && html.includes("journey-discovery companion") && html.includes("道中のひと幕"));
+  assert(html.includes("journey-hunt-progress") && html.includes("討伐目標を追跡中") && html.includes("スライム"), "The live exploration log keeps the current hunt visible while encounters unfold");
+  assert(html.includes("has-hunt-target") && html.includes("journey-hunt-target-badge") && html.includes("討伐対象"), "An encounter containing the tracked monster is visibly marked without revealing later battles");
+  assert(html.includes("仲間内の呼び名") && html.includes("battle-log-entry reputation") && html.includes("先陣の盾役"), "The live journal surfaces departure reputations as a short scene");
   assert(html.includes("journey-companion-cast") && html.includes("ミナ") && html.includes("ティオ") && html.includes("companion-mina.png") && html.includes("companion-tio.png"), "Companion moments show the named cast and their dedicated portraits");
   assert(html.includes("journey-witnesses") && html.includes("この場を歩いた冒険者") && html.includes("盾役・術師・癒し手"), "The live story clue names the actual adventurers witnessing it");
   assert(!html.includes("dungeon-grid"), "Destination cards should be replaced by the live log while exploring");
@@ -75,6 +104,7 @@ async function run() {
   now = expedition.endsAt;
   const result = game.Dungeon.completeIfReady(now);
   assert(result && JSON.stringify(result.battleLog) === JSON.stringify(planned.battleLog), "Live preview and completed battle log must be identical");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(result.partyReturnMoment)), JSON.parse(JSON.stringify(planned.partyReturnMoment)), "The journey-home conversation remains deterministic between preview and completion");
   assert.deepStrictEqual(JSON.parse(JSON.stringify(result.rumor)), JSON.parse(JSON.stringify(expedition.rumor)), "The departure rumor remains attached to the completed result");
   assert(game.Story.ensure().facts.discoveries.includes("meadow"), "Returning from exploration should archive its discovered story clue");
   const witnessedRouteEvent = result.battleLog.find(entry => entry.routeEventId);
@@ -89,21 +119,26 @@ async function run() {
   assert.strictEqual(result.newAdventurerMilestones.length, 3, "Every first-time party member earns a personal first-sortie record");
   assert(result.newAdventurerMilestones.every(entry => entry.milestoneIds.includes("first_sortie")), "First-sortie medals are reported at the moment they are earned");
   assert(result.newAdventurerRecords.length > 0 && result.newAdventurerRecords.every(entry => entry.improvements.every(improvement => improvement.value > improvement.previous)), "Improved personal expedition bests are captured on return");
+  assert(result.newSkillMasteries.length > 0 && result.newSkillMasteries.every(entry => entry.masteries.every(mastery => mastery.rankId === "familiar" && mastery.uses >= 10)), "Crossing a skill-use threshold creates a return-report mastery moment");
   const history = game.GameState.data.partyHistory[0][0];
   assert.deepStrictEqual(Array.from(history.storyMoments, moment => moment.kind), ["discovery", "ending"], "Discovered and resolved story moments remain in expedition history while the next opening waits at home");
   assert(game.Story.pendingEpisode()?.entries.some(entry => entry.kind === "dungeonOpening" && entry.dungeon?.id === "whispering_brook"), "The next route opening is waiting in the home story reader");
   assert.deepStrictEqual(Array.from(history.partySetup, member => member.name), ["盾役", "術師", "癒し手"], "The expedition history keeps the adventurers who witnessed each story moment");
+  assert.strictEqual(history.partySetup[0].reputation.title, "先陣", "The history keeps the reputation carried at departure");
   await click("party-view", { view: "results" });
   html = node("app").innerHTML;
   assert(html.includes("ADVENTURE LOG") && html.includes("探索の記録"));
+  assert(html.includes("仲間内の呼び名") && html.includes("先陣の盾役"), "The completed journal preserves the departure reputation scene");
   assert(html.includes("JOURNEY DISCOVERY") && html.includes("道中で起きたこと") && html.includes(witnessedRouteDefinition.name) && html.includes(witnessedRouteEvent.routeEventSuccess ? "成功" : "失敗"), "The completed report surfaces its route-event outcome before the full journal");
   assert(html.includes("journey-route-tags") && html.includes(`journey-discovery ${witnessedRouteDefinition.kind} is-route-event`) && html.includes(`<small>${witnessedRouteDefinition.name}</small>`) && html.includes(witnessedRouteEvent.routeEventSuccess ? ">成功</b>" : ">失敗</b>"), "The full journal names the exact route scene and shows its observed outcome instead of only a broad event family");
   if (witnessedRouteEvent.routeRumorMatched) assert(html.includes(">噂と一致</b>"), "A route event matching the local rumor is marked directly in the full journal");
   assert(html.includes("TREASURE FOUND") && html.includes("個の宝箱を発見") && html.includes("開封") && ["古びた木箱", "鉄縁の宝箱", "星紋の宝箱"].some(name => html.includes(name)), "The return report summarizes chest rarity, opening outcome and contents before the full journal");
+  assert(html.includes("SIGNATURE SKILL") && html.includes("使い込んだ技能に新しい呼び名") && html.includes("手慣れ"), "A newly earned skill mastery is celebrated before the detailed battle record");
   assert(html.includes("この場を歩いた冒険者") && html.includes("盾役・術師・癒し手"), "The completed journal keeps the same story witnesses");
   assert(html.includes("journey-conclusion") && html.includes("battle-log-list"));
   assert(html.includes("journey-companion-cast") && html.includes("ミナ") && html.includes("ティオ"), "The completed journal preserves the companion scene cast");
   assert(html.includes("NEW ACHIEVEMENT") && html.includes("旅の途中で") && html.includes("二人だけの歩幅") && html.includes("実績の記録を読む"), "Newly completed achievements are visible in the return report");
+  assert(html.includes("ON THE WAY HOME") && html.includes("帰路のひと幕") && html.includes(result.partyReturnMoment.text), "The return report surfaces a success-or-retreat-specific exchange without requiring the full battle log");
   assert(html.includes("NEW PERSONAL RECORD") && html.includes("初陣の記章") && html.includes("足跡を見る"), "New personal medals are visible in the return report");
   assert(html.includes("PERSONAL BEST") && html.includes("自身の遠征記録を更新") && html.includes("→"), "Personal-best improvements are visible in the return report");
   assert(html.includes("TRAVELER'S RUMOR") && html.includes("を確かめました"), "The return report recalls the traveler rumor attached at departure");
@@ -112,6 +147,11 @@ async function run() {
   assert(!html.includes("戦闘ログを見る"), "Battle logs should be nested in encounter entries instead of a separate panel");
   await click("open-achievements");
   assert(node("app").innerHTML.includes("実績の記録") && node("app").innerHTML.includes("旅の途中で"), "The return report opens the achievement ledger directly");
+  game.UI.navigate("party");
+  await click("party-open", { party: "0", view: "history" });
+  html = node("app").innerHTML;
+  assert(html.includes("遠征時の隊の空気") && html.includes("撹乱役 × 先陣") && html.includes("合図で守りを崩す") && html.includes("party-history-reputation") && html.includes("先陣"), "Expedition history preserves the atmosphere and reputations actually carried at departure");
+  assert(html.includes("party-history-return-mood") && html.includes("帰路のひと幕") && html.includes(result.partyReturnMoment.text), "Expedition history preserves the pair's journey-home exchange with that specific result");
   console.log("Expedition log test passed: deterministic live reveal, story discoveries, arrival/search/treasure/stairs rows, nested encounter battles and completed journal reuse");
 }
 run().catch(error => { console.error(error); process.exitCode = 1; });

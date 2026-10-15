@@ -16,12 +16,14 @@ async function run() {
   game.GameState.reset();
   require("./helpers").createCharacter(game, "所持品確認役");
   const instance = game.Items.add("iron_sword", 1, { source: "test", modifiers: { hp: 8, attack: 3, defense: 2 }, equipmentSkills: ["physical_power_3"] }).instances[0];
+  game.Items.add("wolf_fang_bow", 1, { source: "test", qualityId: "standard", modifiers: {} });
   game.UI.init(); game.UI.navigate("inventory");
   const html = node("app").innerHTML;
   assert(!html.includes("比較する冒険者") && !html.includes("EQUIPMENT COMPARISON"));
   assert(!html.includes('data-action="inventory-equip"') && !html.includes("装備スキルの変化"));
   assert(html.includes("共通性能・追加効果") && html.includes("物理攻撃威力+3%"));
   assert(html.includes("剣 · 近接 · 品質：標準"), "Inventory rows show equipment type, range and quality separately");
+  assert(html.includes("基礎 技巧+1・幸運+1") && html.includes("<small>技巧</small><strong>+1</strong>") && html.includes("<small>幸運</small><strong>+1</strong>"), "Rare equipment shows its primary attributes in both the compact row and full performance details");
   assert(html.includes("品質：標準 ×1") && html.includes("神がかった ×5") && html.includes("品質倍率を確認"), "Compact quality multipliers are visible in inventory rows and the collapsible guide");
   assert(html.includes('class="equipment-stat-chips"') && html.includes("<small>物理攻撃</small>") && html.includes("<small>魔法攻撃</small>") && html.includes("<small>命中精度</small>"));
   const stats = html.slice(html.indexOf('class="equipment-stat-chips"'), html.indexOf('class="equipment-stat-chips"') + 1200);

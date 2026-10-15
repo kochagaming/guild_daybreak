@@ -49,6 +49,8 @@ for (const id of ["eclipse_sword", "starveil_cloth", "skykey_gauntlet"]) {
 }
 assert.strictEqual(data.monsters.starbound_usurper.bossDrop.itemId, "regent_staff");
 assert.strictEqual(data.monsters.hollow_king.bossDrop.itemId, "hollow_throne_shield");
+assert.deepStrictEqual({ ...data.items.regent_staff.attributeBonuses }, { intelligence: 4, spirit: 3, luck: 1 });
+assert.deepStrictEqual({ ...data.items.hollow_throne_shield.attributeBonuses }, { vitality: 4, fortitude: 4 });
 for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
   assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }

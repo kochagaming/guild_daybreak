@@ -32,8 +32,22 @@
     const count = Math.min(group.selection.count, candidates.length);
     if (group.selection.strategy === "all" || count === candidates.length) return candidates;
     const pinned = (group.selection.pinnedIds || []).filter(id => candidates.includes(id)).slice(0, count);
-    const random = candidates.filter(id => !pinned.includes(id)).map(id => ({ id, order: hash(`${group.id}:${key}:${id}`) }))
-      .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id)).slice(0, count - pinned.length).map(entry => entry.id);
+    const missionById = new Map(group.missions.map(entry => [entry.id, entry]));
+    const usedVariants = new Set(pinned.map(id => missionById.get(id)?.variantGroup).filter(Boolean));
+    const ordered = candidates.filter(id => !pinned.includes(id)).map(id => ({ id, order: hash(`${group.id}:${key}:${id}`) }))
+      .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
+    const random = [];
+    ordered.forEach(candidate => {
+      if (random.length >= count - pinned.length) return;
+      const variant = missionById.get(candidate.id)?.variantGroup;
+      if (variant && usedVariants.has(variant)) return;
+      random.push(candidate.id);
+      if (variant) usedVariants.add(variant);
+    });
+    // 定義ミスがあっても抽選数を欠かさない。通常は同系統を避けた時点で必要数が揃う。
+    ordered.forEach(candidate => {
+      if (random.length < count - pinned.length && !random.includes(candidate.id)) random.push(candidate.id);
+    });
     return pinned.concat(random);
   }
 

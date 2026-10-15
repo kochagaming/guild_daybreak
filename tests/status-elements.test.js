@@ -28,6 +28,7 @@ for (let round = 2; round <= 4; round += 1) {
 }
 assert.strictEqual(target.currentHp, 88);
 assert(!target.statuses.poison && source.metrics.statusDamageDealt === 12 && source.strategyReport.statusDamage === 12);
+assert.strictEqual(target.metrics.damageSources.status, 12, "Periodic status damage is kept separate from direct physical and magic wounds");
 
 const reactive = {
   side: "hero", name: "反応役", hp: 100, currentHp: 51, statuses: {}, statusResistances: {},
@@ -95,6 +96,10 @@ const resistantEnemy = { name: "耐性標的", side: "enemy", hp: 100, currentHp
 const resisted = game.StatusCombat.apply(() => .75, { ...source, side: "hero" }, resistantEnemy, { statusId: "poison", chance: 1, duration: 3 }, log, 1, 1);
 assert(resisted.resisted && resisted.reason === "resistance" && resistantEnemy.observation.statusResisted.includes("poison"));
 assert.strictEqual(game.StatusCombat.elementMultiplier({ elementModifiers: { fire: .75 } }, "fire"), .75);
+const plainStatusTarget = { name: "通常標的", side: "enemy", hp: 100, currentHp: 100, statusResistances: {}, statuses: {}, observation: { statusResisted: [], statusLanded: [] } };
+const giftedStatusTarget = { name: "適性標的", side: "enemy", hp: 100, currentHp: 100, statusResistances: {}, statuses: {}, observation: { statusResisted: [], statusLanded: [] } };
+assert(!game.StatusCombat.apply(() => .4, { ...source, side: "hero", statusChanceBonus: 0 }, plainStatusTarget, { statusId: "poison", chance: .3, duration: 3 }, [], 1, 1).applied);
+assert(game.StatusCombat.apply(() => .4, { ...source, side: "hero", statusChanceBonus: .15 }, giftedStatusTarget, { statusId: "poison", chance: .3, duration: 3 }, [], 1, 1).applied, "A hero's bounded attribute bonus should improve status success before resistance is applied");
 
 function hero(skillIds) {
   return { id: "hero", name: "属性術師", level: 10, jobId: "mage", position: 0, weaponRange: "ranged", actionRates: { attack: 0, technique: 0, spell: 100, healing: 0 }, skillIds,
@@ -107,6 +112,15 @@ const fire = game.Battle.resolve({ seed: 1, partyIds: ["hero"], partySnapshot: [
 assert(fire.battleLog.some(entry => entry.text.includes("炎属性・弱点1.25倍")));
 assert(fire.battleLog.some(entry => entry.kind === "status" && entry.text.includes("火傷")));
 assert(fire.strategyReport.elementWeaknessHits > 0 && fire.strategyReport.statusInflicted > 0 && fire.memberReports[0].statusDamageDealt > 0);
+assert(fire.memberReports[0].statusAttempts > 0 && fire.memberReports[0].statusInflicted > 0 && fire.memberReports[0].statusInflicted <= fire.memberReports[0].statusAttempts, "Status builds keep personal success/attempt evidence in the return report");
+assert(fire.memberReports[0].skillUses.fireball > 0, "Active skill use counts remain available for the return report");
+assert(fire.memberReports[0].skillDamage.fireball > 0 && fire.memberReports[0].skillStatusInflicted.fireball > 0, "Active skills retain their actual damage and successful status contribution");
+const statusSummary = game.Dungeon.battleSummary(fire);
+assert.strictEqual(Object.values(statusSummary.damageSources).reduce((sum, value) => sum + value, 0), statusSummary.damageTaken, "Expedition summaries preserve the incoming-damage source totals");
+assert(Object.keys(statusSummary.damageElements).every(id => game.GameData.elements[id]), "Every recorded incoming-damage element references master data");
+assert(statusSummary.statusAttempts >= statusSummary.statusInflicted && statusSummary.statusInflicted > 0 && statusSummary.statusResisted >= 0, "Expedition summaries preserve status success, attempt and resistance evidence for repeat-run comparison");
+assert(["attackActions", "techniqueActions", "spellActions", "healingActions", "defendActions"].every(key => statusSummary[key] === fire.memberReports.reduce((total, member) => total + (member[key] || 0), 0)) && statusSummary.spellActions > 0, "Expedition summaries preserve the actions actually chosen in battle");
+assert(statusSummary.members.length === 1 && statusSummary.members[0].id === "hero" && statusSummary.members[0].damageDealt === fire.memberReports[0].damageDealt && statusSummary.members[0].remainingHp === fire.memberReports[0].remainingHp, "Expedition summaries preserve compact per-adventurer performance for repeat-run comparison");
 
 const paralysisBattle = game.Battle.resolve({ seed: 2, partyIds: ["hero"], partySnapshot: [hero(["rune_spark"])] }, dungeon);
 const stopped = paralysisBattle.battleLog.find(entry => entry.kind === "status" && entry.text.includes("このターン行動できない"));
@@ -118,4 +132,4 @@ const suppressedHero = game.Battle.resolve({ seed: 3, partyIds: ["hero"], partyS
 assert(suppressedHero.memberReports[0].statusSkippedTurns > 0, "Lost turns from paralysis must be preserved in member battle metrics.");
 assert(suppressedHero.defeatFacts.some(fact => fact.includes("状態異常で行動不能")), "A failed expedition should expose lost actions as a battle fact.");
 
-console.log("Status and element test passed: typed effects, duration/ticks, attack penalty, paralysis, chill speed/evasion penalties, cleanse, racial resistance, elemental weakness, logs and battle metrics");
+console.log("Status and element test passed: typed effects, duration/ticks, attribute infliction, attack penalty, paralysis, chill speed/evasion penalties, cleanse, racial resistance, elemental weakness, logs and battle metrics");

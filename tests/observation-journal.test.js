@@ -30,7 +30,19 @@ async function run() {
   assert(game.ObservationJournal.unlocked(game.ObservationJournal.note("weight_efficiency")), "Discovering steel equipment unlocks its weight-efficiency field note");
   assert(game.Items.sell(discoveredSteel.id).ok && game.ObservationJournal.unlocked(game.ObservationJournal.note("weight_efficiency")), "Discovery notes remain unlocked after selling the item");
   const id = require("./helpers").createCharacter(game, "調査隊長").id;
-  game.Characters.get(id).level = 30;
+  const investigator = game.Characters.get(id);
+  investigator.level = 30;
+  const harvestMonsterId = Object.keys(game.GameData.monsters).find(monsterId => game.MonsterLoot.fixedDropIds(monsterId, "normal").some(itemId => game.GameData.items[itemId]?.type === "material"));
+  const harvestItemId = game.MonsterLoot.fixedDropIds(harvestMonsterId, "normal").find(itemId => game.GameData.items[itemId]?.type === "material");
+  investigator.expeditionRecord.targetedHarvestRecords[`${harvestMonsterId}::${harvestItemId}`] = { attempts: 2, successes: 2, items: 2, lastAt: now };
+  investigator.expeditionRecord.targetedHarvestAttempts = 2;
+  investigator.expeditionRecord.targetedHarvestSuccesses = 2;
+  investigator.expeditionRecord.targetedHarvestItems = 2;
+  assert(!game.ObservationJournal.unlocked(game.ObservationJournal.note("targeted_harvest_practice")), "Two exact harvest successes leave the field-practice diary page unfinished");
+  game.Characters.learnedSkills(investigator).filter(skill => skill.activation?.type === "active").forEach(skill => {
+    investigator.expeditionRecord.skillRecords[skill.id] = { uses: 9, damage: 0, healing: 0, statuses: 0 };
+  });
+  assert(!game.ObservationJournal.unlocked(game.ObservationJournal.note("signature_skill_practice")), "Nine uses leave the signature-skill diary page unfinished");
   game.Party.toggle(id);
   const sealsBeforeRumor = game.Items.count("guild_seal");
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
@@ -41,7 +53,8 @@ async function run() {
   const routeEventId = collected.result.battleLog.find(entry => entry.routeEventId)?.routeEventId;
   const routeNote = game.GameData.observationNotes.find(note => note.unlock?.routeEventId === routeEventId);
   assert(routeEventId && routeNote, "The completed expedition contains one recognized route event");
-  assert.deepStrictEqual(Array.from(collected.result.newObservationIds).sort(), ["accuracy_and_flurries", "monster_spoils", routeNote.id].sort());
+  assert.deepStrictEqual(Array.from(collected.result.newObservationIds).sort(), ["accuracy_and_flurries", "monster_spoils", "signature_skill_practice", routeNote.id].sort());
+  assert(game.ObservationJournal.unlocked(game.ObservationJournal.note("signature_skill_practice")), "The return that crosses ten uses unlocks the narrative skill-practice note");
   const routeRecord = game.Story.ensure().facts.routeEvents[routeEventId];
   const firstRouteEntry = collected.result.battleLog.find(entry => entry.routeEventId);
   assert(routeRecord?.encounters === 1 && routeRecord.successes === Number(Boolean(firstRouteEntry?.routeEventSuccess)) && routeRecord.rumorMatches === Number(Boolean(firstRouteEntry?.routeRumorMatched)) && game.ObservationJournal.unlocked(routeNote), "Witnessed route events permanently record attempts, outcomes and rumor confirmations");
@@ -55,7 +68,7 @@ async function run() {
   assert(collected.result.newMonsterInsights.length > 0 && collected.result.newMonsterInsights.every(entry => entry.firstEncounter), "A first expedition records only enemy traits that were newly observed");
   game.UI.navigate("party");
   await click("party-open", { party: "0", view: "results" });
-  assert(html().includes("観察日記に3頁が加わりました") && html().includes("二撃目は、一撃目ほど素直ではない") && html().includes(routeNote.title) && html().includes("観察日記を読む"));
+  assert(html().includes("観察日記に4頁が加わりました") && html().includes("二撃目は、一撃目ほど素直ではない") && html().includes("技に、持ち主の癖が馴染むまで") && html().includes(routeNote.title) && html().includes("観察日記を読む"));
   assert(html().includes("敵の新しい性質を") && html().includes("初遭遇") && html().includes("モンスター図鑑で確認"), "New enemy findings are distinguished from the full combat record");
   const repeated = game.Encyclopedia.battleInsights(collected.result.monsterObservations);
   assert.strictEqual(repeated.length, 0, "Already recorded traits are not announced as new findings again");
@@ -65,6 +78,8 @@ async function run() {
   assert(html().includes("噂の照合録") && html().includes(firstRouteEntry.routeRumorMatched ? "噂と実地記録が一致" : "兆しは観測・噂は未照合"), "The archive gives rumor confirmations a compact field ledger without exposing event odds");
   assert(html().includes("field-practice-progress") && html().includes("書き留めた成功"), "Locked practiced notes show diary-like progress without prescribing a party build");
   assert(html().includes("最も長い同行") && html().includes("同じ二人が幾度か遠征を共にすると記録されます"), "Locked relationship notes show shared-travel progress without exposing their hidden modifiers");
+  assert(html().includes("最も深い狙い採り") && html().includes("2 / 3"), "The locked harvest-practice page shows only the deepest observed progress");
+  assert(html().includes("書き留めた空振り") && html().includes("0 / 3"), "The locked failed-harvest page acknowledges attempts without exposing its hidden modifier");
   const rumorLead = Object.values(game.GameData.dungeons).find(dungeon => game.Story.canEnter(dungeon.id) && !(game.Story.ensure().facts.routeEvents[game.Exploration.routeRumorEntry(dungeon).eventId]?.rumorMatches || 0));
   if (rumorLead) {
     assert(html().includes(`data-action="open-rumor-route" data-dungeon="${rumorLead.id}"`), "An unresolved rumor links to an already available field without revealing its event odds");
@@ -94,6 +109,17 @@ async function run() {
   assert(html().includes("新しい道中知見 1種"), "The party overview keeps the newly established field knowledge visible");
   await click("party-open", { party: "0", view: "results" });
   assert(html().includes("FIELD KNOWLEDGE ESTABLISHED") && html().includes("道中の知見が仲間へ受け継がれます") && html().includes("完成した記録を読む"), "The return report celebrates route mastery separately from ordinary journal pages");
+  investigator.expeditionRecord.targetedHarvestRecords[`${harvestMonsterId}::${harvestItemId}`] = { attempts: 6, successes: 3, items: 3, lastAt: now };
+  investigator.expeditionRecord.targetedHarvestAttempts = 6;
+  investigator.expeditionRecord.targetedHarvestSuccesses = 3;
+  investigator.expeditionRecord.targetedHarvestItems = 3;
+  assert(game.ObservationJournal.unlocked(game.ObservationJournal.note("targeted_harvest_practice")), "Three exact harvest successes reveal the narrative field-practice note");
+  assert(game.ObservationJournal.unlocked(game.ObservationJournal.note("targeted_harvest_persistence")), "Three misses against the same exact pair reveal the failed-harvest field note");
+  const secondInvestigator = game.Characters.get(require("./helpers").createCharacter(game, "痕跡係").id);
+  secondInvestigator.expeditionRecord.targetedHarvestRecords[`${harvestMonsterId}::${harvestItemId}`] = { attempts: 3, successes: 0, items: 0, lastAt: now };
+  secondInvestigator.expeditionRecord.targetedHarvestAttempts = 3;
+  assert(game.ObservationJournal.unlocked(game.ObservationJournal.note("targeted_harvest_consultation")), "Different adventurers carrying success and failure knowledge for the same target reveal the consultation diary page");
+  assert(game.ObservationJournal.unread().some(note => note.id === "targeted_harvest_practice"), "The newly revealed harvest-practice page is announced as unread");
   const parsed = game.SaveTransfer.parse(JSON.stringify(game.GameState.data));
   assert(parsed.ok && parsed.state.observationJournal.readIds.includes("choosing_an_action"), "Read state survives save transfer");
   const invalidMasteryResult = JSON.parse(JSON.stringify(game.GameState.data));

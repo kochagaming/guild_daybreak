@@ -45,6 +45,14 @@ const ultra = game.Items.createInstance("iron_sword", { source: "shop", qualityI
 const normalEffects = game.Items.effects(ordinary), ultraEffects = game.Items.effects(ultra);
 for (const key of ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "speed", "attackCount"]) assert.strictEqual(ultraEffects[key], normalEffects[key] * 2, key);
 assert.strictEqual(ultraEffects.weight, normalEffects.weight);
+const rareStandard = game.Items.createInstance("wolf_fang_bow", { source: "test", qualityId: "standard", modifiers: zero });
+const rareDivine = game.Items.createInstance("wolf_fang_bow", { source: "test", qualityId: "divine", modifiers: zero });
+const rareUltra = game.Items.createInstance("wolf_fang_bow", { source: "test", qualityId: "standard", modifiers: zero, ultraRareTitleId: "worldbreaker" });
+assert.deepStrictEqual({ ...game.Items.attributeBonuses(rareStandard) }, { dexterity: 1, luck: 1 });
+assert.deepStrictEqual({ ...game.Items.attributeBonuses(rareDivine) }, { dexterity: 5, luck: 5 }, "Quality multiplies primary-attribute bonuses with the rest of the item's parameters");
+assert.deepStrictEqual({ ...game.Items.attributeBonuses(rareUltra) }, { dexterity: 2, luck: 2 }, "Ultra-rare titles double primary-attribute bonuses too");
+const rareBearer = require("./helpers").createCharacter(game, "希少弓の担い手");
+assert.deepStrictEqual({ ...game.Characters.attributeBreakdown(rareBearer, [rareUltra]).equipment }, { vitality: 0, strength: 0, fortitude: 0, intelligence: 0, spirit: 0, dexterity: 2, agility: 0, luck: 2 });
 assert(game.EquipmentSkills.ids(ultra).includes("ultra_worldbreaker"));
 assert(game.Items.displayName(ultra).startsWith("★天地を砕く"));
 assert(ultra.locked, "ultra-rare equipment must be protected on acquisition");

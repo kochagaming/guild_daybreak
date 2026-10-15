@@ -37,6 +37,8 @@
     { id: "first_team_survey", category: "調査", icon: "結", name: "重なる足跡", description: "異なる得意分野を持つ冒険者たちが、初めて連携探索を行う。", secret: true, condition: { type: "teamSurveys", target: 1 } },
     { id: "ten_team_surveys", category: "調査", icon: "図", name: "皆で描いた地図", description: "連携探索を十度記録する。", secret: true, condition: { type: "teamSurveys", target: 10 } },
     { id: "sealed_chest_scholar", category: "調査", icon: "▧", name: "鉄と星の開錠録", description: "すべての封印箱について、開け方を仲間へ共有する。", secret: true, condition: { type: "treasureTierMasteries", target: "all" } },
+    { id: "first_hunting_epithet", category: "調査", icon: "狩", name: "町に呼ばれる二人", description: "一つの獲物を追い続け、二人だけの狩り名を得る。", secret: true, condition: { type: "namedHunts", target: 1 } },
+    { id: "five_hunting_epithets", category: "調査", icon: "帳", name: "五つの狩り名", description: "異なる二人と獲物の組み合わせで、狩り名を5つ残す。", secret: true, condition: { type: "namedHunts", target: 5 } },
     { id: "ultra_rare", category: "調査", icon: "✧", name: "名を持つ逸品", description: "超レア称号を持つ装備を1個手に入れる。", condition: { type: "ultraRareOwned", target: 1 } },
     { id: "growing_guild", category: "調査", icon: "⌂", name: "育つ仕事場", description: "ギルド施設を合計6回強化する。", condition: { type: "facilityUpgrades", target: 6 } }
   ];

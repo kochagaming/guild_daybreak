@@ -30,10 +30,16 @@
   function ready(hero, skill, round) {
     return skill.activation.type === "active" && round >= (hero.skillReady[skill.id] || 1);
   }
+  function skillMastery(hero, skillId) {
+    const rankId = hero?.skillMasteryIds?.[skillId];
+    return (window.GameData.config.characterGrowth?.skillMasteryRanks || []).find(rank => rank.id === rankId) || null;
+  }
   function use(hero, skill, round, log, encounter) {
     const cooldown = skill.activation.cooldownTurns;
     hero.skillReady[skill.id] = round + cooldown;
-    log.push({ kind: "system", text: "【" + window.GameData.config.skillCategories[skill.category] + "】" + hero.name + "は「" + skill.name + "」を使用。再使用はターン" + hero.skillReady[skill.id] + "から（CT " + cooldown + "）", encounter, round });
+    const mastery = skillMastery(hero, skill.id);
+    const masteryLabel = mastery ? "【" + mastery.name + "】" : "";
+    log.push({ kind: "system", text: "【" + window.GameData.config.skillCategories[skill.category] + "】" + masteryLabel + hero.name + "は「" + skill.name + "」を使用。再使用はターン" + hero.skillReady[skill.id] + "から（CT " + cooldown + "）", encounter, round });
   }
   function attackMultiplier(hero) {
     return hero.allies
@@ -45,7 +51,7 @@
       .flatMap(ally => passiveEffects(ally, "rearProtection"))
       .reduce((best, entry) => Math.min(best, entry.multiplier), 1);
   }
-  function healingAmount(source, healEffect) {
+  function healingAmount(source, healEffect, target) {
     if (!source || !healEffect) return 0;
     const scalingStat = healEffect.scalingStat || "magicHealing";
     const statKey = scalingStat === "maxHp" ? "hp" : scalingStat;
@@ -56,7 +62,8 @@
     const modifiers = healEffect.useHealingModifiers === false
       ? 1
       : (source.healingPower || 1) * combatMultiplier(source, "healing");
-    return Math.max(1, Math.round((scalingValue * healEffect.multiplier + flatBonus) * modifiers));
+    const received = Math.max(0, Number(target?.healingReceived) || 1);
+    return Math.max(1, Math.round((scalingValue * healEffect.multiplier + flatBonus) * modifiers * received));
   }
   function reactionUseCount(hero, skill) {
     const explicit = hero.reactionUseCounts?.[skill.id];
@@ -86,7 +93,7 @@
     const reaction = skills(hero).find(skill => skill.activation.type === "reaction" && skill.activation.trigger === "hpBelow" && hero.currentHp < hero.hp * skill.activation.threshold && reactionAvailable(hero, skill));
     if (!reaction) return false;
     recordReaction(hero, reaction);
-    const amount = healingAmount(hero, effect(reaction, "heal"));
+    const amount = healingAmount(hero, effect(reaction, "heal"), hero);
     const healed = Math.min(hero.hp - hero.currentHp, amount);
     hero.currentHp += healed;
     hero.metrics.healingDone += healed;
@@ -119,5 +126,5 @@
       log.push({ kind: "skill", text: "【パッシブ・反撃】" + hero.name + "の「" + counter.skill.name + "」！ " + attacker.name + "に" + response.actualDamage + "ダメージ" + (response.missed ? "（回避）" : ""), encounter, round });
     }
   }
-  window.SkillCombat = { effect, ready, use, attackMultiplier, protection, combatMultiplier, combatBonus, slayerMultiplier, slayerFamilyIds, healingAmount, start, afterHealthLoss, afterStatusApplied, afterDamage };
+  window.SkillCombat = { effect, ready, skillMastery, use, attackMultiplier, protection, combatMultiplier, combatBonus, slayerMultiplier, slayerFamilyIds, healingAmount, start, afterHealthLoss, afterStatusApplied, afterDamage };
 })();

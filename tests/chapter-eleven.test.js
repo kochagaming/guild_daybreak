@@ -49,6 +49,8 @@ for (const id of ["originwood_bow", "starroot_staff", "ancestor_leather"]) {
 }
 assert.strictEqual(data.monsters.first_priestess.bossDrop.itemId, "first_priestess_circlet");
 assert.strictEqual(data.monsters.primordial_devourer.bossDrop.itemId, "firststar_sword");
+assert.deepStrictEqual({ ...data.items.first_priestess_circlet.attributeBonuses }, { intelligence: 3, spirit: 3, luck: 1 });
+assert.deepStrictEqual({ ...data.items.firststar_sword.attributeBonuses }, { strength: 4, vitality: 2 });
 for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
   assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }

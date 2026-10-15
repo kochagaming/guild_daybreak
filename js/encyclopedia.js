@@ -1,14 +1,24 @@
 (function () {
   "use strict";
 
+  const HUNT_MARKS = Object.freeze([
+    Object.freeze({ threshold: 10, icon: "十", name: "十討の印", sealReward: 1, fixedLootMultiplier: 1.1, description: "同じ魔物を十体討ち、その動きを見慣れ始めた記録。固有品を探す目も少し鍛えられる。" }),
+    Object.freeze({ threshold: 30, icon: "巡", name: "三十討の札", sealReward: 1, fixedLootMultiplier: 1.25, description: "幾度も同じ魔物と相対し、生息地の癖まで覚えた記録。痕跡から固有品を見つけやすくなる。" }),
+    Object.freeze({ threshold: 100, icon: "征", name: "百討の章", sealReward: 2, fixedLootMultiplier: 1.5, description: "百体の討伐を重ね、一冊の狩猟記録を結んだ証。狩り場を読み、固有品を取りこぼしにくくなる。" })
+  ]);
+
   function blankObservations() { return { incomingAttempts: 0, incomingHits: 0, enemyTurns: 0, maxAttackCount: 0, magicAttack: false, rearTargeting: false, attackElements: [], statusAttacks: [], elementWeaknesses: [], elementResistances: [], statusResisted: [], statusLanded: [], burstRounds: [], difficultySkillIds: [], drops: [] }; }
   function blankDifficulty() { return { encountered: 0, defeated: 0, drops: [], skillIds: [] }; }
-  function blankMonster() { return { encountered: 0, defeated: 0, observations: blankObservations(), difficulties: {} }; }
-  function blank() { return { version: 9, items: {}, bestQualities: {}, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null }; }
+  function blankHabitat() { return { encountered: 0, defeated: 0 }; }
+  function blankMonster() { return { encountered: 0, defeated: 0, firstDefeat: null, observations: blankObservations(), difficulties: {}, habitats: {} }; }
+  function blank() { return { version: 13, items: {}, itemDiscoveries: {}, bestQualities: {}, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null, monsterTarget: null }; }
   function normalizeMonster(entry) {
     const normalized = Object.assign(blankMonster(), entry || {});
     normalized.observations = Object.assign(blankObservations(), entry?.observations || {});
     normalized.difficulties = Object.fromEntries(Object.entries(entry?.difficulties || {}).map(([id, value]) => [id, Object.assign(blankDifficulty(), value || {})]));
+    normalized.habitats = Object.fromEntries(Object.entries(entry?.habitats || {}).map(([dungeonId, difficulties]) => [dungeonId,
+      Object.fromEntries(Object.entries(difficulties || {}).map(([difficultyId, value]) => [difficultyId, Object.assign(blankHabitat(), value || {})]))
+    ]));
     if (!normalized.difficulties.normal && normalized.encountered) normalized.difficulties.normal = { encountered: normalized.encountered, defeated: normalized.defeated, drops: normalized.observations.drops.slice(), skillIds: [] };
     return normalized;
   }
@@ -19,17 +29,26 @@
       // This is an additive extension of the current save format. Persist it on startup.
       window.GameState.needsInitialSave = true;
       bootstrap(state.encyclopedia);
-    } else if (state.encyclopedia.version !== 9 || !state.encyclopedia.bestQualities || !Array.isArray(state.encyclopedia.ultraRareTitles) || !Array.isArray(state.encyclopedia.unreadUltraRareTitles) || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters) || !(state.encyclopedia.itemTarget === null || typeof state.encyclopedia.itemTarget === "object")) {
+    } else if (state.encyclopedia.version !== 13 || !state.encyclopedia.itemDiscoveries || !state.encyclopedia.bestQualities || !Array.isArray(state.encyclopedia.ultraRareTitles) || !Array.isArray(state.encyclopedia.unreadUltraRareTitles) || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters) || !(state.encyclopedia.itemTarget === null || typeof state.encyclopedia.itemTarget === "object") || !(state.encyclopedia.monsterTarget === null || typeof state.encyclopedia.monsterTarget === "object")) {
       const legacyTargetId = state.encyclopedia.trackedItemId;
-      state.encyclopedia.version = 9;
+      const currentTarget = state.encyclopedia.itemTarget;
+      state.encyclopedia.version = 13;
       state.encyclopedia.items = state.encyclopedia.items || {};
+      state.encyclopedia.itemDiscoveries = state.encyclopedia.itemDiscoveries || {};
       state.encyclopedia.bestQualities = state.encyclopedia.bestQualities || {};
       state.encyclopedia.ultraRareTitles = Array.isArray(state.encyclopedia.ultraRareTitles) ? state.encyclopedia.ultraRareTitles : [];
       state.encyclopedia.monsters = state.encyclopedia.monsters || {};
       state.encyclopedia.unreadItems = Array.isArray(state.encyclopedia.unreadItems) ? state.encyclopedia.unreadItems : [];
       state.encyclopedia.unreadUltraRareTitles = Array.isArray(state.encyclopedia.unreadUltraRareTitles) ? state.encyclopedia.unreadUltraRareTitles : [];
       state.encyclopedia.unreadMonsters = Array.isArray(state.encyclopedia.unreadMonsters) ? state.encyclopedia.unreadMonsters : [];
-      state.encyclopedia.itemTarget = window.GameData.items[legacyTargetId] && state.encyclopedia.items[legacyTargetId] ? { itemId: legacyTargetId, quantity: 1, progress: 0 } : null;
+      state.encyclopedia.itemTarget = currentTarget && window.GameData.items[currentTarget.itemId]
+        ? { itemId: currentTarget.itemId, quantity: currentTarget.quantity || 1, progress: currentTarget.progress || 0 }
+        : window.GameData.items[legacyTargetId] && state.encyclopedia.items[legacyTargetId]
+          ? { itemId: legacyTargetId, quantity: 1, progress: 0 }
+          : null;
+      state.encyclopedia.monsterTarget = state.encyclopedia.monsterTarget && window.GameData.monsters[state.encyclopedia.monsterTarget.monsterId] && state.encyclopedia.monsters[state.encyclopedia.monsterTarget.monsterId]
+        ? { monsterId: state.encyclopedia.monsterTarget.monsterId, quantity: state.encyclopedia.monsterTarget.quantity || 1, progress: state.encyclopedia.monsterTarget.progress || 0 }
+        : null;
       delete state.encyclopedia.trackedItemId;
       Object.keys(state.encyclopedia.monsters || {}).forEach(id => { state.encyclopedia.monsters[id] = normalizeMonster(state.encyclopedia.monsters[id]); });
       bootstrap(state.encyclopedia);
@@ -70,6 +89,16 @@
     const dungeon = window.GameData.dungeons[dungeonId];
     return dungeon ? Array.from(new Set(dungeon.encounters.flatMap(encounter => encounter.groups.flat()))) : [];
   }
+  function recordHabitat(entry, monsterId, dungeonId, difficultyId, encountered, defeated, additive = true) {
+    if (!window.GameData.dungeons[dungeonId] || !dungeonMonsterIds(dungeonId).includes(monsterId)) return;
+    if (!entry.habitats[dungeonId]) entry.habitats[dungeonId] = {};
+    const habitat = Object.assign(blankHabitat(), entry.habitats[dungeonId][difficultyId] || {});
+    const encounteredCount = Math.max(0, encountered || 0), defeatedCount = Math.max(0, defeated || 0);
+    habitat.encountered = additive ? habitat.encountered + encounteredCount : Math.max(habitat.encountered, encounteredCount);
+    habitat.defeated = additive ? habitat.defeated + defeatedCount : Math.max(habitat.defeated, defeatedCount);
+    habitat.encountered = Math.max(habitat.encountered, habitat.defeated);
+    if (habitat.encountered) entry.habitats[dungeonId][difficultyId] = habitat;
+  }
   function mergeRecordedObservation(entry, incoming) {
     const target = entry.observations;
     ["incomingAttempts", "incomingHits", "enemyTurns"].forEach(key => { target[key] += Math.max(0, incoming[key] || 0); });
@@ -104,6 +133,13 @@
       return discovered ? insight : null;
     }).filter(Boolean);
   }
+  function habitatInsights(encounters, dungeonId, difficultyId = "normal") {
+    if (!window.GameData.dungeons[dungeonId]) return [];
+    return Object.entries(encounters || {}).filter(([monsterId, count]) => window.GameData.monsters[monsterId] && count > 0
+      && dungeonMonsterIds(dungeonId).includes(monsterId)
+      && !monsterHabitats(monsterId).some(habitat => habitat.dungeonId === dungeonId && habitat.difficultyId === difficultyId))
+      .map(([monsterId, count]) => ({ monsterId, dungeonId, difficultyId, encountered: Math.max(1, Math.round(count)) }));
+  }
   function bootstrap(book) {
     const state = window.GameState.data, itemMinimums = {};
     state.inventory.equipment.forEach(instance => {
@@ -129,6 +165,14 @@
         const entry = normalizeMonster(book.monsters[id]);
         entry.defeated = Math.max(entry.defeated, count); entry.encountered = Math.max(entry.encountered, entry.defeated); book.monsters[id] = entry;
       });
+      if (window.GameData.dungeons[result.dungeonId]) {
+        Array.from(new Set([...Object.keys(result.monsterEncounters || {}), ...Object.keys(result.monsterCounts || {})])).forEach(id => {
+          if (!window.GameData.monsters[id]) return;
+          const entry = normalizeMonster(book.monsters[id]);
+          recordHabitat(entry, id, result.dungeonId, difficultyId, result.monsterEncounters?.[id] || 0, result.monsterCounts?.[id] || 0, false);
+          book.monsters[id] = entry;
+        });
+      }
       Object.entries(result.monsterObservations || {}).forEach(([id, observation]) => {
         if (!window.GameData.monsters[id]) return;
         const entry = normalizeMonster(book.monsters[id]);
@@ -141,6 +185,17 @@
         entry.difficulties[difficultyId] = difficulty;
         book.monsters[id] = entry;
       });
+      const reaction = result.lootReaction;
+      if (reaction?.reason === "初めて持ち帰った品" && reaction.characterId && reaction.name && window.GameData.items[reaction.itemId] && window.GameData.dungeons[result.dungeonId] && Number.isFinite(result.completedAt) && !book.itemDiscoveries[reaction.itemId]) {
+        book.itemDiscoveries[reaction.itemId] = {
+          characterId: reaction.characterId,
+          name: reaction.name,
+          roleTitle: reaction.roleTitle || null,
+          dungeonId: result.dungeonId,
+          difficultyId,
+          completedAt: result.completedAt
+        };
+      }
     });
     Object.entries(itemMinimums).forEach(([id, quantity]) => { book.items[id] = Math.max(book.items[id] || 0, quantity); });
     (state.story?.facts?.clears || []).forEach(dungeonId => {
@@ -148,6 +203,16 @@
         const entry = normalizeMonster(book.monsters[id]);
         entry.encountered = Math.max(entry.encountered, 1);
         if (window.GameData.monsters[id].boss) entry.defeated = Math.max(entry.defeated, 1);
+        recordHabitat(entry, id, dungeonId, "normal", 1, window.GameData.monsters[id].boss ? 1 : 0, false);
+        book.monsters[id] = entry;
+      });
+    });
+    (state.story?.facts?.difficultyClears || []).forEach(key => {
+      const separator = key.lastIndexOf(":"), dungeonId = key.slice(0, separator), difficultyId = key.slice(separator + 1);
+      if (separator < 1 || !window.GameData.dungeons[dungeonId]) return;
+      dungeonMonsterIds(dungeonId).forEach(id => {
+        const entry = normalizeMonster(book.monsters[id]);
+        recordHabitat(entry, id, dungeonId, difficultyId, 1, window.GameData.monsters[id].boss ? 1 : 0, false);
         book.monsters[id] = entry;
       });
     });
@@ -161,12 +226,105 @@
     }
   }
   function recordItem(id, quantity) { addItem(ensure(), id, quantity); }
+  function recordItemDiscovery(itemId, discovery) {
+    const book = ensure();
+    if (!window.GameData.items[itemId] || !book.items[itemId] || book.itemDiscoveries[itemId] || !discovery?.characterId || !discovery?.name || !window.GameData.dungeons[discovery.dungeonId]) return null;
+    const entry = {
+      characterId: String(discovery.characterId),
+      name: String(discovery.name),
+      roleTitle: discovery.roleTitle ? String(discovery.roleTitle) : null,
+      dungeonId: discovery.dungeonId,
+      difficultyId: (window.DungeonDifficulty?.ids?.() || ["normal", "abyss", "divine"]).includes(discovery.difficultyId) ? discovery.difficultyId : "normal",
+      completedAt: Math.max(0, Math.round(Number(discovery.completedAt) || window.GameRuntime.now()))
+    };
+    book.itemDiscoveries[itemId] = entry;
+    return { ...entry };
+  }
+  function itemDiscovery(itemId) {
+    const entry = ensure().itemDiscoveries[itemId];
+    return entry ? { ...entry } : null;
+  }
+  function itemDiscoveriesByCharacter(characterId) {
+    return recentItemDiscoveries().filter(entry => entry.characterId === characterId);
+  }
+  function recentItemDiscoveries(limit = Number.MAX_SAFE_INTEGER) {
+    const maximum = Number.isInteger(limit) && limit >= 0 ? limit : Number.MAX_SAFE_INTEGER;
+    return Object.entries(ensure().itemDiscoveries)
+      .map(([itemId, entry]) => ({ itemId, ...entry }))
+      .sort((left, right) => right.completedAt - left.completedAt || left.itemId.localeCompare(right.itemId))
+      .slice(0, maximum);
+  }
+  function monsterFirstDefeatsByCharacter(characterId) {
+    return Object.entries(ensure().monsters)
+      .filter(([, entry]) => entry?.firstDefeat?.members?.some(member => member.characterId === characterId))
+      .map(([monsterId, entry]) => ({ monsterId, ...entry.firstDefeat }))
+      .sort((left, right) => right.completedAt - left.completedAt || left.monsterId.localeCompare(right.monsterId));
+  }
+  function recentMonsterFirstDefeats(limit = Number.MAX_SAFE_INTEGER) {
+    const maximum = Number.isInteger(limit) && limit >= 0 ? limit : Number.MAX_SAFE_INTEGER;
+    return Object.entries(ensure().monsters)
+      .filter(([, entry]) => entry?.firstDefeat)
+      .map(([monsterId, entry]) => ({ monsterId, ...entry.firstDefeat }))
+      .sort((left, right) => right.completedAt - left.completedAt || left.monsterId.localeCompare(right.monsterId))
+      .slice(0, maximum);
+  }
+  function huntMarks(monsterId) {
+    const defeated = Math.max(0, Number(monster(monsterId)?.defeated) || 0);
+    return HUNT_MARKS.map(mark => ({ ...mark, defeated, achieved: defeated >= mark.threshold }));
+  }
+  function huntFamiliarity(monsterId, defeatedOverride = null) {
+    const defeated = defeatedOverride == null ? Math.max(0, Number(monster(monsterId)?.defeated) || 0) : Math.max(0, Number(defeatedOverride) || 0);
+    const achieved = HUNT_MARKS.filter(mark => defeated >= mark.threshold);
+    const current = achieved[achieved.length - 1] || null;
+    return {
+      monsterId,
+      defeated,
+      rank: achieved.length,
+      name: current?.name || "未習熟",
+      fixedLootMultiplier: current?.fixedLootMultiplier || 1
+    };
+  }
+  function crossedHuntMarks(monsterId, previousDefeated, currentDefeated) {
+    const previous = Math.max(0, Number(previousDefeated) || 0), current = Math.max(previous, Number(currentDefeated) || 0);
+    return HUNT_MARKS.filter(mark => previous < mark.threshold && current >= mark.threshold)
+      .map(mark => ({ monsterId, threshold: mark.threshold, sealReward: mark.sealReward }));
+  }
   function recordQuality(itemId, qualityId) { return considerQuality(ensure(), itemId, qualityId); }
   function recordUltraRareTitle(titleId) { return discoverUltraRareTitle(ensure(), titleId, true); }
-  function recordBattle(encounters, defeats, observations, difficultyId = "normal") {
+  function recordBattle(encounters, defeats, observations, difficultyId = "normal", expedition = null) {
     const book = ensure();
+    const newFirstDefeats = [];
+    const pendingFirstDefeats = new Map();
+    Object.entries(defeats || {}).forEach(([id, count]) => {
+      if (!window.GameData.monsters[id] || count <= 0) return;
+      const previous = normalizeMonster(book.monsters[id]);
+      if (previous.firstDefeat || previous.defeated > 0 || !expedition?.dungeonId || !Array.isArray(expedition.members) || !expedition.members.length) return;
+      const firstDefeat = {
+        partyIndex: Math.max(0, Number(expedition.partyIndex) || 0),
+        partyName: String(expedition.partyName || `第${(Number(expedition.partyIndex) || 0) + 1}隊`),
+        members: expedition.members.map(member => ({ characterId: String(member.characterId), name: String(member.name), roleTitle: member.roleTitle ? String(member.roleTitle) : null })),
+        dungeonId: expedition.dungeonId,
+        difficultyId: (window.DungeonDifficulty?.ids?.() || ["normal", "abyss", "divine"]).includes(difficultyId) ? difficultyId : "normal",
+        completedAt: Math.max(0, Math.round(Number(expedition.completedAt) || window.GameRuntime.now()))
+      };
+      pendingFirstDefeats.set(id, firstDefeat);
+      newFirstDefeats.push({ monsterId: id, ...firstDefeat });
+    });
     Object.entries(encounters || {}).forEach(([id, count]) => addMonster(book, id, count, 0));
     Object.entries(defeats || {}).forEach(([id, count]) => addMonster(book, id, 0, count));
+    if (window.GameData.dungeons[expedition?.dungeonId]) {
+      Array.from(new Set([...Object.keys(encounters || {}), ...Object.keys(defeats || {})])).forEach(id => {
+        if (!window.GameData.monsters[id]) return;
+        const entry = normalizeMonster(book.monsters[id]);
+        recordHabitat(entry, id, expedition.dungeonId, difficultyId, encounters?.[id] || 0, defeats?.[id] || 0);
+        book.monsters[id] = entry;
+      });
+    }
+    pendingFirstDefeats.forEach((firstDefeat, id) => {
+      const entry = normalizeMonster(book.monsters[id]);
+      entry.firstDefeat = firstDefeat;
+      book.monsters[id] = entry;
+    });
     Object.entries(observations || {}).forEach(([id, incoming]) => {
       if (!window.GameData.monsters[id]) return;
       const entry = normalizeMonster(book.monsters[id]);
@@ -180,6 +338,7 @@
       entry.difficulties[difficultyId] = difficulty;
       book.monsters[id] = entry;
     });
+    return newFirstDefeats;
   }
   function item(id) { return ensure().items[id] || 0; }
   function bestQuality(id) { return ensure().bestQualities[id] || null; }
@@ -215,6 +374,47 @@
     if (!target || target.itemId !== itemId || !Number.isInteger(quantity) || quantity <= 0) return null;
     target.progress = Math.min(Number.MAX_SAFE_INTEGER, target.progress + quantity);
     return Object.assign({}, target);
+  }
+  function trackedMonsterTarget() { const target = ensure().monsterTarget; return target ? Object.assign({}, target) : null; }
+  function setTrackedMonster(monsterId, targetQuantity = 1, resetProgress = false) {
+    const book = ensure();
+    if (monsterId === null) {
+      book.monsterTarget = null;
+      window.GameState.save();
+      return { ok: true, message: "討伐目標を解除しました。" };
+    }
+    const monster = window.GameData.monsters[monsterId];
+    if (!monster || !book.monsters[monsterId]) return { ok: false, message: "まだ遭遇していない魔物は討伐目標にできません。" };
+    if (!Number.isInteger(targetQuantity) || targetQuantity < 1 || targetQuantity > 999) return { ok: false, message: "目標数は1〜999で指定してください。" };
+    const progress = !resetProgress && book.monsterTarget?.monsterId === monsterId ? book.monsterTarget.progress : 0;
+    book.monsterTarget = { monsterId, quantity: targetQuantity, progress };
+    window.GameState.save();
+    return { ok: true, message: `${monster.name}×${targetQuantity}体を討伐目標に設定しました。` };
+  }
+  function recordMonsterTargetProgress(monsterId, quantity) {
+    const target = ensure().monsterTarget;
+    if (!target || target.monsterId !== monsterId || !Number.isInteger(quantity) || quantity <= 0) return null;
+    target.progress = Math.min(Number.MAX_SAFE_INTEGER, target.progress + quantity);
+    return Object.assign({}, target);
+  }
+  function setTrackedHarvest(itemId, monsterId) {
+    const book = ensure();
+    const item = window.GameData.items[itemId], monsterDefinition = window.GameData.monsters[monsterId];
+    const monsterRecord = book.monsters[monsterId];
+    if (!item || !targetKnown(book, itemId) || !monsterDefinition || !monsterRecord) return { ok: false, message: "まだ結び付けられない探索記録です。" };
+    const observedFixedDrop = Object.entries(monsterRecord.difficulties || {}).some(([difficultyId, entry]) =>
+      (entry?.drops || []).includes(itemId) && window.MonsterLoot?.fixedDropIds?.(monsterId, difficultyId).includes(itemId));
+    if (!observedFixedDrop) return { ok: false, message: "この魔物から得た固有品として、まだ確認されていません。" };
+    const previousItemTarget = book.itemTarget, previousMonsterTarget = book.monsterTarget;
+    const nextHuntMark = huntMarks(monsterId).find(mark => !mark.achieved);
+    book.itemTarget = previousItemTarget?.itemId === itemId
+      ? previousItemTarget
+      : { itemId, quantity: 1, progress: 0 };
+    book.monsterTarget = previousMonsterTarget?.monsterId === monsterId
+      ? previousMonsterTarget
+      : { monsterId, quantity: nextHuntMark ? Math.max(1, nextHuntMark.threshold - monsterRecord.defeated) : 100, progress: 0 };
+    window.GameState.save();
+    return { ok: true, message: `${monsterDefinition.name}を追い、${item.name}を探す記録を結びました。` };
   }
   function markItemsRead() { const book = ensure(); if (book.unreadItems.length || book.unreadUltraRareTitles.length) { book.unreadItems = []; book.unreadUltraRareTitles = []; window.GameState.save(); } return { ok: true }; }
   function markMonstersRead() { const book = ensure(); if (book.unreadMonsters.length) { book.unreadMonsters = []; window.GameState.save(); } return { ok: true }; }
@@ -256,12 +456,22 @@
     detail.monsters.forEach(entry => sources.push(entry.monsterName));
     return Array.from(new Set(sources));
   }
+  function monsterHabitats(id) {
+    const entry = monster(id);
+    if (!entry) return [];
+    return Object.entries(entry.habitats || {}).flatMap(([dungeonId, difficulties]) => Object.entries(difficulties || {})
+      .filter(([, habitat]) => habitat?.encountered > 0)
+      .map(([difficultyId, habitat]) => ({ dungeonId, difficultyId, encountered: habitat.encountered, defeated: habitat.defeated || 0 })));
+  }
+  function habitatSurvey(dungeonId, difficultyId = "normal") {
+    const monsterIds = dungeonMonsterIds(dungeonId);
+    const confirmed = monsterIds.filter(monsterId => monsterHabitats(monsterId).some(habitat => habitat.dungeonId === dungeonId && habitat.difficultyId === difficultyId)).length;
+    return { dungeonId, difficultyId, confirmed, total: monsterIds.length, complete: Boolean(monsterIds.length && confirmed === monsterIds.length) };
+  }
   function monsterDungeons(id) {
-    return Object.values(window.GameData.dungeons)
-      .filter(dungeon => dungeonMonsterIds(dungeon.id).includes(id))
-      .map(dungeon => dungeon.shortName);
+    return Array.from(new Set(monsterHabitats(id).map(habitat => window.GameData.dungeons[habitat.dungeonId]?.shortName).filter(Boolean)));
   }
 
   ensure();
-  window.Encyclopedia = { ensure, recordItem, recordQuality, recordUltraRareTitle, battleInsights, recordBattle, item, bestQuality, ultraRareTitle, monster, unreadItems, unreadUltraRareTitles, unreadMonsters, trackedItem, trackedTarget, setTrackedItem, recordTargetProgress, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
+  window.Encyclopedia = { ensure, recordItem, recordItemDiscovery, recordQuality, recordUltraRareTitle, battleInsights, habitatInsights, habitatSurvey, recordBattle, item, itemDiscovery, itemDiscoveriesByCharacter, recentItemDiscoveries, monsterFirstDefeatsByCharacter, recentMonsterFirstDefeats, huntMarks, huntFamiliarity, crossedHuntMarks, bestQuality, ultraRareTitle, monster, monsterHabitats, unreadItems, unreadUltraRareTitles, unreadMonsters, trackedItem, trackedTarget, setTrackedItem, recordTargetProgress, trackedMonsterTarget, setTrackedMonster, recordMonsterTargetProgress, setTrackedHarvest, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
 })();

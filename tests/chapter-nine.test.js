@@ -48,6 +48,8 @@ for (const id of ["starpiercer_rapier", "blackwing_plate", "eclipse_staff"]) {
 }
 assert.strictEqual(data.monsters.blackwing_marquis.bossDrop.itemId, "winglord_bow");
 assert.strictEqual(data.monsters.void_archon.bossDrop.itemId, "void_archon_robe");
+assert.deepStrictEqual({ ...data.items.winglord_bow.attributeBonuses }, { dexterity: 3, agility: 2 });
+assert.deepStrictEqual({ ...data.items.void_archon_robe.attributeBonuses }, { intelligence: 3, spirit: 3 });
 assert(data.relations.itemSkillGrants.eclipse_staff.includes("burn_resistance_35"));
 for (const id of ["starroad_gatekeeper", "blackwing_marquis", "foundry_keeper", "eclipse_regent", "void_archon"]) assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst");
 for (const dungeon of routes) {

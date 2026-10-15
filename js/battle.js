@@ -201,7 +201,14 @@
       attacker.metrics.damageDealt += actualDamage;
       if (critical) attacker.metrics.criticalHits += 1;
     }
-    if (defender.metrics) defender.metrics.damageTaken += actualDamage;
+    if (defender.metrics) {
+      defender.metrics.damageTaken += actualDamage;
+      const source = magic ? "magic" : "physical";
+      defender.metrics.damageSources = defender.metrics.damageSources || {};
+      defender.metrics.damageSources[source] = (defender.metrics.damageSources[source] || 0) + actualDamage;
+      defender.metrics.damageElements = defender.metrics.damageElements || {};
+      if (window.GameData.elements?.[element]) defender.metrics.damageElements[element] = (defender.metrics.damageElements[element] || 0) + actualDamage;
+    }
     if (attacker.strategyReport) {
       const report = attacker.strategyReport;
       if (attacker.side === "hero") {
@@ -258,6 +265,8 @@
   function makeParty(expedition) {
       const heroes = expedition.partySnapshot.map((member, index) => ({
         id: member.id, name: member.name, level: member.level,
+        recordTitleId: member.recordTitleId || null,
+        reputation: member.reputation ? { ...member.reputation } : null,
         jobId: member.jobId || "warrior", raceId: member.raceId || "human", position: member.position == null ? index : member.position,
         familyIds: member.familyIds || (window.CreatureFamilies ? window.CreatureFamilies.familyIdsForRace(member.raceId || "human") : []),
         actionRates: Object.assign({}, window.GameData.config.combatRules.defaultActionRates, member.actionRates || {}),
@@ -269,8 +278,11 @@
         equipmentSetBonuses: member.equipmentSetBonuses || [],
         basicDamageType: member.basicDamageType || "physical",
         weaponRange: member.weaponRange || "melee", skillIds: member.skillIds || [], side: "hero",
+        skillMasteryIds: Object.assign({}, member.skillMasteryIds || {}),
         skillPower: member.stats.skillPower || 1, healingPower: member.stats.healingPower || 1,
+        healingReceived: member.stats.healingReceived || 1,
         physicalPower: member.stats.physicalPower || 1, magicPower: member.stats.magicPower || 1,
+        statusChanceBonus: Math.max(0, Number(member.stats.statusChanceBonus) || 0),
         slayerMultipliers: Object.assign({}, member.stats.slayerMultipliers || {}),
         elementModifiers: Object.assign({}, member.stats.elementModifiers || {}), statusResistances: Object.assign({}, member.stats.statusResistances || {}),
         bossRivalries: Object.fromEntries(Object.entries(member.bossRivalries || {}).map(([bossId, entry]) => [bossId, { ...entry }])),
@@ -328,12 +340,17 @@
     if (typeof metadata?.treasureOpened === "boolean") entry.treasureOpened = metadata.treasureOpened;
     if (typeof metadata?.treasureMasteryApplied === "boolean") entry.treasureMasteryApplied = metadata.treasureMasteryApplied;
     if (typeof metadata?.treasurePersonalPracticeApplied === "boolean") entry.treasurePersonalPracticeApplied = metadata.treasurePersonalPracticeApplied;
+    if (typeof metadata?.treasureNaturalAptitudeApplied === "boolean") entry.treasureNaturalAptitudeApplied = metadata.treasureNaturalAptitudeApplied;
+    if (Array.isArray(metadata?.explorationAttributeIds)) entry.explorationAttributeIds = [...metadata.explorationAttributeIds];
     if (metadata?.explorationActorId) entry.explorationActorId = metadata.explorationActorId;
     if (metadata?.explorationActorName) entry.explorationActorName = metadata.explorationActorName;
     if (metadata?.adventurerBondMomentId) entry.adventurerBondMomentId = metadata.adventurerBondMomentId;
+    if (metadata?.trackedMonsterTrailId) entry.trackedMonsterTrailId = metadata.trackedMonsterTrailId;
     if (Array.isArray(metadata?.adventurerBondMemberIds)) entry.adventurerBondMemberIds = [...metadata.adventurerBondMemberIds];
     if (Array.isArray(metadata?.adventurerBondMemberNames)) entry.adventurerBondMemberNames = [...metadata.adventurerBondMemberNames];
     if (Number.isInteger(metadata?.sharedSorties)) entry.sharedSorties = metadata.sharedSorties;
+    if (metadata?.defeatedMonsterCounts && Object.keys(metadata.defeatedMonsterCounts).length) entry.defeatedMonsterCounts = { ...metadata.defeatedMonsterCounts };
+    if (Array.isArray(metadata?.encounteredMonsterIds)) entry.encounteredMonsterIds = [...metadata.encounteredMonsterIds];
     log.push(entry);
   }
 
@@ -355,6 +372,18 @@
   function recordAction(hero, key) {
     if (!hero.metrics) return;
     hero.metrics[key] = (hero.metrics[key] || 0) + 1;
+  }
+
+  function recordSkillUse(hero, skill) {
+    if (!hero.metrics || !skill?.id) return;
+    hero.metrics.skillUses = hero.metrics.skillUses || {};
+    hero.metrics.skillUses[skill.id] = (hero.metrics.skillUses[skill.id] || 0) + 1;
+  }
+
+  function recordSkillMetric(hero, key, skillId, value) {
+    if (!hero.metrics || !skillId || !(value > 0)) return;
+    hero.metrics[key] = hero.metrics[key] || {};
+    hero.metrics[key][skillId] = (hero.metrics[key][skillId] || 0) + value;
   }
 
   function criticalFollowup(random, hero, triggerTarget, monsters, log, encounter, round) {
@@ -405,8 +434,12 @@
     const physical = !settings || settings.damageType !== "magic";
     const hit = dealDamage(random, hero, target, Object.assign({}, settings || {}, { trackAttackHit: physical }));
     if (hit.exposed > 1) target.mechanicReport.weaknessHits++;
+    if (settings?.id) recordSkillMetric(hero, "skillDamage", settings.id, hit.actualDamage);
     pushLog(log, settings ? "skill" : "hero", `${prefix || ""}${hitText(hero, target, hit, settings && settings.name)}`, encounter, round);
-    if (!hit.missed && hit.actualDamage > 0 && target.currentHp > 0 && settings?.statusEffects) window.StatusCombat.applyAll(random, hero, target, settings.statusEffects, log, encounter, round);
+    if (!hit.missed && hit.actualDamage > 0 && target.currentHp > 0 && settings?.statusEffects) {
+      const statusResults = window.StatusCombat.applyAll(random, hero, target, settings.statusEffects, log, encounter, round);
+      recordSkillMetric(hero, "skillStatusInflicted", settings.id, statusResults.filter(result => result.applied).length);
+    }
     if (hit.critical) criticalFollowup(random, hero, target, monsters, log, encounter, round);
   }
 
@@ -435,18 +468,22 @@
       if (selected) {
         recordAction(hero, "healingActions");
         window.SkillCombat.use(hero, selected, round, log, encounterIndex);
+        recordSkillUse(hero, selected);
         const cleanse = effect(selected, "cleanse");
         const targets = window.CombatDecision.healingTargets(selected, hero, heroes);
+        let skillHealing = 0;
         const healed = targets.filter(Boolean).map(target => {
-          const amount = window.SkillCombat.healingAmount(hero, effect(selected, "heal"));
+          const amount = window.SkillCombat.healingAmount(hero, effect(selected, "heal"), target);
           const actual = Math.min(amount, target.hp - target.currentHp);
           target.currentHp += actual;
           hero.metrics.healingDone += actual;
           hero.metrics.healingAttempted += amount;
           hero.metrics.overhealing += amount - actual;
+          skillHealing += actual;
           if (cleanse) window.StatusCombat.cleanse(target, cleanse, log, encounterIndex, round, hero.name);
           return `${target.name}+${actual}`;
         });
+        recordSkillMetric(hero, "skillHealing", selected.id, skillHealing);
         pushLog(log, "heal", `${hero.name}の「${selected.name}」！ ${healed.join("、")}回復。${healingEffectText}`, encounterIndex, round);
         return;
       }
@@ -467,6 +504,7 @@
           hero.guardMultiplier = guardMultiplier;
         }
         window.SkillCombat.use(hero, guard, round, log, encounterIndex);
+        recordSkillUse(hero, guard);
         pushLog(log, "skill", `${hero.name}は「${guard.name}」を使い、次に受けるダメージを${Math.round(guardMultiplier * 100)}%に抑える構えを取った。`, encounterIndex, round);
         return;
       }
@@ -474,6 +512,7 @@
       if (skill) {
         recordAction(hero, action === "technique" ? "techniqueActions" : "spellActions");
         window.SkillCombat.use(hero, skill, round, log, encounterIndex);
+        recordSkillUse(hero, skill);
         const skillDamage = Object.assign({ id: skill.id, name: skill.name, kind: skill.targeting.scope === "allEnemies" ? "area" : "single", damageType: action === "technique" ? "physical" : "magic", statusEffects: skill.effects.filter(entry => entry.type === "applyStatus") }, effect(skill, "damage"));
         if (skill.targeting.scope === "allEnemies") {
           living(monsters).forEach(target => heroHit(random, hero, target, monsters, skillDamage, log, encounterIndex, round));
@@ -574,7 +613,9 @@
       hero.statuses = {};
     });
     monsters.forEach(monster => { monster.statuses = {}; });
-    pushLog(log, "encounter", `第${encounterIndex}戦：${encounterName} — ${monsters.map(monster => `${positionName(monster.position)}の${monster.name}`).join("、")}が隊列を組んで現れた！`, encounterIndex, 0);
+    pushLog(log, "encounter", `第${encounterIndex}戦：${encounterName} — ${monsters.map(monster => `${positionName(monster.position)}の${monster.name}`).join("、")}が隊列を組んで現れた！`, encounterIndex, 0, {
+      encounteredMonsterIds: Array.from(new Set(monsters.map(monster => monster.baseMonsterId || monster.id)))
+    });
     monsters.forEach(monster => pushLog(log, "formation", `敵${positionName(monster.position)}：${monster.name}（${monster.weaponRange === "ranged" ? "遠距離" : "近接"}・隊列補正${Math.round(formationMultiplier(monster) * 100)}%）`, encounterIndex, 0));
     const loggedBonds = new Set();
     heroes.forEach(hero => {
@@ -611,7 +652,12 @@
       : outcome.mutualDefeat
         ? `第${encounterIndex}戦は相打ちとなり、帰還できる者がいなかった。`
         : `探索隊は第${encounterIndex}戦から撤退した。`;
-    pushLog(log, outcome.cleared ? "victory" : "defeat", conclusion, encounterIndex, round);
+    const defeatedMonsterCounts = {};
+    monsters.filter(monster => monster.currentHp === 0).forEach(monster => {
+      const monsterId = monster.baseMonsterId || monster.id;
+      defeatedMonsterCounts[monsterId] = (defeatedMonsterCounts[monsterId] || 0) + 1;
+    });
+    pushLog(log, outcome.cleared ? "victory" : "defeat", conclusion, encounterIndex, round, { defeatedMonsterCounts });
     return Object.assign(outcome, { round, maxTurns: rules.maxTurnsPerEncounter });
   }
 
@@ -712,6 +758,61 @@
     return facts.slice(0, 3);
   }
 
+  function applyTrackedMonsterTrail(dungeon, expedition) {
+    const monsterId = expedition.trackedMonsterTrailId;
+    if (!monsterId || window.GameData.monsters[monsterId]?.boss || dungeon.encounters.length < 2) return { dungeon, applied: false };
+    const candidates = dungeon.encounters.slice(0, -1).map((encounter, index) => ({ encounter, index })).filter(({ encounter }) =>
+      encounter.groups.length && encounter.groups.every(group => group.some(id => id !== monsterId && !window.GameData.monsters[id]?.boss))
+    );
+    if (!candidates.length) return { dungeon, applied: false };
+    const nameHash = Array.from(monsterId).reduce((sum, character) => sum + character.charCodeAt(0), 0);
+    const picked = candidates[(expedition.seed + nameHash) % candidates.length];
+    const groups = picked.encounter.groups.map(group => {
+      const replaceIndex = group.findIndex(id => id !== monsterId && !window.GameData.monsters[id]?.boss);
+      const result = [...group];
+      result[replaceIndex] = monsterId;
+      return result;
+    });
+    return {
+      dungeon: {
+        ...dungeon,
+        encounters: dungeon.encounters.map((encounter, index) => index === picked.index ? { ...encounter, groups } : encounter)
+      },
+      applied: true,
+      monsterId,
+      encounterIndex: picked.index
+    };
+  }
+
+  function huntDropMultiplier(expedition, monsterOrId) {
+    const monsterId = typeof monsterOrId === "string" ? monsterOrId : monsterOrId?.baseMonsterId || monsterOrId?.id;
+    if (!monsterId || !window.GameData.monsters[monsterId]) return 1;
+    const defeated = Math.max(0, Number(expedition.knownMonsterDefeats?.[monsterId]) || 0);
+    return window.Encyclopedia?.huntFamiliarity?.(monsterId, defeated)?.fixedLootMultiplier || 1;
+  }
+
+  function trackedHarvestMultiplier(expedition, monsterOrId, itemId) {
+    const monsterId = typeof monsterOrId === "string" ? monsterOrId : monsterOrId?.baseMonsterId || monsterOrId?.id;
+    if (!itemId || expedition.trackedItemHarvestId !== itemId || expedition.trackedItemHarvestMonsterId !== monsterId) return 1;
+    const consultation = window.Characters.targetedHarvestConsultation(expedition.trackedHarvestPractice, expedition.trackedHarvestPersistence);
+    const consultationMultiplier = consultation
+      ? Math.max(1, Number(expedition.trackedHarvestConsultationTier?.multiplier)
+        || Number(window.GameData.config.explorationEvents?.targetedHarvestConsultation?.multiplier) || 1)
+      : 1;
+    return Math.round(150 * Math.max(1, Number(expedition.trackedHarvestPractice?.multiplier) || 1)
+      * Math.max(1, Number(expedition.trackedHarvestPersistence?.multiplier) || 1) * consultationMultiplier) / 100;
+  }
+
+  function namedHuntCombatSupport(expedition, monsterIds) {
+    const tier = (window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [])
+      .find(entry => entry.id === expedition?.trackedHarvestConsultationTier?.tierId);
+    const memberIds = [expedition?.trackedHarvestPractice?.characterId, expedition?.trackedHarvestPersistence?.characterId]
+      .filter((id, index, ids) => id && ids.indexOf(id) === index);
+    const monsterId = expedition?.trackedItemHarvestMonsterId;
+    if (!tier?.epithet || !tier.combatSupport || memberIds.length !== 2 || !monsterId || !(monsterIds || []).includes(monsterId)) return null;
+    return Object.freeze({ tier, support: tier.combatSupport, memberIds: Object.freeze(memberIds), monsterId });
+  }
+
   function resolve(expedition, dungeon) {
     const timeMultiplier = expedition.timeMultiplier || 1;
     const acquisitionApi = window.AcquisitionSkills || {
@@ -721,6 +822,8 @@
       partyExperience: base => base
     };
     const acquisition = acquisitionApi.normalize(expedition.acquisitionBonuses);
+    const trackedMonsterTrail = applyTrackedMonsterTrail(dungeon, expedition);
+    dungeon = trackedMonsterTrail.dungeon;
     const journey = window.Exploration.journey(dungeon, timeMultiplier, expedition.seed, acquisition.itemRate, expedition.partySnapshot, expedition.knownCompanionMomentKeys || [], expedition.knownRouteMasteryIds || [], expedition.knownTreasureMasteryIds || []);
     dungeon = window.Exploration.plan(dungeon, timeMultiplier);
     const combatRules = combatRulesFor(dungeon);
@@ -745,8 +848,10 @@
     }));
     heroes.forEach(hero => { hero.metrics = {
       damageDealt: 0, damageTaken: 0, healingDone: 0, healingAttempted: 0, overhealing: 0,
-      criticalHits: 0, attackAttempts: 0, attackHits: 0, statusDamageDealt: 0,
-      attackActions: 0, techniqueActions: 0, spellActions: 0, healingActions: 0, defendActions: 0, guardSkillActions: 0, statusSkippedTurns: 0
+      damageSources: { physical: 0, magic: 0, status: 0, hazard: 0 }, damageElements: {},
+      criticalHits: 0, attackAttempts: 0, attackHits: 0, statusDamageDealt: 0, statusAttempts: 0, statusInflicted: 0, statusResisted: 0,
+      attackActions: 0, techniqueActions: 0, spellActions: 0, healingActions: 0, defendActions: 0, guardSkillActions: 0, statusSkippedTurns: 0,
+      skillUses: {}, skillDamage: {}, skillHealing: {}, skillStatusInflicted: {}
     }; });
     const log = [];
     const strategyReport = { areaHits: 0, penetrationHits: 0, magicWeaknessHits: 0, magicWeaknessDamage: 0, rearHits: 0, rearDamage: 0, rearKnockouts: 0, elementWeaknessHits: 0, statusInflicted: 0, statusResisted: 0, statusDamage: 0 };
@@ -757,9 +862,30 @@
     let explorationExp = 0;
     const explorationDrops = [];
     const defeatedBosses = new Set();
+    const loggedHuntFamiliarity = new Set();
+    let loggedTrackedHarvest = false;
     const mechanicReport = { warnings: 0, bursts: 0, guardedHits: 0, unguardedHits: 0, burstDamage: 0, burstKnockouts: 0, weaknessHits: 0 };
     let failure = null;
     pushLog(log, "system", `${dungeon.name}の探索を開始。`, 0, 0);
+    if (trackedMonsterTrail.applied) {
+      const trackedMonster = window.GameData.monsters[trackedMonsterTrail.monsterId];
+      pushLog(log, "hunt", `現地調査簿に残る足跡をたどり、${trackedMonster.name}の気配を追う。`, 0, 0, { trackedMonsterTrailId: trackedMonsterTrail.monsterId });
+    }
+    const reputationPhrases = {
+      exploration: hero => `道案内の${hero.name}が地図を確かめ、進む方角を示した`,
+      damage: hero => `先陣の${hero.name}が一歩前へ出て、道を開く構えを取った`,
+      healing: hero => `癒し手の${hero.name}が薬包と杖を確かめ、仲間の顔を見渡した`,
+      status: hero => `撹乱役の${hero.name}が敵の癖を思い返し、合図を決めた`,
+      endurance: hero => `守り手の${hero.name}が最後尾まで見渡し、退路を確かめた`
+    };
+    const reputedHeroes = heroes.filter(hero => hero.reputation?.title);
+    if (reputedHeroes.length) {
+      const phrases = reputedHeroes.slice(0, 3).map(hero => (reputationPhrases[hero.reputation.kind] || (entry => `${entry.reputation.title}の${entry.name}が隊列に加わった`))(hero));
+      const remainder = reputedHeroes.length - phrases.length;
+      pushLog(log, "reputation", `${phrases.join("。")}。${remainder ? `ほか${remainder}人も、それぞれの呼び名を背負って歩き出した。` : ""}`, 0, 0);
+      const pairedMoment = window.Characters.expeditionRoleConversation(heroes);
+      if (pairedMoment) pushLog(log, "reputation", pairedMoment.text, 0, 0);
+    }
     heroes.forEach((hero) => {
       const setSkillIds = new Set(hero.equipmentSetBonuses.flatMap(entry => entry.skillIds || []));
       const ordinaryEquipmentSkillNames = hero.equipmentSkillIds.filter(id => !setSkillIds.has(id)).map(id => window.GameData.equipmentSkills[id]?.name).filter(Boolean);
@@ -775,7 +901,9 @@
       });
       pushLog(log, "system", `${hero.name}の行動率：攻撃${hero.actionRates.attack}%・技${hero.actionRates.technique}%・呪文${hero.actionRates.spell}%・回復${hero.actionRates.healing}%`, 0, 0);
       const job = window.GameData.jobs && window.GameData.jobs[hero.jobId];
-      pushLog(log, "formation", `${hero.formationSize > 3 ? window.Party.positionName(hero.position, hero.formationSize) : positionName(hero.position)}：${hero.name}（${job ? job.name : "冒険者"}・${hero.weaponRange === "mixed" ? "近接・遠距離併用" : hero.weaponRange === "ranged" ? "遠距離" : "近接"}・攻撃${hero.attackCount}回・命中精度${Math.round(hero.hitRate * 100)}%・隊列補正${Math.round(formationMultiplier(hero) * 100)}%）`, 0, 0);
+      const recordTitle = (window.GameData.adventurerMilestones || []).find(entry => entry.id === hero.recordTitleId);
+      const titledName = recordTitle ? `${hero.name}【${recordTitle.icon} ${recordTitle.name}】` : hero.name;
+      pushLog(log, "formation", `${hero.formationSize > 3 ? window.Party.positionName(hero.position, hero.formationSize) : positionName(hero.position)}：${titledName}（${job ? job.name : "冒険者"}・${hero.weaponRange === "mixed" ? "近接・遠距離併用" : hero.weaponRange === "ranged" ? "遠距離" : "近接"}・攻撃${hero.attackCount}回・命中精度${Math.round(hero.hitRate * 100)}%・隊列補正${Math.round(formationMultiplier(hero) * 100)}%）`, 0, 0);
     });
     for (let index = 0; index < dungeon.encounters.length; index += 1) {
       const encounter = dungeon.encounters[index];
@@ -787,10 +915,11 @@
       if (floor.routeEffect?.type === "damage") {
         const damaged = [];
         living(heroes).forEach(hero => {
-          const amount = Math.max(1, Math.round(hero.hp * floor.routeEffect.rate));
+          const amount = Math.max(1, Math.round(hero.hp * floor.routeEffect.rate * (hero.healingReceived || 1)));
           const actual = Math.min(Math.max(0, hero.currentHp - 1), amount);
           hero.currentHp -= actual;
           hero.metrics.damageTaken += actual;
+          hero.metrics.damageSources.hazard += actual;
           if (actual > 0) damaged.push(`${hero.name} -${actual}`);
         });
         if (damaged.length) pushLog(log, "hazard", `崩れた足場による負傷：${damaged.join("、")}`, index + 1, 0);
@@ -812,6 +941,7 @@
       const wardedHeroes = [];
       const scoutingHeroes = [];
       const rivalryHeroes = [];
+      const namedHuntHeroes = [];
       if (floor.routeEffect?.type === "ward") {
         living(heroes).forEach(hero => {
           wardedHeroes.push({ hero, previous: hero.incomingDamageMultiplier });
@@ -840,7 +970,26 @@
         const bossNames = rivalBossIds.map(id => window.GameData.monsters[id]?.name).filter(Boolean).join("、");
         pushLog(log, "formation", `【因縁の再戦】${heroNames}は${bossNames}との撤退記録を思い返し、見覚えのある動きへ身構えた。`, index + 1, 0, { rivalryBossIds: rivalBossIds, rivalryMemberIds: rivalryHeroes.map(entry => entry.hero.id) });
       }
+      const namedHunt = namedHuntCombatSupport(expedition, groupIds);
+      const namedHuntPair = namedHunt
+        ? namedHunt.memberIds.map(id => heroes.find(hero => hero.id === id)).filter(hero => hero?.currentHp > 0) : [];
+      if (namedHuntPair.length === 2) {
+        namedHuntPair.forEach(hero => {
+          namedHuntHeroes.push({ hero, hitRate: hero.hitRate, speed: hero.speed, criticalRate: hero.criticalRate });
+          hero.hitRate *= namedHunt.support.hitRateMultiplier;
+          hero.speed *= namedHunt.support.speedMultiplier;
+          hero.criticalRate += namedHunt.support.criticalRateBonus;
+        });
+        const quarry = window.GameData.monsters[namedHunt.monsterId];
+        const epithet = namedHunt.tier.epithet.replace("{monster}", quarry?.name || "獲物");
+        pushLog(log, "formation", `【${epithet}・${namedHunt.support.label}】${namedHuntPair.map(hero => hero.name).join("と")}は、使い込んだ頁を見ずに${quarry?.name || "獲物"}の動きを読み、互いの合図で先手を整えた。`, index + 1, 0);
+      }
       const fight = fightEncounter(random, heroes, monsters, index + 1, encounter.name, log, combatRules);
+      namedHuntHeroes.forEach(({ hero, hitRate, speed, criticalRate }) => {
+        hero.hitRate = hitRate;
+        hero.speed = speed;
+        hero.criticalRate = criticalRate;
+      });
       rivalryHeroes.forEach(({ hero, incomingDamageMultiplier, hitRate }) => {
         if (incomingDamageMultiplier == null) delete hero.incomingDamageMultiplier;
         else hero.incomingDamageMultiplier = incomingDamageMultiplier;
@@ -862,8 +1011,29 @@
       monstersDefeated += monsters.filter((monster) => monster.currentHp === 0).length;
       monsters.filter(monster => monster.currentHp === 0).forEach(monster => {
         monsterCounts[monster.id] = (monsterCounts[monster.id] || 0) + 1;
+        const baseMonsterId = monster.baseMonsterId || monster.id;
+        const fixedLootMultiplier = huntDropMultiplier(expedition, monster);
+        if (fixedLootMultiplier > 1 && !loggedHuntFamiliarity.has(baseMonsterId)) {
+          loggedHuntFamiliarity.add(baseMonsterId);
+          const familiarity = window.Encyclopedia.huntFamiliarity(baseMonsterId, expedition.knownMonsterDefeats?.[baseMonsterId]);
+          pushLog(log, "hunt", `【${familiarity.name}】積み重ねた狩猟記録から${monster.name}の痕跡を見分け、固有品を探した。`, index + 1, 0);
+        }
+        if (!loggedTrackedHarvest && expedition.trackedItemHarvestMonsterId === baseMonsterId) {
+          loggedTrackedHarvest = true;
+          const targetItem = window.GameData.items[expedition.trackedItemHarvestId];
+          const practice = expedition.trackedHarvestPractice;
+          const persistence = expedition.trackedHarvestPersistence;
+          const consultation = window.Characters.targetedHarvestConsultation(practice, persistence);
+          const consultationTier = (window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [])
+            .find(tier => tier.id === expedition.trackedHarvestConsultationTier?.tierId);
+          const consultationEpithet = consultationTier?.epithet?.replace("{monster}", monster.name);
+          if (consultation) pushLog(log, "hunt", expedition.trackedHarvestConsultationRemembered
+            ? `【${consultationEpithet || "二人の狩り帳"}】${expedition.trackedHarvestConsultationTier?.tierName || "以前綴じた頁"}を開いた。${consultation.memberNames.join("と")}は、${consultationTier?.encounter || consultation.encounter}`
+            : `【狩りの相談】${consultation.encounter}`, index + 1, 0);
+          pushLog(log, "hunt", `【採取目標】以前の発見記録を頼りに、${monster.name}から${targetItem.name}を得るための手順を試した。${practice ? `${practice.characterName}は「${practice.tierName}」手覚えを活かした。` : ""}${persistence ? `${persistence.characterName}は「${persistence.tierName}」過去の空振りも手掛かりにした。` : ""}`, index + 1, 0);
+        }
         window.MonsterLoot.materialDrops(monster).forEach(drop => {
-          if (materialRandom() >= itemChance(drop.chance * (dungeon.materialRates ? dungeon.materialRates[drop.itemId] : 1))) return;
+          if (materialRandom() >= itemChance(drop.chance * (dungeon.materialRates ? dungeon.materialRates[drop.itemId] : 1) * fixedLootMultiplier * trackedHarvestMultiplier(expedition, monster, drop.itemId))) return;
           const quantity = integer(materialRandom, drop.quantity);
           materialLoot.set(drop.itemId, (materialLoot.get(drop.itemId) || 0) + quantity);
           remember(monsterObservations[monster.id].drops, drop.itemId);
@@ -877,19 +1047,19 @@
           const item = window.GameData.items[equipmentDrop.itemId];
           pushLog(log, "system", `【装備ドロップ】${monster.name}が「${item ? item.name : equipmentDrop.itemId}」を落とした！`, index + 1, 0);
         }
-        const normalSignature = window.GameData.relations?.monsterSignatureDrops?.[monster.baseMonsterId || monster.id];
+        const normalSignature = window.GameData.relations?.monsterSignatureDrops?.[baseMonsterId];
         const signatureTiers = monster.signatureDropTiers || (normalSignature ? [{ difficultyId: "normal", drops: normalSignature }] : []);
         signatureTiers.forEach(entry => {
           const signature = entry.drops;
           (signature?.materials || []).forEach(drop => {
-            if (signatureRandom() >= itemChance(drop.chance * (dungeon.equipmentDropRate || 1))) return;
+            if (signatureRandom() >= itemChance(drop.chance * (dungeon.equipmentDropRate || 1) * fixedLootMultiplier * trackedHarvestMultiplier(expedition, monster, drop.itemId))) return;
             const quantity = integer(signatureRandom, drop.quantity);
             materialLoot.set(drop.itemId, (materialLoot.get(drop.itemId) || 0) + quantity);
             remember(monsterObservations[monster.id].drops, drop.itemId);
             const item = window.GameData.items[drop.itemId];
             pushLog(log, "system", `【${entry.difficultyId === "normal" ? "固有素材" : window.DungeonDifficulty.tier(entry.difficultyId).name + "固有素材"}】${monster.name}から${item ? item.name : drop.itemId}×${quantity}を獲得。`, index + 1, 0);
           });
-          if (signature?.equipment && signatureRandom() < itemChance(signature.equipment.chance * (dungeon.equipmentDropRate || 1))) {
+          if (signature?.equipment && signatureRandom() < itemChance(signature.equipment.chance * (dungeon.equipmentDropRate || 1) * fixedLootMultiplier * trackedHarvestMultiplier(expedition, monster, signature.equipment.itemId))) {
             monsterEquipmentLoot.push({ itemId: signature.equipment.itemId, quantity: integer(signatureRandom, signature.equipment.quantity) });
             remember(monsterObservations[monster.id].drops, signature.equipment.itemId);
             const item = window.GameData.items[signature.equipment.itemId];
@@ -913,7 +1083,7 @@
       if (index < dungeon.encounters.length - 1) {
         const recovered = [];
         living(heroes).forEach((hero) => {
-          const amount = combatRules.betweenEncounterRecovery > 0 ? Math.max(1, Math.round(hero.hp * combatRules.betweenEncounterRecovery)) : 0;
+          const amount = combatRules.betweenEncounterRecovery > 0 ? Math.max(1, Math.round(hero.hp * combatRules.betweenEncounterRecovery * (hero.healingReceived || 1))) : 0;
           const actual = Math.min(amount, hero.hp - hero.currentHp);
           hero.currentHp += actual;
           if (actual > 0) recovered.push(`${hero.name} +${actual}`);
@@ -933,7 +1103,7 @@
     if (success) {
       defeatedBosses.forEach(id => {
         const drop = window.GameData.monsters[id].bossDrop;
-        if (drop && random() < itemChance(drop.chance)) {
+        if (drop && random() < itemChance(drop.chance * huntDropMultiplier(expedition, id) * trackedHarvestMultiplier(expedition, id, drop.itemId))) {
           drops.push({ itemId: drop.itemId, quantity: 1 });
           remember(monsterObservations[id].drops, drop.itemId);
           const item = (window.GameData.items || {})[drop.itemId];
@@ -942,16 +1112,25 @@
       });
       pushLog(log, "system", `全${dungeon.encounters.length}戦を突破し、探索に成功した！`, dungeon.encounters.length, 0);
     }
+    const partyReturnMoment = window.Characters?.expeditionRoleReturnConversation?.(heroes, success, expedition.seed + encountersCleared) || null;
+    if (partyReturnMoment) pushLog(log, "reputation", partyReturnMoment.text, Math.max(1, success ? dungeon.encounters.length : encountersCleared + 1), 0);
     const facts = success ? [] : defeatFacts(heroes, mechanicReport, failure, strategyReport);
     return {
       success, gold, exp, drops, battleLog: log, mechanicReport, monsterCounts, monsterEncounters, monsterObservations,
-      strategyReport, bondFormations,
+      strategyReport, bondFormations, partyReturnMoment,
+      trackedMonsterTrailId: trackedMonsterTrail.applied ? trackedMonsterTrail.monsterId : null,
+      trackedItemHarvestId: expedition.trackedItemHarvestId || null,
+      trackedItemHarvestMonsterId: expedition.trackedItemHarvestMonsterId || null,
+      trackedHarvestPractice: expedition.trackedHarvestPractice ? { ...expedition.trackedHarvestPractice } : null,
+      trackedHarvestPersistence: expedition.trackedHarvestPersistence ? { ...expedition.trackedHarvestPersistence } : null,
+      trackedHarvestConsultationRemembered: expedition.trackedHarvestConsultationRemembered ?? null,
+      trackedHarvestConsultationTier: expedition.trackedHarvestConsultationTier ? { ...expedition.trackedHarvestConsultationTier } : null,
       defeatFacts: facts,
       encountersCleared, totalEncounters: dungeon.encounters.length, monstersDefeated,
-      memberReports: heroes.map(hero => Object.assign({ id: hero.id, name: hero.name, jobId: hero.jobId, actionRates: Object.assign({}, hero.actionRates), remainingHp: hero.currentHp, maxHp: hero.hp }, hero.metrics)),
+      memberReports: heroes.map(hero => Object.assign({ id: hero.id, name: hero.name, jobId: hero.jobId, actionRates: Object.assign({}, hero.actionRates), skillMasteryIds: Object.assign({}, hero.skillMasteryIds || {}), remainingHp: hero.currentHp, maxHp: hero.hp }, hero.metrics)),
       survivors: heroes.filter((hero) => hero.currentHp > 0).map((hero) => ({ name: hero.name, hp: hero.currentHp, maxHp: hero.hp }))
     };
   }
 
-  window.Battle = { formationMultiplier, attackAccuracyMultiplier, attackDamageMultiplier, chooseHeroAction, chooseTarget, targetWeights, heroTargetProfile, encounterOutcome, combatRulesFor, mechanicPhases, bondFormationPairs, resolve };
+  window.Battle = { formationMultiplier, attackAccuracyMultiplier, attackDamageMultiplier, chooseHeroAction, chooseTarget, targetWeights, heroTargetProfile, encounterOutcome, combatRulesFor, mechanicPhases, bondFormationPairs, huntDropMultiplier, trackedHarvestMultiplier, namedHuntCombatSupport, resolve };
 })();

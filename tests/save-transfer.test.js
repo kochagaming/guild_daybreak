@@ -9,7 +9,7 @@ const context = vm.createContext({ console, window: {}, Date, Math, Blob, setTim
   document: { body: { appendChild: () => {} }, createElement: () => ({ click: () => clicked++, remove: () => {} }) },
   localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => { if (key === failKey) throw new Error("quota"); storage.set(key, value); }, removeItem: key => storage.delete(key) }
 });
-["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/equipmentSets.js", "data/skills.js", "data/jobs.js", "data/characterGrowth.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/companions.js", "data/monsters.js", "data/dungeons.js", "data/explorationEvents.js", "data/recipes.js", "data/adventurerMilestones.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/party.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/dungeon.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
+["data/masterSchema.js", "data/items.js", "data/facilities.js", "data/qualities.js", "data/equipmentSkills.js", "data/equipmentSets.js", "data/combatEffects.js", "data/skills.js", "data/jobs.js", "data/characterGrowth.js", "data/origins.js", "data/affinities.js", "data/skillGrants.js", "data/portraits.js", "data/companions.js", "data/monsters.js", "data/dungeons.js", "data/explorationEvents.js", "data/recipes.js", "data/adventurerMilestones.js", "js/runtime.js", "js/storage.js", "js/save.js", "js/gameState.js", "js/equipmentSkills.js", "js/characters.js", "js/items.js", "js/party.js", "js/monsterLoot.js", "js/exploration.js", "data/skillCategories.js", "js/skillCombat.js", "js/statusCombat.js", "js/combatMath.js", "js/combatDecision.js", "js/battle.js", "js/dungeon.js", "js/saveTransfer.js"].forEach(file => vm.runInContext(fs.readFileSync(path.join(__dirname, "..", file), "utf8"), context));
 const game = context.window, transfer = game.SaveTransfer;
 const created = require("./helpers").createCharacter(game, "バックアップ", "cleric", "elf", "sacred", "archer");
 const fellow = require("./helpers").createCharacter(game, "旅仲間", "warrior", "human", "guard", "warrior");
@@ -31,6 +31,7 @@ assert.strictEqual(storage.get(transfer.backupKey), previous);
 assert.strictEqual(game.GameState.data.expeditions[0].partySnapshot[0].actionRates.healing, 70);
 assert.strictEqual(Object.keys(game.GameState.data.expeditions[0].partySnapshot[0].routeEventSuccesses).length, 0, "A departure snapshots personal route experience");
 assert.strictEqual(game.GameState.data.expeditions[0].partySnapshot[0].treasureOpenings, 0, "A departure snapshots personal opening experience");
+assert.deepStrictEqual(Object.keys(game.GameState.data.expeditions[0].partySnapshot[0].primaryAttributes).sort(), Array.from(game.GameData.config.characterGrowth.attributes.order).sort(), "A departure snapshots all primary attributes for non-combat exploration");
 assert.strictEqual(game.Characters.get(created.id).portraitId, "archer");
 transfer.download(); transfer.download(true);
 assert.strictEqual(clicked, 2); assert.strictEqual(revoked, 2);
@@ -53,6 +54,7 @@ invalid(state => state.expeditions[0].partySnapshot[0].stats.attack = "<script>"
 invalid(state => state.expeditions[0].partySnapshot[0].birthId = "missing-birth");
 invalid(state => state.expeditions[0].partySnapshot[0].skillIds = ["invalid"]);
 invalid(state => state.expeditions[0].partySnapshot[0].routeEventSuccesses = { "missing-route-event": 5 });
+invalid(state => { delete state.expeditions[0].partySnapshot[0].primaryAttributes.luck; });
 invalid(state => { state.expeditions[0].partySnapshot[0].equipmentSetBonuses = [{ setId: "missing-set", count: 2, skillIds: ["set_windtrail_2"] }]; });
 invalid(state => state.expeditions[0].knownCompanionMomentKeys = ["missing-moment:0"]);
 invalid(state => state.expeditions[0].trackedItemId = "missing-item");
@@ -71,7 +73,13 @@ for (const key of [transfer.backupKey, game.SaveSystem.exportKey]) {
 }
 game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 game.Dungeon.completeIfReady();
-assert(transfer.parse(JSON.stringify(game.GameState.data)).ok, "戦績とドロップを含む完了データも読み込めること");
+const completedParse = transfer.parse(JSON.stringify(game.GameState.data));
+assert(completedParse.ok, `戦績とドロップを含む完了データも読み込めること: ${completedParse.message || "unknown"}`);
+const reputationLogSave = clone();
+for (const result of [reputationLogSave.lastResult, reputationLogSave.partyResults[0]]) result.battleLog.push({ kind: "reputation", text: "先陣と撹乱役は、短く手順を確かめた。", encounter: 0, round: 0 });
+assert(transfer.parse(JSON.stringify(reputationLogSave)).ok, "Departure reputation scenes survive save validation");
+reputationLogSave.lastResult.battleLog.at(-1).kind = "unknown-reputation-scene";
+assert(!transfer.parse(JSON.stringify(reputationLogSave)).ok, "Unknown departure-log kinds remain rejected");
 const sharedPairKey = [created.id, fellow.id].sort().join("::");
 assert.strictEqual(game.GameState.data.adventurerBonds.pairs[sharedPairKey], 1, "A completed expedition persists one shared-sortie record for the pair");
 game.GameState.data.adventurerBonds.pairs[sharedPairKey] = 4;
@@ -98,6 +106,25 @@ assert(!transfer.parse(JSON.stringify(invalidBond)).ok, "Shared-sortie records c
 const invalidHistoryBattle = clone();
 invalidHistoryBattle.partyHistory[0][0].battle.damageDealt = -1;
 assert(!transfer.parse(JSON.stringify(invalidHistoryBattle)).ok, "Negative expedition-history battle totals must be rejected");
+const invalidHistoryStatus = clone();
+invalidHistoryStatus.partyHistory[0][0].battle.statusInflicted = 2;
+invalidHistoryStatus.partyHistory[0][0].battle.statusAttempts = 1;
+assert(!transfer.parse(JSON.stringify(invalidHistoryStatus)).ok, "Expedition-history status successes cannot exceed attempts");
+const invalidHistoryActions = clone();
+invalidHistoryActions.partyHistory[0][0].battle.defendActions = -1;
+assert(!transfer.parse(JSON.stringify(invalidHistoryActions)).ok, "Expedition-history action counts cannot be negative");
+const invalidHistorySkillUsage = clone();
+invalidHistorySkillUsage.partyHistory[0][0].battle.skillUses = { missing_skill: 1 };
+assert(!transfer.parse(JSON.stringify(invalidHistorySkillUsage)).ok, "Expedition-history skill usage cannot refer to an unknown skill");
+const invalidHistoryMemberPerformance = clone();
+invalidHistoryMemberPerformance.partyHistory[0][0].battle.members[0].damageDealt += 1;
+assert(!transfer.parse(JSON.stringify(invalidHistoryMemberPerformance)).ok, "Per-adventurer expedition metrics must match the retained party totals");
+const invalidSkillUsage = clone();
+invalidSkillUsage.partyResults[0].memberReports[0].skillUses = { missing_skill: 1 };
+assert(!transfer.parse(JSON.stringify(invalidSkillUsage)).ok, "Return-report skill usage cannot refer to an unknown skill");
+const invalidSkillPerformance = clone();
+invalidSkillPerformance.partyResults[0].memberReports[0].skillDamage = { power_strike: -1 };
+assert(!transfer.parse(JSON.stringify(invalidSkillPerformance)).ok, "Return-report skill performance cannot contain a negative contribution");
 const invalidHistorySetup = clone();
 invalidHistorySetup.partyHistory[0][0].partySetup[0].equipmentWeight = invalidHistorySetup.partyHistory[0][0].partySetup[0].maximumWeight + 1;
 assert(!transfer.parse(JSON.stringify(invalidHistorySetup)).ok, "Invalid expedition-history loadouts must be rejected");
@@ -116,6 +143,17 @@ assert(!transfer.parse(JSON.stringify(invalidHistoryHighlight)).ok, "Invalid exp
 const invalidCharacterRecord = clone();
 invalidCharacterRecord.characters[0].expeditionRecord.sorties += 1;
 assert(!transfer.parse(JSON.stringify(invalidCharacterRecord)).ok, "Inconsistent adventurer expedition totals must be rejected");
+const invalidHarvestRecord = clone();
+invalidHarvestRecord.characters[0].expeditionRecord.targetedHarvestAttempts = 1;
+invalidHarvestRecord.characters[0].expeditionRecord.targetedHarvestSuccesses = 2;
+invalidHarvestRecord.characters[0].expeditionRecord.targetedHarvestItems = 2;
+assert(!transfer.parse(JSON.stringify(invalidHarvestRecord)).ok, "Successful targeted harvests cannot exceed an adventurer's attempts");
+const invalidSpecificHarvestRecord = clone();
+invalidSpecificHarvestRecord.characters[0].expeditionRecord.targetedHarvestRecords = { "missing_monster::iron_ore": { attempts: 1, successes: 1, items: 1, lastAt: Date.now() } };
+assert(!transfer.parse(JSON.stringify(invalidSpecificHarvestRecord)).ok, "Personal targeted-harvest records must reference a known monster-and-item pairing");
+const invalidCharacterSkillRecord = clone();
+invalidCharacterSkillRecord.characters[0].expeditionRecord.skillRecords = { missing_skill: { uses: 1, damage: 0, healing: 0, statuses: 0 } };
+assert(!transfer.parse(JSON.stringify(invalidCharacterSkillRecord)).ok, "Adventurer skill history must only reference known skills with valid cumulative totals");
 const invalidRecordTitle = clone();
 invalidRecordTitle.characters[0].recordTitleId = "hundred_victories";
 assert(!transfer.parse(JSON.stringify(invalidRecordTitle)).ok, "Unearned personal record titles must be rejected");
@@ -139,6 +177,12 @@ assert(!transfer.parse(JSON.stringify(invalidAdventurerMilestone)).ok, "Unknown 
 const invalidAdventurerRecord = clone();
 invalidAdventurerRecord.lastResult.newAdventurerRecords = [{ characterId: created.id, name: created.name, improvements: [{ field: "bestDamage", previous: 999999, value: 1000000 }] }];
 assert(!transfer.parse(JSON.stringify(invalidAdventurerRecord)).ok, "Impossible personal-best improvements must be rejected");
+const invalidDamageBreakdown = clone();
+invalidDamageBreakdown.lastResult.memberReports[0].damageSources.physical += 1;
+assert(!transfer.parse(JSON.stringify(invalidDamageBreakdown)).ok, "Incoming-damage source totals must match the recorded damage taken");
+const invalidSkillMasteryResult = clone();
+invalidSkillMasteryResult.lastResult.newSkillMasteries = [{ characterId: created.id, name: created.name, masteries: [{ skillId: "missing-skill", rankId: "familiar", uses: 10 }] }];
+assert(!transfer.parse(JSON.stringify(invalidSkillMasteryResult)).ok, "Return-report skill mastery moments must reference a known skill, rank and cumulative record");
 const invalidCompanionMemoryResult = clone();
 invalidCompanionMemoryResult.lastResult.newCompanionMomentKeys = ["missing-moment:0"];
 assert(!transfer.parse(JSON.stringify(invalidCompanionMemoryResult)).ok, "Unknown companion-memory unlocks must be rejected");

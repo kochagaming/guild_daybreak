@@ -8,6 +8,7 @@ const game = context.window, dungeon = game.DungeonDifficulty.variant(game.GameD
 const eventKinds = new Set(["secret", "camp", "hazard", "lore", "gather"]);
 const routeEventIds = game.GameData.config.explorationEvents.routeEvents.map(event => event.id);
 const ordinaryParty = [{ name: "術師", jobId: "mage", raceId: "human", birthId: "common" }];
+const naturallyGiftedParty = [{ ...ordinaryParty[0], name: "道を見る術師", level: 1, primaryAttributes: { vitality: 20, strength: 20, fortitude: 20, intelligence: 20, spirit: 20, dexterity: 20, agility: 20, luck: 20 } }];
 const practicedParty = [{ ...ordinaryParty[0], name: "旅慣れた術師", routeEventSuccesses: Object.fromEntries(routeEventIds.map(id => [id, game.GameData.config.explorationEvents.personalPractice.successes])) }];
 const teamSurveyParty = [
   { id: "pathfinder-a", name: "道探し", jobId: "thief", raceId: "human", birthId: "common", routeEventSuccesses: Object.fromEntries(routeEventIds.slice(0, 2).map(id => [id, game.GameData.config.explorationEvents.personalPractice.successes])) },
@@ -24,7 +25,7 @@ const specialistParty = [
   { name: "盾役", jobId: "warrior", raceId: "dwarf", birthId: "guard" },
   { name: "碑文読み", jobId: "mage", raceId: "elf", birthId: "scholar" }
 ];
-const ordinarySuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, practicedSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, masteredSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, originSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, specialistSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, seenKinds = new Set(), seenRouteIds = new Set();
+const ordinarySuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, giftedSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, practicedSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, masteredSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, originSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, specialistSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, seenKinds = new Set(), seenRouteIds = new Set();
 let meadowRumorMatches = 0;
 
 for (const [environmentId, environment] of Object.entries(game.GameData.config.explorationEvents.environments)) {
@@ -79,11 +80,16 @@ function routeRecord(seed, party, targetDungeon = dungeon) {
 
 for (let sample = 1; sample <= 600; sample += 1) {
   const seed = sample * 7919;
-  const ordinary = routeRecord(seed, ordinaryParty), practiced = routeRecord(seed, practicedParty), origin = routeRecord(seed, originParty), specialist = routeRecord(seed, specialistParty);
+  const ordinary = routeRecord(seed, ordinaryParty), gifted = routeRecord(seed, naturallyGiftedParty), practiced = routeRecord(seed, practicedParty), origin = routeRecord(seed, originParty), specialist = routeRecord(seed, specialistParty);
   const masteredFloors = game.Exploration.journey(dungeon, 1, seed, undefined, ordinaryParty, [], game.GameData.config.explorationEvents.routeEvents.map(event => event.id));
   const mastered = masteredFloors.flatMap((floor, floorIndex) => floor.entries.filter(entry => eventKinds.has(entry.kind)).map(entry => ({ entry, floor, floorIndex })))[0];
   assert.strictEqual(specialist.entry.routeEventId, ordinary.entry.routeEventId, "Party composition changes the outcome, not which scene was rolled");
   assert.strictEqual(practiced.entry.routeEventId, ordinary.entry.routeEventId, "Personal experience changes the outcome, not which scene was rolled");
+  assert.strictEqual(gifted.entry.routeEventId, ordinary.entry.routeEventId, "Primary attributes change the outcome, not which scene was rolled");
+  assert.strictEqual(gifted.entry.routeNaturalAptitudeApplied, true, "A guide using above-average primary attributes is identified in the factual route log");
+  const giftedEvent = game.GameData.config.explorationEvents.routeEvents.find(event => event.id === gifted.entry.routeEventId);
+  const giftedAptitude = game.GameData.config.explorationEvents.aptitudes[giftedEvent.aptitudeId];
+  assert(gifted.entry.explorationAttributeIds.length >= 1 && gifted.entry.explorationAttributeIds.length <= 2 && gifted.entry.explorationAttributeIds.every(id => id in giftedAptitude.attributeWeights), "A route record names the strongest relevant attributes without exposing the hidden success rate");
   assert.strictEqual(practiced.entry.routeEventPersonalPracticeApplied, true, "A practiced guide records that personal field experience was used");
   assert.strictEqual(origin.entry.routeEventId, ordinary.entry.routeEventId, "Race and birth aptitude do not change which scene was rolled");
   assert.strictEqual(mastered.entry.routeEventId, ordinary.entry.routeEventId, "Recorded field knowledge changes the outcome, not which scene was rolled");
@@ -93,6 +99,7 @@ for (let sample = 1; sample <= 600; sample += 1) {
   seenRouteIds.add(ordinary.entry.routeEventId);
   if (ordinary.entry.routeRumorMatched) meadowRumorMatches += 1;
   if (ordinary.entry.routeEventSuccess) ordinarySuccesses[ordinary.entry.kind] += 1;
+  if (gifted.entry.routeEventSuccess) giftedSuccesses[gifted.entry.kind] += 1;
   if (practiced.entry.routeEventSuccess) practicedSuccesses[practiced.entry.kind] += 1;
   if (mastered.entry.routeEventSuccess) masteredSuccesses[mastered.entry.kind] += 1;
   if (origin.entry.routeEventSuccess) originSuccesses[origin.entry.kind] += 1;
@@ -103,7 +110,11 @@ assert.deepStrictEqual([...seenKinds].sort(), ["camp", "gather", "hazard", "lore
 assert(seenRouteIds.has("ancient_ward"), "The expanded route pool can produce an ancient ward scene");
 assert(seenRouteIds.has("enemy_tracks"), "The expanded route pool can produce a monster-tracking scene");
 assert(meadowRumorMatches > 180, "The destination rumor meaningfully favors its matching route event without guaranteeing it");
+const giftedCluePanelRecord = routeRecord(7919, naturallyGiftedParty).entry;
+const giftedCluePanel = game.GameUIViews.results.routeEventPanel({ battleLog: [giftedCluePanelRecord] }, { escape: value => String(value) });
+assert(giftedCluePanel.includes("導いた者：道を見る術師") && giftedCluePanel.includes("基礎能力を活用"), "The return report connects a non-combat success to the adventurer and attributes that helped");
 for (const kind of seenKinds) {
+  assert(giftedSuccesses[kind] > ordinarySuccesses[kind], `${kind} can improve through matching primary attributes without exposing its exact rate`);
   assert(practicedSuccesses[kind] > ordinarySuccesses[kind], `${kind} becomes easier when an adventurer has repeatedly solved the same route event`);
   assert(masteredSuccesses[kind] > ordinarySuccesses[kind], `${kind} becomes easier after the guild has accumulated enough successful field notes`);
   assert(originSuccesses[kind] > ordinarySuccesses[kind], `${kind} outcomes can improve through race and birth even without a matching job`);

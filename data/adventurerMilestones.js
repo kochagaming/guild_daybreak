@@ -6,16 +6,25 @@
   const completeFieldSpecialtyCount = data.config.explorationEvents.routeEvents.length + 1;
   data.registry.entityList("adventurerMilestones", [
     { id: "first_sortie", icon: "◇", name: "初陣の記章", description: "初めての遠征から帰還した証。", condition: { type: "record", field: "sorties", minimum: 1 } },
+    { id: "first_item_discovery", icon: "拾", name: "拾い手の小章", description: "まだ誰も知らなかった品を、初めてギルドへ持ち帰った証。", condition: { type: "itemDiscoveryCount", minimum: 1 } },
+    { id: "ten_item_discoveries", icon: "鑑", name: "十見の標章", description: "十種の新しい品を見つけ、その来歴を資料室へ残した証。", condition: { type: "itemDiscoveryCount", minimum: 10 } },
+    { id: "first_monster_first_defeat", icon: "討", name: "初討の小章", description: "まだギルドが倒したことのない魔物へ、仲間と初めて打ち勝った証。", condition: { type: "monsterFirstDefeatCount", minimum: 1 } },
+    { id: "ten_monster_first_defeats", icon: "征", name: "十討の標章", description: "十種の魔物の初討伐に立ち会い、その名を資料室へ残した証。", condition: { type: "monsterFirstDefeatCount", minimum: 10 } },
     { id: "ten_sorties", icon: "⌁", name: "馴染みの旅装", description: "幾度も同じ門をくぐった者の記録。", condition: { type: "record", field: "sorties", minimum: 10 } },
     { id: "fifty_sorties", icon: "◆", name: "遠路の記章", description: "長い遠征の積み重ねを刻んだ証。", condition: { type: "record", field: "sorties", minimum: 50 } },
     { id: "familiar_companion", icon: "握", name: "馴染みの同行章", description: "同じ仲間と五度の遠征を歩き、互いの歩幅を覚えた証。", condition: { type: "sharedSorties", minimum: 5 } },
     { id: "longtime_companion", icon: "結", name: "二十路の結び章", description: "同じ仲間と二十度の遠征を重ね、長い道を共にした証。", condition: { type: "sharedSorties", minimum: 20 } },
     { id: "ten_victories", icon: "⚑", name: "十勝の飾緒", description: "十度の攻略を成し遂げた者へ贈られる。", condition: { type: "record", field: "victories", minimum: 10 } },
     { id: "hundred_encounters", icon: "⚔", name: "百戦の留め金", description: "数多くの戦闘を越えた旅装の留め金。", condition: { type: "record", field: "encounterClears", minimum: 100 } },
+    { id: "familiar_skill", icon: "技", name: "技馴らしの小章", description: "一つの技能を使い込み、手慣れた技として身につけた証。", condition: { type: "skillMasteryCount", rankId: "familiar", minimum: 1 } },
+    { id: "trusted_skill", icon: "錬", name: "得手の飾緒", description: "一つの技能を得意技と呼ばれるまで磨き続けた証。", condition: { type: "skillMasteryCount", rankId: "trusted", minimum: 1 } },
+    { id: "signature_skill", icon: "極", name: "十八番の星章", description: "一つの技能を、その者の名と共に語られる十八番へ育てた証。", condition: { type: "skillMasteryCount", rankId: "signature", minimum: 1 } },
     { id: "first_route_success", icon: "路", name: "先導の小章", description: "戦いの外で初めて仲間の道を拓いた証。", condition: { type: "record", field: "routeSuccesses", minimum: 1 } },
     { id: "ten_route_successes", icon: "⌖", name: "十路の羅針章", description: "十度の道中の難所を解いた探索者の証。", condition: { type: "record", field: "routeSuccesses", minimum: 10 } },
     { id: "first_team_survey_personal", icon: "結", name: "連携の小章", description: "仲間と得意分野を持ち寄り、初めて連携探索へ加わった証。", condition: { type: "record", field: "teamSurveys", minimum: 1 } },
     { id: "ten_team_surveys_personal", icon: "図", name: "十図の記章", description: "十度の連携探索へ加わり、仲間と地図を描いた証。", condition: { type: "record", field: "teamSurveys", minimum: 10 } },
+    { id: "first_targeted_harvest", icon: "採", name: "狙い採りの小章", description: "魔物と品の記録を結び、初めて狙った品を持ち帰った証。", condition: { type: "record", field: "targetedHarvestSuccesses", minimum: 1 } },
+    { id: "ten_targeted_harvests", icon: "猟", name: "十度の収穫記章", description: "狙いを定めた狩りから、十度の収穫を仲間と持ち帰った証。", condition: { type: "record", field: "targetedHarvestSuccesses", minimum: 10 } },
     { id: "hidden_passage_specialist", icon: "⌘", name: "隠し道の記章", description: "隠し道を五度見つけ、仲間を先導した探索者の証。", condition: { type: "routeEventRecord", routeEventId: "hidden_passage", minimum: routeSpecialistSuccesses } },
     { id: "sheltered_camp_specialist", icon: "♨", name: "野営の記章", description: "安全な野営地を五度整え、一行の休息を支えた証。", condition: { type: "routeEventRecord", routeEventId: "sheltered_camp", minimum: routeSpecialistSuccesses } },
     { id: "unstable_footing_specialist", icon: "△", name: "足場渡りの記章", description: "危険な足場を五度導き、一行を無事に渡した証。", condition: { type: "routeEventRecord", routeEventId: "unstable_footing", minimum: routeSpecialistSuccesses } },
@@ -31,6 +40,7 @@
     { id: "healing_five_thousand", icon: "✚", name: "命守りの記章", description: "仲間の命を幾度も繋いだ者の証。", condition: { type: "record", field: "healingDone", minimum: 5000 } },
     { id: "endurance_three_thousand", icon: "♜", name: "不落の傷章", description: "苛烈な攻撃を受けながら立ち続けた証。", condition: { type: "record", field: "bestEndurance", minimum: 3000 } },
     { id: "fifty_critical_hits", icon: "◎", name: "見切りの記章", description: "好機を逃さぬ一撃を重ねた者の証。", condition: { type: "record", field: "criticalHits", minimum: 50 } },
+    { id: "fifty_status_inflictions", icon: "縛", name: "異変刻みの記章", description: "敵へ五十度の異変を刻み、戦いの流れを変えた者の証。", condition: { type: "record", field: "statusInflicted", minimum: 50 } },
     { id: "hundred_victories", icon: "★", name: "百勝の星章", description: "百度の攻略を成し遂げた冒険者の大記録。", condition: { type: "record", field: "victories", minimum: 100 } }
   ]);
 })();

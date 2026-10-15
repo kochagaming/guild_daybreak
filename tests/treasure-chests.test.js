@@ -46,6 +46,9 @@ assert(practicedRate > untrainedRate + .02, "An adventurer who repeatedly opened
 const practicedChest = game.Exploration.journey(game.DungeonDifficulty.variant("meadow", "divine"), 1, 3571, undefined, [{ name: "旅慣れた開錠役", jobId: "warrior", raceId: "human", birthId: "common", treasureOpenings: 10 }], [])
   .flatMap(floor => floor.entries).find(entry => entry.kind === "treasure" && entry.treasureTierRank > 0);
 assert(practicedChest && practicedChest.treasurePersonalPracticeApplied && practicedChest.explorationActorName === "旅慣れた開錠役", "Chest logs preserve the practiced opener credited at departure");
+const giftedChest = game.Exploration.journey(game.DungeonDifficulty.variant("meadow", "divine"), 1, 3571, undefined, [{ id: "gifted-locksmith", name: "目利きの鍵師", level: 1, jobId: "thief", raceId: "human", birthId: "common", primaryAttributes: { vitality: 10, strength: 10, fortitude: 10, intelligence: 10, spirit: 10, dexterity: 20, agility: 20, luck: 20 } }], [])
+  .flatMap(floor => floor.entries).find(entry => entry.kind === "treasure" && entry.treasureTierRank > 0);
+assert(giftedChest && giftedChest.treasureNaturalAptitudeApplied && giftedChest.explorationAttributeIds.length && giftedChest.explorationActorName === "目利きの鍵師", "Chest logs identify the opener and primary attributes that helped without revealing an exact probability");
 const masteredRate = (() => {
   let challenged = 0, opened = 0;
   const dungeon = game.DungeonDifficulty.variant("meadow", "divine");
@@ -73,7 +76,8 @@ assert(parsedTreasureKnowledge.ok, parsedTreasureKnowledge.message || "Treasure 
 const highlights = game.Dungeon.memberHighlights({
   memberReports: [
     { id: "scout", name: "斥候", damageDealt: 12, healingDone: 0, damageTaken: 0, remainingHp: 20, maxHp: 20 },
-    { id: "fighter", name: "戦士", damageDealt: 80, healingDone: 0, damageTaken: 10, remainingHp: 20, maxHp: 30 }
+    { id: "fighter", name: "戦士", damageDealt: 80, healingDone: 0, damageTaken: 10, remainingHp: 20, maxHp: 30 },
+    { id: "hexer", name: "呪術師", damageDealt: 10, healingDone: 0, damageTaken: 0, statusInflicted: 3, statusAttempts: 5, statusResisted: 1, remainingHp: 20, maxHp: 20 }
   ],
   battleLog: [
     { kind: "secret", routeEventId: "hidden_passage", routeEventSuccess: true, explorationActorId: "scout", explorationActorName: "斥候" },
@@ -81,9 +85,14 @@ const highlights = game.Dungeon.memberHighlights({
   ]
 });
 assert.deepStrictEqual(JSON.parse(JSON.stringify(highlights[0])), { kind: "exploration", memberId: "scout", name: "斥候", value: 2, routeSuccesses: 1, chestsOpened: 1 }, "Non-combat contributions should be credited to the adventurer who handled them");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(highlights.find(entry => entry.kind === "status"))), { kind: "status", memberId: "hexer", name: "呪術師", value: 3, attempts: 5, resisted: 1 }, "A status specialist receives a factual return-report highlight");
+const highlightPanel = game.GameUIViews.results.memberHighlightPanel({ memberReports: [
+  { id: "hexer", name: "呪術師", damageDealt: 1, healingDone: 0, damageTaken: 0, statusInflicted: 3, statusAttempts: 5, statusResisted: 1, remainingHp: 20, maxHp: 20 }
+] }, { escape: value => String(value) });
+assert(highlightPanel.includes("異変で戦機をつくった") && highlightPanel.includes("成功 3/5・抵抗 1"), "The result highlight explains a status specialist's factual contribution compactly");
 const panel = game.GameUIViews.results.treasurePanel({ battleLog: [
-  { kind: "treasure", encounter: 1, treasureTierId: "starsealed", treasureTierRank: 2, treasureOpened: false, treasurePersonalPracticeApplied: true, text: "星紋の宝箱を発見" },
+  { kind: "treasure", encounter: 1, treasureTierId: "starsealed", treasureTierRank: 2, treasureOpened: false, treasurePersonalPracticeApplied: true, treasureNaturalAptitudeApplied: true, explorationActorName: "目利きの鍵師", explorationAttributeIds: ["dexterity", "agility"], text: "星紋の宝箱を発見" },
   { kind: "treasureGold", encounter: 1, treasureTierId: "starsealed", treasureTierRank: 2, treasureOpened: false, text: "星紋の宝箱から100Gを手に入れた。" }
 ] }, { escape: value => String(value) });
-assert(panel.includes("TREASURE FOUND") && panel.includes("星紋の宝箱") && panel.includes("100G") && panel.includes("rank-2") && panel.includes("一部回収") && panel.includes("本人の開錠経験を活用"));
+assert(panel.includes("TREASURE FOUND") && panel.includes("星紋の宝箱") && panel.includes("100G") && panel.includes("rank-2") && panel.includes("一部回収") && panel.includes("目利きの鍵師の技巧・敏捷を活用") && panel.includes("本人の開錠経験を活用"));
 console.log("Treasure chest test passed: three tiers, deterministic rolls, aptitude and personal-practice opening, shared mastery, credited exploration and return-report summary");

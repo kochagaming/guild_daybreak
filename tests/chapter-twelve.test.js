@@ -55,6 +55,8 @@ for (const id of ["starsea_rapier", "abyssal_robe", "navigator_gauntlet"]) {
 }
 assert.strictEqual(data.monsters.temple_warden.bossDrop.itemId, "tide_oracle_staff");
 assert.strictEqual(data.monsters.abyssal_leviathan.bossDrop.itemId, "leviathan_aegis");
+assert.deepStrictEqual({ ...data.items.tide_oracle_staff.attributeBonuses }, { intelligence: 3, spirit: 4 });
+assert.deepStrictEqual({ ...data.items.leviathan_aegis.attributeBonuses }, { vitality: 4, fortitude: 3 });
 for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
   assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }

@@ -42,6 +42,8 @@ for (const id of ["moonleaf_bow", "thornplate_gauntlets", "nightbloom_robe"]) {
 }
 assert.strictEqual(data.monsters.thorn_saint.bossDrop.itemId, "saint_thorn_sword");
 assert.strictEqual(data.monsters.worldroot_devourer.bossDrop.itemId, "worldroot_mail");
+assert.deepStrictEqual({ ...data.items.saint_thorn_sword.attributeBonuses }, { strength: 2, luck: 1 });
+assert.deepStrictEqual({ ...data.items.worldroot_mail.attributeBonuses }, { vitality: 3, fortitude: 2 });
 assert(data.relations.itemSkillGrants.memory_robe.includes("poison_resistance_20"));
 assert(data.relations.itemSkillGrants.nightbloom_robe.includes("poison_resistance_35"));
 assert(data.relations.itemSkillGrants.chronoglass_rapier.includes("plant_slayer_15"));
@@ -49,9 +51,10 @@ assert(data.relations.itemSkillGrants.memory_robe.includes("demon_slayer_15"));
 assert(data.relations.itemSkillGrants.ashweave_mantle.includes("burn_resistance_20"));
 assert(data.relations.itemSkillGrants.nightbloom_robe.includes("burn_resistance_35"));
 const poisonRobe = game.Items.add("nightbloom_robe", 1, { qualityId: "standard", source: "craft", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];
-const poisonStats = game.Characters.stats(game.Characters.get(state.characters[0].id), [poisonRobe]);
-assert.strictEqual(poisonStats.statusResistances.poison, .35);
-assert.strictEqual(poisonStats.statusResistances.burn, .35);
+const poisonCharacter = game.Characters.get(state.characters[0].id), poisonStats = game.Characters.stats(poisonCharacter, [poisonRobe]);
+const poisonInnate = game.Characters.stats(poisonCharacter, []).statusResistances;
+assert(Math.abs(poisonStats.statusResistances.poison - (1 - (1 - (poisonInnate.poison || 0)) * (1 - .35))) < 1e-9, "attribute and equipment poison resistance should combine probabilistically");
+assert(Math.abs(poisonStats.statusResistances.burn - (1 - (1 - (poisonInnate.burn || 0)) * (1 - .35))) < 1e-9, "attribute and equipment burn resistance should combine probabilistically");
 const plantRapier = game.Items.add("chronoglass_rapier", 1, { qualityId: "standard", source: "craft", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];
 const plantStats = game.Characters.stats(game.Characters.get(state.characters[0].id), [plantRapier]);
 assert.strictEqual(plantStats.slayerMultipliers.plant, 1.15);

@@ -82,8 +82,9 @@ async function run() {
   const growth = game.GameState.data.lastResult.levelUps.find(entry => entry.name === "長時間試験");
   assert(growth && growth.newSkillIds.includes("power_strike"), "The return result records skills learned at crossed level milestones");
   assert(growth.statChanges.hp > 0 && growth.statChanges.maxWeight > 0, "The return result records actual stat and equipment-capacity gains");
+  assert(game.Characters.attributeKeys().every(key => growth.attributeChanges[key] > 0), "The return result separates primary-attribute growth from derived combat-stat growth");
   const historyGrowth = game.GameState.data.partyHistory[0][0].growth.find(entry => entry.name === "長時間試験");
-  assert(historyGrowth && historyGrowth.newSkillIds.includes("power_strike") && historyGrowth.statChanges.maxWeight > 0, "Stat and skill growth remain in the compact expedition history after the latest report is replaced");
+  assert(historyGrowth && historyGrowth.newSkillIds.includes("power_strike") && historyGrowth.attributeChanges.strength > 0 && historyGrowth.statChanges.maxWeight > 0, "Attribute, stat and skill growth remain in the compact expedition history after the latest report is replaced");
   { const parsed = game.SaveTransfer.parse(JSON.stringify(game.GameState.data)); assert(parsed.ok, parsed.message); }
   const gold = game.GameState.data.gold;
   now += 999999; await game.GameClient.execute("expedition.collect");

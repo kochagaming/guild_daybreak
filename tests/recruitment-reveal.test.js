@@ -48,8 +48,8 @@ async function run() {
   assert(modal().includes("ADVENTURER REGISTRY") && modal().includes("APPLICATION 1"));
   assert(modal().includes("reveal-portrait-radar") && modal().includes('aria-hidden="true"'), "Recruitment reveal portraits show decorative primary-attribute radar charts behind each character");
   assert(modal().includes('data-action="quick-hire-applicant"') && modal().includes("reveal-stats"));
-  const statOrder = ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "criticalRate", "speed", "attackCount", "physicalPower", "magicPower", "skillPower", "healingPower", "maxWeight"];
-  for (const label of ["HP", "物攻", "物防", "魔攻", "魔防", "魔回", "命中", "回避", "会心", "速度", "回数", "物威力", "魔威力", "技威力", "回復力", "重量"]) assert(modal().includes(`<small>${label}</small>`));
+  const statOrder = ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "criticalRate", "statusChanceBonus", "speed", "attackCount", "physicalPower", "magicPower", "skillPower", "healingPower", "healingReceived", "maxWeight"];
+  for (const label of ["HP", "物攻", "物防", "魔攻", "魔防", "魔回", "命中", "回避", "会心", "異常成功", "速度", "回数", "物威力", "魔威力", "技威力", "回復力", "被回復", "重量"]) assert(modal().includes(`<small>${label}</small>`));
   const revealHtml = modal();
   statOrder.slice(1).forEach((key, index) => assert(revealHtml.indexOf(`data-stat="${statOrder[index]}"`) < revealHtml.indexOf(`data-stat="${key}"`), `Reveal stat order keeps ${statOrder[index]} before ${key}`));
   assert(modal().includes("横にスライドして全能力を表示") && modal().includes('tabindex="0"'));

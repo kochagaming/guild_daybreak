@@ -33,12 +33,25 @@ assert(byId.monster_spoils.findings.includes("通常装備：一般10%・ボス2
 assert.strictEqual(byId.ailment_triage.unlock.chapterId, "starfall");
 assert(byId.ailment_triage.paragraphs.join("").includes("麻痺") && byId.ailment_triage.paragraphs.join("").includes("錬金工房"));
 assert(byId.ailment_triage.findings.some(entry => entry.includes("通常行動を待たず")));
+assert.strictEqual(byId.attributes_against_ailments.unlock.chapterId, "starfall");
+assert(byId.attributes_against_ailments.findings.some(entry => entry.includes("頑健") && entry.includes("凍寒")));
+assert(byId.attributes_against_ailments.findings.some(entry => entry.includes("精神") && entry.includes("麻痺")));
+assert(!byId.attributes_against_ailments.paragraphs.join("").includes("%"), "Attribute-resistance notes should leave exact odds for players to infer from battle records");
+assert.strictEqual(byId.vitality_and_recovery.unlock.chapterId, "starfall");
+assert(byId.vitality_and_recovery.findings.some(entry => entry.includes("生命") && entry.includes("受ける回復")));
+assert(byId.vitality_and_recovery.paragraphs.join("").includes("野営") && byId.vitality_and_recovery.paragraphs.join("").includes("小休止"));
+assert(!byId.vitality_and_recovery.paragraphs.join("").includes("%"), "Recovery notes should leave exact multipliers for players to infer");
 const routeNoteIds = ["hidden_passage_signs", "sheltered_camp_signs", "unstable_footing_signs", "forgotten_inscription_signs", "material_traces_signs"];
 assert.deepStrictEqual(Array.from(routeNoteIds, id => byId[id].unlock.routeEventId).sort(), ["hidden_passage", "sheltered_camp", "unstable_footing", "forgotten_inscription", "material_traces"].sort());
 routeNoteIds.forEach(id => {
   assert.strictEqual(byId[id].unlock.type, "routeEventEncountered");
   assert(!byId[id].paragraphs.join("").includes("%"), `${id} leaves exact odds for the player to infer`);
 });
+assert(byId.hidden_passage_signs.findings.some(entry => entry.includes("技巧") && entry.includes("敏捷")));
+assert(byId.sheltered_camp_signs.findings.some(entry => entry.includes("精神") && entry.includes("生命")));
+assert(byId.unstable_footing_signs.findings.some(entry => entry.includes("筋力") && entry.includes("頑健")));
+assert(byId.forgotten_inscription_signs.findings.some(entry => entry.includes("知力") && entry.includes("精神")));
+assert(byId.material_traces_signs.findings.some(entry => entry.includes("幸運") && entry.includes("技巧")));
 const practicedRouteNoteIds = ["hidden_passage_practice", "sheltered_camp_practice", "unstable_footing_practice", "forgotten_inscription_practice", "material_traces_practice"];
 assert.deepStrictEqual(Array.from(practicedRouteNoteIds, id => byId[id].unlock.routeEventId).sort(), ["hidden_passage", "sheltered_camp", "unstable_footing", "forgotten_inscription", "material_traces"].sort());
 practicedRouteNoteIds.forEach(id => {
@@ -50,4 +63,17 @@ assert.strictEqual(byId.familiar_companion_signals.unlock.type, "sharedSorties")
 assert.strictEqual(byId.familiar_companion_signals.unlock.minimum, 5);
 assert.strictEqual(byId.trusted_companion_formation.unlock.minimum, 20);
 assert(!byId.familiar_companion_signals.paragraphs.join("").match(/1\.0[24]|%/), "Relationship observations leave their hidden battle and route modifiers for the player to infer");
+assert.strictEqual(byId.signature_skill_practice.unlock.type, "skillMastery");
+assert.strictEqual(byId.signature_skill_practice.unlock.rankId, "familiar");
+assert(byId.signature_skill_practice.paragraphs.join("").includes("五十度") && byId.signature_skill_practice.paragraphs.join("").includes("二百度"), "The skill-practice diary describes mastery thresholds through in-world observations");
+assert(byId.signature_skill_practice.findings.some(entry => entry.includes("能力を強化せず")), "The diary makes clear that mastery names preserve identity without hidden combat power");
+assert.strictEqual(byId.targeted_harvest_practice.unlock.type, "targetedHarvestPractice");
+assert.strictEqual(byId.targeted_harvest_practice.unlock.tierId, "known_quarry");
+assert(!byId.targeted_harvest_practice.paragraphs.join("").includes("%"), "The targeted-harvest diary leaves hidden odds for the player to infer");
+assert(byId.targeted_harvest_practice.findings.some(entry => entry.includes("組み合わせごと")), "The diary explains that practice belongs to one exact monster and item pair");
+assert.strictEqual(byId.targeted_harvest_persistence.unlock.type, "targetedHarvestPersistence");
+assert.strictEqual(byId.targeted_harvest_persistence.unlock.tierId, "trace_reader");
+assert.strictEqual(byId.targeted_harvest_consultation.unlock.type, "targetedHarvestConsultation");
+assert(!byId.targeted_harvest_persistence.paragraphs.join("").includes("%"), "The failed-harvest diary leaves hidden odds for the player to infer");
+assert(byId.targeted_harvest_persistence.findings.some(entry => entry.includes("空振り")), "The diary establishes that unsuccessful attempts still leave usable personal knowledge");
 console.log("Observation notes test passed: unique progressive diary entries and master-data-aligned findings");

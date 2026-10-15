@@ -34,11 +34,13 @@
   function apply(random, source, target, effect, log, encounter, round) {
     const definition = definitions()[effect.statusId];
     if (!definition || target.currentHp <= 0) return { applied: false, reason: "invalid" };
+    if (source?.side === "hero" && source.metrics) source.metrics.statusAttempts = (source.metrics.statusAttempts || 0) + 1;
     const baseChance = Math.min(1, Math.max(0, Number(effect.chance ?? 1)));
     const resistanceValue = resistance(target, effect.statusId);
     const luckRule = window.GameData.config.characterGrowth?.attributes?.luck || {};
-    const luckBonus = source?.side === "hero" ? Math.max(0, (Number(source.luckScore) || 50) - 50) * (Number(luckRule.statusChancePerPoint) || .002) : 0;
-    const chance = Math.min(1, (baseChance + luckBonus) * (1 - resistanceValue));
+    const fallbackLuckBonus = Math.max(0, (Number(source?.luckScore) || 50) - 50) * (Number(luckRule.statusChancePerPoint) || .002);
+    const aptitudeBonus = source?.side === "hero" ? Math.max(0, Number(source.statusChanceBonus) || fallbackLuckBonus) : 0;
+    const chance = Math.min(1, (baseChance + aptitudeBonus) * (1 - resistanceValue));
     if (source?.side === "enemy" && source.observation && !source.observation.statusAttacks.includes(effect.statusId)) source.observation.statusAttacks.push(effect.statusId);
     const roll = random();
     if (roll >= chance) {
@@ -47,6 +49,7 @@
         ? `【状態異常抵抗】${target.name}は${definition.name}を防いだ。`
         : `【状態異常不発】${target.name}に${definition.name}は定着しなかった。`, encounter, round });
       if (resisted && source?.side === "hero" && target.side === "enemy" && target.observation && !target.observation.statusResisted.includes(effect.statusId)) target.observation.statusResisted.push(effect.statusId);
+      if (resisted && source?.side === "hero" && source.metrics) source.metrics.statusResisted = (source.metrics.statusResisted || 0) + 1;
       if (resisted && source?.strategyReport) source.strategyReport.statusResisted++;
       return { applied: false, resisted, chance, reason: resisted ? "resistance" : "chance" };
     }
@@ -64,6 +67,7 @@
     const detail = definition.description ? `：${definition.description}` : "";
     log.push({ kind: "status", text: `【状態異常】${source?.name || "効果"}により${target.name}は${definition.name}になった（${duration}ターン${detail}）。`, encounter, round });
     if (source?.side === "hero" && target.side === "enemy" && target.observation && !target.observation.statusLanded.includes(effect.statusId)) target.observation.statusLanded.push(effect.statusId);
+    if (source?.side === "hero" && source.metrics) source.metrics.statusInflicted = (source.metrics.statusInflicted || 0) + 1;
     if (source?.strategyReport) source.strategyReport.statusInflicted++;
     if (target.side === "hero" && window.SkillCombat?.afterStatusApplied) window.SkillCombat.afterStatusApplied(target, effect.statusId, log, encounter, round);
     return { applied: true, duration, potency };
@@ -106,7 +110,11 @@
         if (definition.periodic) {
           const damage = Math.min(unit.currentHp, Math.max(1, Math.round(unit.hp * (state.potency || definition.defaultPotency || 0))));
           unit.currentHp = Math.max(0, unit.currentHp - damage);
-          if (unit.metrics) unit.metrics.damageTaken += damage;
+          if (unit.metrics) {
+            unit.metrics.damageTaken += damage;
+            unit.metrics.damageSources = unit.metrics.damageSources || {};
+            unit.metrics.damageSources.status = (unit.metrics.damageSources.status || 0) + damage;
+          }
           if (state.source?.metrics) { state.source.metrics.damageDealt += damage; state.source.metrics.statusDamageDealt += damage; }
           if (state.source?.strategyReport) state.source.strategyReport.statusDamage += damage;
           log.push({ kind: "status", text: `【${definition.name}】${unit.name}は${damage}ダメージ。${unit.currentHp > 0 ? `残りHP ${unit.currentHp}/${unit.hp}` : "戦闘不能になった！"}`, encounter, round });

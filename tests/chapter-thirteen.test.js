@@ -49,6 +49,8 @@ for (const id of ["northstar_katana", "aurora_heavy", "vessel_shield"]) {
 }
 assert.strictEqual(data.monsters.sleeping_vessel.bossDrop.itemId, "sleeper_crown");
 assert.strictEqual(data.monsters.worldscar_dragon.bossDrop.itemId, "worldscar_bow");
+assert.deepStrictEqual({ ...data.items.sleeper_crown.attributeBonuses }, { intelligence: 3, spirit: 2, dexterity: 2 });
+assert.deepStrictEqual({ ...data.items.worldscar_bow.attributeBonuses }, { dexterity: 4, agility: 3 });
 for (const monster of Object.values(data.monsters).filter(entry => data.relations.monsterFamilies[entry.id] && routes.some(dungeon => dungeon.encounters.some(encounter => encounter.groups.flat().includes(entry.id))))) {
   assert(data.relations.monsterFamilies[monster.id].length && data.relations.monsterSignatureDrops[monster.id]?.equipment, `${monster.id} has family and signature equipment`);
 }

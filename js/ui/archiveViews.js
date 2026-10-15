@@ -12,7 +12,10 @@
       const cards = entries.map(entry => {
         const progress = cycle.progress[entry.id] || 0, claimed = cycle.claimed.includes(entry.id), ready = progress >= entry.target;
         const rewards = [entry.rewards.gold ? context.formatGold(entry.rewards.gold) : "", ...Object.entries(entry.rewards.materials || {}).map(([id, quantity]) => `${context.itemName(id)}×${quantity}`)].filter(Boolean).join("・");
-        return `<article class="recurring-mission-card ${claimed ? "is-claimed" : ready ? "is-ready" : ""}"><div class="recurring-mission-copy"><div class="card-heading"><h4>${context.escape(entry.title)}</h4><span class="badge ${claimed || ready ? "good" : ""}">${claimed ? "受取済み" : ready ? "達成" : `${progress}/${entry.target}`}</span></div><p>${context.escape(entry.description)}</p><small>報酬　${context.escape(rewards)}</small></div><button class="button ${ready && !claimed ? "primary" : "secondary"}" data-action="claim-recurring-mission" data-group="${group.id}" data-mission="${entry.id}" ${claimed || !ready ? "disabled" : ""}>${claimed ? "受取済" : "受取"}</button></article>`;
+        const issuer = window.GameData.storyCharacters?.[entry.issuerCharacterId];
+        const issuerLine = ready ? entry.completionFlavor : entry.flavor;
+        const flavor = issuer && issuerLine ? `<p class="recurring-mission-issuer ${ready ? "is-complete" : ""}"><b>${context.escape(issuer.name)}</b>「${context.escape(issuerLine)}」</p>` : "";
+        return `<article class="recurring-mission-card ${claimed ? "is-claimed" : ready ? "is-ready" : ""}"><div class="recurring-mission-copy"><div class="card-heading"><h4>${context.escape(entry.title)}</h4><span class="badge ${claimed || ready ? "good" : ""}">${claimed ? "受取済み" : ready ? "達成" : `${progress}/${entry.target}`}</span></div>${flavor}<p>${context.escape(entry.description)}</p><small>報酬　${context.escape(rewards)}</small></div><button class="button ${ready && !claimed ? "primary" : "secondary"}" data-action="claim-recurring-mission" data-group="${group.id}" data-mission="${entry.id}" ${claimed || !ready ? "disabled" : ""}>${claimed ? "受取済" : "受取"}</button></article>`;
       }).join("");
       const period = group.schedule.type === "weekly" ? `${cycle.periodKey.replaceAll("-", "/")}開始の週` : `本日 ${cycle.periodKey.replaceAll("-", "/")}`;
       return `<details class="panel wide recurring-mission-board" ${group.schedule.type === "daily" ? "open" : ""}><summary class="recurring-board-summary"><span><small>${context.escape(group.eyebrow)}</small><strong>${context.escape(group.name)}</strong></span><span class="badge">${cycle.claimed.length}/${entries.length} 受取</span><i aria-hidden="true">›</i></summary><div class="recurring-board-body"><div class="recurring-mission-toolbar"><p class="small-note">${context.escape(period)}　端末時刻を基準に更新</p><button class="button secondary" data-action="claim-all-recurring-missions" data-group="${group.id}" ${readyEntries.length ? "" : "disabled"}>まとめて受け取る</button></div><div class="recurring-mission-list">${cards}</div></div></details>`;
@@ -39,6 +42,11 @@
     const trackedTarget = window.Encyclopedia.trackedTarget();
     const trackedItemId = trackedTarget?.itemId || null;
     const trackedItem = trackedItemId ? window.GameData.items[trackedItemId] : null;
+    const recentDiscoveries = window.Encyclopedia.recentItemDiscoveries(6);
+    const activeCharacterIds = new Set(window.GameState.data.characters.map(character => character.id));
+    const namedHuntsByItem = new Map(), developingHuntsByItem = new Map();
+    window.Characters.namedHuntEpithets().forEach(entry => namedHuntsByItem.set(entry.itemId, [...(namedHuntsByItem.get(entry.itemId) || []), entry]));
+    window.Characters.developingHuntLedgers().forEach(entry => developingHuntsByItem.set(entry.itemId, [...(developingHuntsByItem.get(entry.itemId) || []), entry]));
     const unknownStack = count => `<article class="codex-card is-unknown codex-unknown-stack" aria-label="未発見のアイテム${count}点"><div class="codex-icon">？</div><span class="type-label">未発見</span><h4>？？？ ×${count}</h4><p>この分類には、まだ記録されていない品があります。入手すると個別の情報が開きます。</p></article>`;
     const ultraRareTitles = Object.values(window.GameData.ultraRareTitles || {});
     const knownUltraRareTitles = ultraRareTitles.filter(title => window.Encyclopedia.ultraRareTitle(title.id));
@@ -69,6 +77,7 @@
     }).join("");
     const unknownSetCount = setRecords.length - visibleSetRecords.length;
     const equipmentSetLedger = equipmentSets.length ? `<section class="equipment-set-ledger"><div class="ultra-title-heading"><div><span>EQUIPMENT COMBINATIONS</span><h4>装備組合せの記録</h4></div><strong>全品発見 ${setRecords.filter(entry => entry.complete).length} / ${equipmentSets.length}</strong></div><p>一つでも持ち帰った系統だけを記録します。異なる装備をそろえると効果が判明し、同じ装備を複数持っても種類数は増えません。</p><div class="equipment-set-grid">${equipmentSetCards || '<p class="empty-line">組合せに属する装備はまだ見つかっていません。</p>'}${unknownSetCount ? `<article class="equipment-set-card is-unknown"><header><div><small>未発見</small><strong>？？？ ×${unknownSetCount}</strong></div><b>？</b></header><p>系統に属する装備を一つ入手すると記録が開きます。</p></article>` : ""}</div></section>` : "";
+    const discoveryLedger = recentDiscoveries.length ? `<section class="recent-discovery-ledger"><header><div><span>RECENT FIRST FINDS</span><h4>最近の初発見</h4></div><strong>${recentDiscoveries.length}件</strong></header><p>新しい品を最初に持ち帰った冒険者と、その時の探索地です。</p><div>${recentDiscoveries.map(entry => { const item = window.GameData.items[entry.itemId], dungeon = window.DungeonDifficulty.variant(entry.dungeonId, entry.difficultyId); const inner = `<i aria-hidden="true">${context.escape(item?.icon || "◇")}</i><span><strong>${context.escape(item?.name || entry.itemId)}</strong><small>${context.escape(entry.name)}${entry.roleTitle ? `・${context.escape(entry.roleTitle)}` : ""}</small><em>${context.escape(dungeon.name)}・${new Date(entry.completedAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</em></span><b aria-hidden="true">›</b>`; return activeCharacterIds.has(entry.characterId) ? `<button type="button" data-action="open-adventurer-record" data-character="${context.escape(entry.characterId)}">${inner}</button>` : `<article>${inner}</article>`; }).join("")}</div></section>` : "";
     function card(item) {
       const count = window.Encyclopedia.item(item.id);
       const equipmentType = window.GameData.equipmentTypes[item.weaponType || item.armorType];
@@ -76,6 +85,7 @@
       const effect = item.type === "material" ? null : window.Items.standardEffects(item.id);
       const bestQualityId = item.type === "material" ? null : window.Encyclopedia.bestQuality(item.id);
       const bestQuality = bestQualityId ? window.GameData.qualities[bestQualityId] : null;
+      const firstDiscovery = window.Encyclopedia.itemDiscovery(item.id);
       const stats = item.type === "material" ? "製作や強化に使用する素材" : [effect.attack ? `攻撃 ${effect.attack}` : "", effect.magicAttack ? `魔法攻撃 ${effect.magicAttack}` : "", effect.defense ? `防御 ${effect.defense}` : "", effect.magicDefense ? `魔法防御 ${effect.magicDefense}` : "", effect.magicHealing ? `魔法回復 ${effect.magicHealing}` : "", effect.hp ? `HP ${effect.hp}` : "", `重量 ${effect.weight || 0}`, item.type === "weapon" ? (item.range === "ranged" ? "遠距離" : "近接") : ""].filter(Boolean).join(" ／ ");
       const sources = window.Encyclopedia.itemAcquisitionSources(item.id);
       const monsterGroups = new Map();
@@ -94,8 +104,21 @@
         sourceRows.push(`<li><strong>${context.escape(dungeon.name)}</strong><span>${context.escape(monster.name)}を討伐 <b>${context.escape(difficulties)}</b>${source.kind === "fixed" ? "・固有" : "・通常装備"}</span></li>`);
       });
       const acquisition = `<details class="item-acquisition"><summary>入手元を確認 <span>${sourceRows.length}件</span></summary><ul>${sourceRows.join("") || '<li><span>装備の分解・章報酬など</span></li>'}</ul></details>`;
+      const discoveryRecord = firstDiscovery ? (() => {
+        const dungeon = window.DungeonDifficulty.variant(firstDiscovery.dungeonId, firstDiscovery.difficultyId);
+        const date = new Date(firstDiscovery.completedAt).toLocaleDateString("ja-JP", { year: "numeric", month: "numeric", day: "numeric" });
+        return `<section class="codex-first-discovery"><span aria-hidden="true">✦</span><div><small>最初の持ち帰り</small><strong>${context.escape(firstDiscovery.name)}${firstDiscovery.roleTitle ? `・${context.escape(firstDiscovery.roleTitle)}` : ""}</strong><p>${context.escape(dungeon.name)}から帰還した ${context.escape(date)}</p></div></section>`;
+      })() : "";
+      const namedHunters = namedHuntsByItem.get(item.id) || [], developingHunters = developingHuntsByItem.get(item.id) || [];
+      const sharedHuntRows = [
+        ...namedHunters.map(entry => ({ kind: "named", entry })),
+        ...developingHunters.map(entry => ({ kind: "developing", entry }))
+      ];
+      const sharedHuntLedger = sharedHuntRows.length ? `<details class="monster-shared-hunt-ledger item-shared-hunt-ledger"><summary><span><small>SHARED HUNT RECORDS</small><strong>この品を追う二人</strong></span><b>${namedHunters.length ? `狩り名 ${namedHunters.length}組` : `育成中 ${developingHunters.length}組`}</b><i aria-hidden="true">›</i></summary><div>${sharedHuntRows.slice(0, 4).map(({ kind, entry }) => kind === "named"
+        ? `<button type="button" data-action="open-adventurer-bonds" data-bond="${context.escape(entry.bondKey)}" data-monster="${context.escape(entry.monsterId)}" data-item="${context.escape(entry.itemId)}"><span aria-hidden="true">狩</span><span><strong>${context.escape(entry.epithet)}</strong><small>${context.escape(entry.monster.name)} · ${entry.members.map(member => context.escape(member.name)).join("と")}</small></span><em>頁を読む</em></button>`
+        : `<button type="button" data-action="resume-ledger-hunt" data-monster="${context.escape(entry.monsterId)}" data-item="${context.escape(entry.itemId)}"><span aria-hidden="true">続</span><span><strong>${context.escape(entry.monster.name)} · ${entry.members.map(member => context.escape(member.name)).join("と")}</strong><small>${context.escape(entry.tier?.label || "書き始めの頁")} → ${context.escape(entry.progress.nextTier.label)} · あと${entry.progress.remaining}回</small></span><em>追う</em></button>`).join("")}${sharedHuntRows.length > 4 ? `<small>ほか${sharedHuntRows.length - 4}組は「狩り名の帳」に記録されています。</small>` : ""}</div></details>` : "";
       const tracked = item.id === trackedItemId;
-      return `<article class="codex-card ${tracked ? "is-tracked-item" : ""}"><div class="codex-icon">${item.icon || "◇"}</div><span class="type-label">${type}${item.unique ? "・ボス固有" : ""}</span><h4>${context.escape(item.name)}</h4><p>${context.escape(stats)}</p>${bestQuality ? `<p class="codex-quality-record"><span>最高品質</span><strong class="quality-${bestQuality.color}">${context.escape(bestQuality.prefix || "標準")}</strong></p>` : ""}${item.effectDescription ? `<p class="codex-effect">${context.escape(item.effectDescription)}</p>` : ""}${acquisition}<footer class="codex-item-footer"><small>累計入手 ${count}個</small><button class="button ${tracked ? "secondary" : "ghost"}" data-action="track-item" data-item="${item.id}" ${tracked ? "disabled" : ""}>${tracked ? "探索目標" : "探索目標にする"}</button></footer></article>`;
+      return `<article class="codex-card ${tracked ? "is-tracked-item" : ""}"><div class="codex-icon">${item.icon || "◇"}</div><span class="type-label">${type}${item.unique ? "・ボス固有" : ""}</span><h4>${context.escape(item.name)}</h4><p>${context.escape(stats)}</p>${bestQuality ? `<p class="codex-quality-record"><span>最高品質</span><strong class="quality-${bestQuality.color}">${context.escape(bestQuality.prefix || "標準")}</strong></p>` : ""}${item.effectDescription ? `<p class="codex-effect">${context.escape(item.effectDescription)}</p>` : ""}${discoveryRecord}${acquisition}${sharedHuntLedger}<footer class="codex-item-footer"><small>累計入手 ${count}個</small><button class="button ${tracked ? "secondary" : "ghost"}" data-action="track-item" data-item="${item.id}" ${tracked ? "disabled" : ""}>${tracked ? "探索目標" : "探索目標にする"}</button></footer></article>`;
     }
     const weaponOrder = ["sword", "rapier", "katana", "bow", "staff"];
     const armorOrder = ["cloth", "leather", "heavy", "shield", "gauntlet"];
@@ -111,7 +134,7 @@
       return `<details class="monster-dungeon-group item-codex-group" ${index === 0 ? "open" : ""}><summary><span><strong>${context.escape(group.heading)}</strong><small>${context.escape(group.description)}</small></span><b>発見 ${known.length}/${sorted.length}</b><i aria-hidden="true">›</i></summary><div class="codex-grid">${known.map(card).join("")}${unknownCount ? unknownStack(unknownCount) : ""}</div></details>`;
     }).join("");
     const trackedPanel = trackedItem ? `<section class="codex-tracked-target ${trackedTarget.progress >= trackedTarget.quantity ? "is-complete" : ""}"><span>現在の探索目標</span><strong>${context.escape(trackedItem.icon || "◇")} ${context.escape(trackedItem.name)}</strong><small>入手記録のある攻略先に印が付きます。</small><div class="codex-target-progress"><span>${trackedTarget.progress >= trackedTarget.quantity ? "達成" : "収集中"}</span><strong>${trackedTarget.progress} / ${trackedTarget.quantity}</strong><i><b style="width:${Math.min(100, trackedTarget.progress / trackedTarget.quantity * 100)}%"></b></i></div><form id="item-target-form" data-item="${trackedItem.id}"><label>必要数<input type="number" name="targetQuantity" min="1" max="999" inputmode="numeric" value="${trackedTarget.quantity}" required></label><button class="button secondary" type="submit">更新</button></form><button class="button ghost" data-action="clear-tracked-item">解除</button></section>` : `<section class="codex-tracked-target is-empty"><span>探索目標</span><p>発見済みの品から一つ選ぶと、攻略先で入手記録を照合できます。</p></section>`;
-    return `<section class="panel archive-content item-codex"><div class="section-heading"><div><span class="label">ITEM ENCYCLOPEDIA</span><h3>アイテム図鑑</h3></div><strong>${discovered} / ${all.length}</strong></div><p>武器種、防具種、素材に分けて記録しています。一度でも入手した品は、売却や製作に使った後も図鑑に残ります。未発見品は分類ごとにまとめて伏せています。</p>${trackedPanel}${equipmentSetLedger}${ultraRareLedger}${content}</section>`;
+    return `<section class="panel archive-content item-codex"><div class="section-heading"><div><span class="label">ITEM ENCYCLOPEDIA</span><h3>アイテム図鑑</h3></div><strong>${discovered} / ${all.length}</strong></div><p>武器種、防具種、素材に分けて記録しています。一度でも入手した品は、売却や製作に使った後も図鑑に残ります。未発見品は分類ごとにまとめて伏せています。</p>${trackedPanel}${discoveryLedger}${equipmentSetLedger}${ultraRareLedger}${content}</section>`;
   }
 
   function monsters(context) {
@@ -120,6 +143,8 @@
     const recentDefeats = context.monsterDefeats || {};
     const discovered = all.filter(monster => window.Encyclopedia.monster(monster.id)).length;
     const defeated = all.filter(monster => window.Encyclopedia.monster(monster.id)?.defeated).length;
+    const itemTarget = window.Encyclopedia.trackedTarget();
+    const monsterTarget = window.Encyclopedia.trackedMonsterTarget();
     const chapterOrder = Object.fromEntries(window.GameData.storyChapters.map(chapter => [chapter.id, chapter.order]));
     const dungeons = Object.values(window.GameData.dungeons).slice().sort((a, b) => Number(b.id === context.monsterDungeonId) - Number(a.id === context.monsterDungeonId) || (chapterOrder[a.chapterId] || 999) - (chapterOrder[b.chapterId] || 999) || a.orderInChapter - b.orderInChapter);
     function isShopEquipment(itemId) {
@@ -149,16 +174,20 @@
       const unknownSkills = configuredSkills.length - skills.length;
       const drops = configured.filter(id => observed.has(id)).map(id => {
         const item = window.GameData.items[id];
-        return `<span class="monster-drop-chip">${context.escape(item?.icon || "◇")} ${context.escape(item?.name || id)}</span>`;
+        const paired = itemTarget?.itemId === id && monsterTarget?.monsterId === monster.id;
+        return window.Encyclopedia.item(id)
+          ? `<button type="button" class="monster-drop-chip is-action ${paired ? "is-paired" : ""}" data-action="track-harvest" data-item="${context.escape(id)}" data-monster="${context.escape(monster.id)}" ${paired ? "disabled" : ""}><span>${context.escape(item?.icon || "◇")} ${context.escape(item?.name || id)}</span><i>${paired ? "追跡中" : "この品を追う"}</i></button>`
+          : `<span class="monster-drop-chip">${context.escape(item?.icon || "◇")} ${context.escape(item?.name || id)}</span>`;
       }).join("");
       const unknown = configured.length - configured.filter(id => observed.has(id)).length;
       return `<section class="monster-difficulty-drop"><strong>${tier.name}</strong><span>${context.escape(tier.namePrefix + monster.name)}</span><div>${drops || '<small>ドロップはまだ確認されていない</small>'}${unknown > 0 ? `<span class="monster-drop-unknown">未確認 ${unknown}種</span>` : ""}</div>${skills.length || unknownSkills ? `<div class="monster-skill-record">${skills.map(skill => `<details class="monster-skill-chip"><summary>${context.escape(skill.name)}・${skill.period}T</summary><p>${context.escape(skill.description)}</p></details>`).join("")}${unknownSkills ? `<span class="monster-skill-unknown">固有技 未確認 ${unknownSkills}種</span>` : ""}</div>` : ""}<small>遭遇 ${entry.encountered}体 ／ 討伐 ${entry.defeated}体</small></section>`;
     }
-    function monsterCard(monster) {
+    function monsterCard(monster, dungeonId) {
       const record = window.Encyclopedia.monster(monster.id);
+      const knownHere = window.Encyclopedia.monsterHabitats(monster.id).some(habitat => habitat.dungeonId === dungeonId);
       const recentCount = Number(recentEncounters[monster.id]) || 0;
       const recentDefeated = Number(recentDefeats[monster.id]) || 0;
-      if (!record) return `<article class="codex-card is-unknown" aria-label="未遭遇のモンスター"><div class="codex-icon">？</div><span class="type-label">未遭遇</span><h4>？？？</h4><p>探索中に遭遇すると登録されます。</p></article>`;
+      if (!record || !knownHere) return `<article class="codex-card is-unknown" aria-label="未遭遇のモンスター"><div class="codex-icon">？</div><span class="type-label">未遭遇</span><h4>？？？</h4><p>この探索地で遭遇すると登録されます。</p></article>`;
       const familyNames = window.CreatureFamilies ? window.CreatureFamilies.labels(window.CreatureFamilies.familyIdsForMonster(monster.id)) : [];
       const observed = record.observations || {}, facts = [];
       if (observed.incomingAttempts) facts.push(`こちらの攻撃は${observed.incomingHits}/${observed.incomingAttempts}回命中`);
@@ -177,21 +206,75 @@
       }
       const study = Math.min(3, 1 + (record.defeated > 0 ? 1 : 0) + (record.defeated >= 3 && observed.incomingAttempts >= 8 ? 1 : 0));
       const stats = study >= 3 ? `<p>検証値：HP ${monster.hp} ／ 物攻 ${monster.attack} ／ 物防 ${monster.defense}<br>魔攻 ${monster.magicAttack ?? monster.attack} ／ 魔防 ${monster.magicDefense ?? monster.defense} ／ 速度 ${monster.speed || 9}</p>` : "";
+      const firstDefeat = record.firstDefeat;
+      const firstDefeatRecord = firstDefeat ? (() => {
+        const dungeon = window.DungeonDifficulty.variant(firstDefeat.dungeonId, firstDefeat.difficultyId || "normal");
+        const names = firstDefeat.members.map(member => `${member.name}${member.roleTitle ? `・${member.roleTitle}` : ""}`).join("、");
+        const date = new Date(firstDefeat.completedAt).toLocaleDateString("ja-JP");
+        return `<div class="monster-first-defeat"><span>初討伐隊</span><strong>${context.escape(firstDefeat.partyName)}</strong><p>${context.escape(names)}</p><small>${context.escape(dungeon?.name || "探索地不明")} · ${context.escape(date)}</small></div>`;
+      })() : "";
+      const huntMarks = window.Encyclopedia.huntMarks(monster.id);
+      const achievedHuntMarks = huntMarks.filter(mark => mark.achieved);
+      const nextHuntMark = huntMarks.find(mark => !mark.achieved);
+      const huntLedger = record.defeated ? `<div class="monster-hunt-ledger"><span>討伐の節目</span><div>${achievedHuntMarks.map(mark => `<abbr title="${context.escape(mark.description)}"><i>${context.escape(mark.icon)}</i>${context.escape(mark.name)}<em>固有品 ×${mark.fixedLootMultiplier}</em></abbr>`).join("") || "<small>最初の節目へ記録中</small>"}</div>${nextHuntMark ? `<small>次は「${context.escape(nextHuntMark.name)}」まで ${record.defeated} / ${nextHuntMark.threshold}体・調査謝礼 印章${nextHuntMark.sealReward}個・固有品を見つけやすくなる</small>` : "<small>すべての狩猟記録が刻まれ、固有品の発見率は最大です。</small>"}</div>` : "";
+      const namedHunters = window.Characters.namedHuntEpithets().filter(entry => entry.monsterId === monster.id);
+      const developingHunters = window.Characters.developingHuntLedgers().filter(entry => entry.monsterId === monster.id);
+      const sharedHuntRows = [
+        ...namedHunters.map(entry => ({ kind: "named", entry })),
+        ...developingHunters.map(entry => ({ kind: "developing", entry }))
+      ];
+      const sharedHuntLedger = sharedHuntRows.length ? `<details class="monster-shared-hunt-ledger"><summary><span><small>SHARED HUNT RECORDS</small><strong>この獲物を追う二人</strong></span><b>${namedHunters.length ? `狩り名 ${namedHunters.length}組` : `育成中 ${developingHunters.length}組`}</b><i aria-hidden="true">›</i></summary><div>${sharedHuntRows.slice(0, 4).map(({ kind, entry }) => kind === "named"
+        ? `<button type="button" data-action="open-adventurer-bonds" data-bond="${context.escape(entry.bondKey)}" data-monster="${context.escape(entry.monsterId)}" data-item="${context.escape(entry.itemId)}"><span aria-hidden="true">狩</span><span><strong>${context.escape(entry.epithet)}</strong><small>${entry.members.map(member => context.escape(member.name)).join("と")} · ${context.escape(entry.item.name)}</small></span><em>頁を読む</em></button>`
+        : `<button type="button" data-action="resume-ledger-hunt" data-monster="${context.escape(entry.monsterId)}" data-item="${context.escape(entry.itemId)}"><span aria-hidden="true">続</span><span><strong>${entry.members.map(member => context.escape(member.name)).join("と")}</strong><small>${context.escape(entry.tier?.label || "書き始めの頁")} → ${context.escape(entry.progress.nextTier.label)} · あと${entry.progress.remaining}回</small></span><em>追う</em></button>`).join("")}${sharedHuntRows.length > 4 ? `<small>ほか${sharedHuntRows.length - 4}組は「狩り名の帳」に記録されています。</small>` : ""}</div></details>` : "";
+      const nextTargetMark = huntMarks.find(mark => !mark.achieved);
+      const suggestedHuntCount = nextTargetMark ? Math.max(1, nextTargetMark.threshold - record.defeated) : 100;
+      const sameTarget = monsterTarget?.monsterId === monster.id;
+      const targetReached = sameTarget && monsterTarget.progress >= monsterTarget.quantity;
+      const suggestedTargetQuantity = sameTarget ? monsterTarget.progress + suggestedHuntCount : suggestedHuntCount;
+      const targetAction = sameTarget && !targetReached
+        ? `<button class="button secondary" disabled>討伐目標に指定中・残り${Math.max(0, monsterTarget.quantity - monsterTarget.progress)}体</button>`
+        : `<button class="button ghost" data-action="track-monster" data-monster="${context.escape(monster.id)}" data-target-quantity="${suggestedTargetQuantity}">${sameTarget ? "次の節目まで続ける" : "次の節目まで追う"}・あと${suggestedHuntCount}体</button>`;
       const difficultyRows = window.DungeonDifficulty.ids().map(id => difficultyDrops(monster, record, id)).join("");
-      return `<article class="codex-card monster-codex-card ${recentCount ? "is-recent-encounter" : ""} ${monster.boss && record.defeated ? "is-boss" : ""}"><div class="codex-icon">${monster.icon || "◆"}</div><span class="type-label">${recentCount ? `今回 遭遇${recentCount}体・討伐${recentDefeated}体 ／ ` : ""}調査段階 ${study}/3${record.defeated ? "・討伐済み" : "・未討伐"}</span><h4>${context.escape(monster.name)}</h4><p class="monster-family-line">分類：${context.escape(familyNames.join("・") || "不明")}</p>${stats}<p class="codex-effect">${context.escape(facts.join("。 ") || "名前と生息地だけが記録されている。さらに遭遇し、異なる攻撃を試すと記録が増える。")}</p><div class="monster-difficulty-drops">${difficultyRows}</div><small>総遭遇 ${record.encountered}体 ／ 総討伐 ${record.defeated}体</small></article>`;
+      return `<article class="codex-card monster-codex-card ${recentCount ? "is-recent-encounter" : ""} ${monster.boss && record.defeated ? "is-boss" : ""}"><div class="codex-icon">${monster.icon || "◆"}</div><span class="type-label">${recentCount ? `今回 遭遇${recentCount}体・討伐${recentDefeated}体 ／ ` : ""}調査段階 ${study}/3${record.defeated ? "・討伐済み" : "・未討伐"}</span><h4>${context.escape(monster.name)}</h4><p class="monster-family-line">分類：${context.escape(familyNames.join("・") || "不明")}</p>${stats}<p class="codex-effect">${context.escape(facts.join("。 ") || "名前と生息地だけが記録されている。さらに遭遇し、異なる攻撃を試すと記録が増える。")}</p>${firstDefeatRecord}${huntLedger}${sharedHuntLedger}<div class="monster-difficulty-drops">${difficultyRows}</div><small>総遭遇 ${record.encountered}体 ／ 総討伐 ${record.defeated}体</small>${targetAction}</article>`;
     }
     const groups = dungeons.map((dungeon, index) => {
       const unlocked = window.Story.canEnter(dungeon.id);
       const monsterIds = Array.from(new Set(dungeon.encounters.flatMap(encounter => encounter.groups.flat()))).sort((a, b) => Number(Boolean(recentEncounters[b])) - Number(Boolean(recentEncounters[a])));
-      const found = monsterIds.filter(id => window.Encyclopedia.monster(id)).length;
-      const cards = unlocked ? monsterIds.map(id => monsterCard(window.GameData.monsters[id])).join("") : `<div class="monster-dungeon-locked">物語を進めると調査記録が開きます。</div>`;
+      const found = monsterIds.filter(id => window.Encyclopedia.monsterHabitats(id).some(habitat => habitat.dungeonId === dungeon.id)).length;
+      const cards = unlocked ? monsterIds.map(id => monsterCard(window.GameData.monsters[id], dungeon.id)).join("") : `<div class="monster-dungeon-locked">物語を進めると調査記録が開きます。</div>`;
+      const surveyRewards = { normal: 1, abyss: 2, divine: 3 };
+      const surveys = unlocked ? window.DungeonDifficulty.ids().map(difficultyId => {
+        const tier = window.DungeonDifficulty.tier(difficultyId);
+        const available = window.DungeonDifficulty.unlocked(dungeon.id, difficultyId);
+        if (!available) return `<article class="is-locked"><span>${context.escape(tier.name)}</span><strong>未解放</strong><small>前の難度を踏破すると記録できます</small></article>`;
+        const survey = window.Encyclopedia.habitatSurvey(dungeon.id, difficultyId);
+        return `<article class="${survey.complete ? "is-complete" : ""}"><span>${context.escape(tier.name)}</span><strong>${survey.confirmed}/${survey.total}種</strong><small>${survey.complete ? `記録完了・謝礼 印章${surveyRewards[difficultyId]}個` : "気配を記録中"}</small></article>`;
+      }).join("") : "";
+      const surveyPanel = surveys ? `<section class="monster-habitat-surveys"><header><strong>現地調査</strong><small>難度ごとに確認した気配</small></header><div>${surveys}</div></section>` : "";
       const focused = dungeon.id === context.monsterDungeonId;
-      return `<details class="monster-dungeon-group ${focused ? "is-focused-dungeon" : ""}" data-dungeon="${dungeon.id}" ${focused || index === 0 ? "open" : ""}><summary><span><strong>${context.escape(dungeon.name)}</strong><small>${focused ? "直前の探索で遭遇 · " : ""}${context.escape(dungeon.description)}</small></span><b>${unlocked ? `発見 ${found}/${monsterIds.length}` : "未解放"}</b><i aria-hidden="true">›</i></summary><div class="codex-grid">${cards}</div></details>`;
+      return `<details class="monster-dungeon-group ${focused ? "is-focused-dungeon" : ""}" data-dungeon="${dungeon.id}" ${focused || index === 0 ? "open" : ""}><summary><span><strong>${context.escape(dungeon.name)}</strong><small>${focused ? "直前の探索で遭遇 · " : ""}${context.escape(dungeon.description)}</small></span><b>${unlocked ? `発見 ${found}/${monsterIds.length}` : "未解放"}</b><i aria-hidden="true">›</i></summary>${surveyPanel}<div class="codex-grid">${cards}</div></details>`;
     }).join("");
     const recentCount = Object.keys(recentEncounters).length;
     const recentDefeatCount = Object.values(recentDefeats).reduce((sum, count) => sum + (Number(count) || 0), 0);
     const returnRoute = context.monsterDungeonId && context.returnPartyIndex != null ? `<section class="monster-expedition-context"><div><span>直前の探索記録</span><strong>遭遇 ${recentCount}種 ／ 討伐 ${recentDefeatCount}体</strong><small>強調された記録には、この帰還報告での遭遇数と討伐数を表示しています。</small></div><button class="button secondary" data-action="return-to-result-report" data-party="${context.returnPartyIndex}">帰還報告へ戻る</button></section>` : "";
-    return `<section class="panel archive-content monster-codex"><div class="section-heading"><div><span class="label">MONSTER ENCYCLOPEDIA</span><h3>モンスター図鑑</h3></div><strong>発見 ${discovered} / ${all.length}・討伐 ${defeated}</strong></div>${returnRoute}<p>ダンジョンごとに生息するモンスターを確認できます。難易度別ドロップは実際に確認した品だけを表示し、商店で購入できる通常武器・防具は記載しません。</p>${groups}</section>`;
+    const recentFirstDefeats = window.Encyclopedia.recentMonsterFirstDefeats(6);
+    const victoryLedger = recentFirstDefeats.length ? `<section class="recent-discovery-ledger recent-victory-ledger"><header><div><span>RECENT FIRST VICTORIES</span><h4>最近の初討伐</h4></div><strong>${recentFirstDefeats.length}件</strong></header><p>ギルドで初めて打ち勝った魔物と、その場にいた仲間です。</p><div>${recentFirstDefeats.map(entry => { const monster = window.GameData.monsters[entry.monsterId], dungeon = window.DungeonDifficulty.variant(entry.dungeonId, entry.difficultyId); const members = entry.members.map(member => member.name).join("・"); return `<article><i aria-hidden="true">${context.escape(monster?.icon || "◆")}</i><span><strong>${context.escape(monster?.name || entry.monsterId)}</strong><small>${context.escape(entry.partyName)}・${context.escape(members)}</small><em>${context.escape(dungeon.name)}・${new Date(entry.completedAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" })}</em></span></article>`; }).join("")}</div></section>` : "";
+    const surveyRewards = { normal: 1, abyss: 2, divine: 3 };
+    const surveyLedgerEntries = window.DungeonDifficulty.ids().map(difficultyId => {
+      const tier = window.DungeonDifficulty.tier(difficultyId);
+      const routes = dungeons.filter(dungeon => window.Story.canEnter(dungeon.id) && window.DungeonDifficulty.unlocked(dungeon.id, difficultyId));
+      const complete = routes.filter(dungeon => window.Encyclopedia.habitatSurvey(dungeon.id, difficultyId).complete).length;
+      const percentage = routes.length ? Math.round(complete / routes.length * 100) : 0;
+      const nextRoute = routes.find(dungeon => !window.Encyclopedia.habitatSurvey(dungeon.id, difficultyId).complete);
+      const action = nextRoute ? `<button type="button" data-action="open-survey-route" data-dungeon="${context.escape(nextRoute.id)}" data-difficulty="${context.escape(difficultyId)}">未完の土地を見る</button>` : "";
+      return `<article class="${routes.length && complete === routes.length ? "is-complete" : ""}"><span>${context.escape(tier.name)}</span><strong>${complete}/${routes.length}か所</strong><i><b style="width:${percentage}%"></b></i><small>完了謝礼 各${surveyRewards[difficultyId]}個</small>${action}</article>`;
+    }).join("");
+    const completedSurveys = dungeons.reduce((sum, dungeon) => sum + window.DungeonDifficulty.ids().filter(difficultyId => window.Story.canEnter(dungeon.id) && window.DungeonDifficulty.unlocked(dungeon.id, difficultyId) && window.Encyclopedia.habitatSurvey(dungeon.id, difficultyId).complete).length, 0);
+    const availableSurveys = dungeons.reduce((sum, dungeon) => sum + window.DungeonDifficulty.ids().filter(difficultyId => window.Story.canEnter(dungeon.id) && window.DungeonDifficulty.unlocked(dungeon.id, difficultyId)).length, 0);
+    const surveyLedger = `<section class="habitat-survey-ledger"><header><div><span>FIELD SURVEY LEDGER</span><h4>現地調査簿</h4></div><strong>${completedSurveys}/${availableSurveys} 完了</strong></header><p>物語で歩ける土地について、難度ごとの気配が揃った記録です。</p><div>${surveyLedgerEntries}</div></section>`;
+    const trackedMonster = monsterTarget ? window.GameData.monsters[monsterTarget.monsterId] : null;
+    const targetPanel = trackedMonster ? `<section class="codex-tracked-target ${monsterTarget.progress >= monsterTarget.quantity ? "is-complete" : ""}"><span>現在の討伐目標</span><strong>${context.escape(trackedMonster.icon || "◆")} ${context.escape(trackedMonster.name)}</strong><small>生息を確認した攻略先に印が付きます。</small><div class="codex-target-progress"><span>${monsterTarget.progress >= monsterTarget.quantity ? "達成" : "追跡中"}</span><strong>${monsterTarget.progress} / ${monsterTarget.quantity}</strong><i><b style="width:${Math.min(100, monsterTarget.progress / monsterTarget.quantity * 100)}%"></b></i></div><form id="monster-target-form" data-monster="${context.escape(trackedMonster.id)}"><label>目標数<input type="number" name="targetQuantity" min="1" max="999" inputmode="numeric" value="${monsterTarget.quantity}" required></label><button class="button secondary" type="submit">更新</button></form><button class="button ghost" data-action="clear-tracked-monster">解除</button></section>` : `<section class="codex-tracked-target is-empty"><span>討伐目標</span><p>遭遇済みの魔物を一種選ぶと、攻略先で生息記録を照合できます。</p></section>`;
+    return `<section class="panel archive-content monster-codex"><div class="section-heading"><div><span class="label">MONSTER ENCYCLOPEDIA</span><h3>モンスター図鑑</h3></div><strong>発見 ${discovered} / ${all.length}・討伐 ${defeated}</strong></div>${returnRoute}<p>ダンジョンごとに生息するモンスターを確認できます。難易度別ドロップは実際に確認した品だけを表示し、商店で購入できる通常武器・防具は記載しません。</p>${targetPanel}${surveyLedger}${victoryLedger}${groups}</section>`;
   }
 
   function originBonusText(type, entry) {
@@ -332,9 +415,18 @@
           const routeRecord = note.unlock?.type === "routeEventMastered" ? window.Story.ensure().facts.routeEvents?.[note.unlock.routeEventId] : null;
           const treasureRecord = note.unlock?.type === "treasureTierMastered" ? window.Story.ensure().facts.treasureTiers?.[note.unlock.treasureTierId] : null;
           const sharedSorties = note.unlock?.type === "sharedSorties" ? Math.max(0, ...Object.values(window.GameState.data.adventurerBonds?.pairs || {}).map(count => Number(count) || 0)) : null;
+          const masteryRank = note.unlock?.type === "skillMastery" ? (window.GameData.config.characterGrowth?.skillMasteryRanks || []).find(rank => rank.id === note.unlock.rankId) : null;
+          const skillUses = masteryRank ? Math.max(0, ...window.GameState.data.characters.flatMap(character => Object.values(character.expeditionRecord?.skillRecords || {}).map(record => Number(record.uses) || 0))) : null;
+          const harvestTier = note.unlock?.type === "targetedHarvestPractice" ? (window.GameData.config.explorationEvents?.targetedHarvestPractice || []).find(tier => tier.id === note.unlock.tierId) : null;
+          const harvestSuccesses = harvestTier ? Math.max(0, ...window.GameState.data.characters.flatMap(character => Object.values(character.expeditionRecord?.targetedHarvestRecords || {}).map(record => Number(record.successes) || 0))) : null;
+          const persistenceTier = note.unlock?.type === "targetedHarvestPersistence" ? (window.GameData.config.explorationEvents?.targetedHarvestPersistence || []).find(tier => tier.id === note.unlock.tierId) : null;
+          const harvestMisses = persistenceTier ? Math.max(0, ...window.GameState.data.characters.flatMap(character => Object.values(character.expeditionRecord?.targetedHarvestRecords || {}).map(record => Math.max(0, Number(record.attempts || 0) - Number(record.successes || 0))))) : null;
           const practice = routeRecord ? { value: routeRecord.successes || 0, target: note.unlock.successes, label: "書き留めた成功" }
             : treasureRecord ? { value: treasureRecord.openings || 0, target: note.unlock.openings, label: "開封の記録" }
-              : sharedSorties != null ? { value: sharedSorties, target: note.unlock.minimum, label: "最も長い同行" } : null;
+              : sharedSorties != null ? { value: sharedSorties, target: note.unlock.minimum, label: "最も長い同行" }
+                : skillUses != null ? { value: skillUses, target: masteryRank.minimumUses, label: "最も多い技能発動" }
+                  : harvestSuccesses != null ? { value: harvestSuccesses, target: harvestTier.minimumSuccesses, label: "最も深い狙い採り" }
+                    : harvestMisses != null ? { value: harvestMisses, target: persistenceTier.minimumMisses, label: "書き留めた空振り" } : null;
           const practiceProgress = practice
             ? `<div class="field-practice-progress"><span>${practice.label}</span><strong>${Math.min(practice.value, practice.target)} / ${practice.target}</strong><i><b style="width:${Math.min(100, practice.value / practice.target * 100)}%"></b></i></div>`
             : "";
@@ -375,10 +467,32 @@
       if (people.some(person => !person) || !memoryIds.length) return null;
       const sharedSorties = Number(window.GameState.data.adventurerBonds?.pairs?.[key]) || 0;
       const memories = memoryIds.map(id => bondDefinitions.get(id)).filter(Boolean);
-      const available = [...bondDefinitions.values()].filter(moment => sharedSorties >= moment.minimumSharedSorties).length;
-      return { key, ids, people, sharedSorties, memories, available };
-    }).filter(Boolean).sort((left, right) => right.memories.length - left.memories.length || right.sharedSorties - left.sharedSorties || left.key.localeCompare(right.key, "ja"));
-    const relationshipLedger = relationshipRecords.length ? `<section class="adventurer-bond-ledger"><div class="section-heading compact"><div><span class="label">TRAVEL MEMORIES</span><h4>旅仲間の記憶</h4></div><strong>${relationshipRecords.length}組</strong></div><p>募集で加わった冒険者たちが、共に歩いた遠征で見せたひと幕です。記憶は二人の間に一つだけ残ります。</p><div class="adventurer-bond-list">${relationshipRecords.map(record => `<details><summary><span aria-hidden="true">結</span><span><strong>${record.people.map(person => context.escape(person.name)).join("と")}</strong><small>同行 ${number(record.sharedSorties)}回</small></span><b>${record.memories.length}/${record.available}篇</b><i aria-hidden="true">›</i></summary><ol>${record.memories.map(memory => `<li><strong>${context.escape(memory.title)}</strong><p>${context.escape(String(memory.text).replace(/\{(\w+)\}/g, (match, name) => ({ left: record.people[0].name, right: record.people[1].name })[name] ?? match))}</p></li>`).join("")}</ol></details>`).join("")}</div></section>` : "";
+      const huntLedgers = window.Characters.sharedHuntLedgers(...ids);
+      const available = [...bondDefinitions.values()].filter(moment => memoryIds.includes(moment.id) || !moment.trigger && sharedSorties >= moment.minimumSharedSorties).length;
+      return { key, ids, people, sharedSorties, memories, huntLedgers: huntLedgers.map(ledger => ({ ...ledger, tier: [...(window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [])].reverse().find(tier => ledger.successes >= tier.minimumSuccesses), progress: window.Characters.sharedHuntLedgerProgress(ledger.successes) })), available };
+    }).filter(Boolean).sort((left, right) => {
+      const leftFocused = left.key === context.bondFocus?.key, rightFocused = right.key === context.bondFocus?.key;
+      return Number(rightFocused) - Number(leftFocused) || right.memories.length - left.memories.length || right.sharedSorties - left.sharedSorties || left.key.localeCompare(right.key, "ja");
+    });
+    const namedHunts = window.Characters.namedHuntEpithets();
+    const developingHunts = window.Characters.developingHuntLedgers();
+    const developingHuntPages = developingHunts.length ? `<section class="named-hunt-next-ledgers"><header><span><small>NEXT HUNTING NAMES</small><strong>狩り名へ近い頁</strong></span><b>${developingHunts.length}頁</b></header><div>${developingHunts.slice(0, 6).map(entry => `<button type="button" data-action="resume-ledger-hunt" data-monster="${context.escape(entry.monsterId)}" data-item="${context.escape(entry.itemId)}"><i aria-hidden="true">続</i><span><strong>${entry.members.map(person => context.escape(person.name)).join("と")} · ${context.escape(entry.monster.name)}</strong><small>${context.escape(entry.tier?.label || "書き始めの頁")} → ${context.escape(entry.progress.nextTier.label)} · あと${number(entry.progress.remaining)}回</small></span><b>追う</b><i aria-hidden="true">›</i></button>`).join("")}</div>${developingHunts.length > 6 ? `<small>ほか${developingHunts.length - 6}頁は、それぞれの旅仲間の記憶に残っています。</small>` : ""}</section>` : "";
+    const namedHuntLedger = namedHunts.length || developingHunts.length ? `<details class="adventurer-signature-ledger named-hunt-ledger"><summary><span><small>HUNTING EPITHETS</small><strong>狩り名の帳</strong></span><b>${namedHunts.length}名・育成中${developingHunts.length}頁</b><i aria-hidden="true">›</i></summary><div>${namedHunts.slice(0, 10).map(entry => `<button type="button" data-action="open-adventurer-bonds" data-bond="${context.escape(entry.bondKey)}" data-monster="${context.escape(entry.monsterId)}" data-item="${context.escape(entry.itemId)}"><i aria-hidden="true">狩</i><span><strong>${context.escape(entry.epithet)}</strong><small>${entry.members.map(person => context.escape(person.name)).join("と")} · ${context.escape(entry.item.name)}</small></span><b>${number(entry.successes)}猟</b><i aria-hidden="true">›</i></button>`).join("")}${namedHunts.length > 10 ? `<small>ほか${namedHunts.length - 10}組は、それぞれの旅仲間の記憶に残っています。</small>` : ""}${developingHuntPages}</div></details>` : "";
+    const relationshipLedger = relationshipRecords.length ? `<section class="adventurer-bond-ledger"><div class="section-heading compact"><div><span class="label">TRAVEL MEMORIES</span><h4>旅仲間の記憶</h4></div><strong>${relationshipRecords.length}組</strong></div><p>募集で加わった冒険者たちが、共に歩いた遠征で見せたひと幕です。記憶は二人の間に一つだけ残ります。</p><div class="adventurer-bond-list">${relationshipRecords.map(record => {
+      const focused = record.key === context.bondFocus?.key;
+      return `<details class="${focused ? "is-focused" : ""}" data-bond="${context.escape(record.key)}" ${focused ? "open" : ""}><summary><span aria-hidden="true">結</span><span><strong>${record.people.map(person => context.escape(person.name)).join("と")}</strong><small>${focused ? "帰還記録から開きました · " : ""}同行 ${number(record.sharedSorties)}回</small></span><b>${record.memories.length}/${record.available}篇</b><i aria-hidden="true">›</i></summary><ol>${record.memories.map(memory => `<li><strong>${context.escape(memory.title)}</strong><p>${context.escape(String(memory.text).replace(/\{(\w+)\}/g, (match, name) => ({ left: record.people[0].name, right: record.people[1].name })[name] ?? match))}</p></li>`).join("")}${record.huntLedgers.map(ledger => {
+        const focusedPage = focused && ledger.monsterId === context.bondFocus?.monsterId && ledger.itemId === context.bondFocus?.itemId;
+        const epithet = ledger.tier?.epithet?.replace("{monster}", window.GameData.monsters[ledger.monsterId].name);
+        const progressText = ledger.progress.nextTier ? `次の頁「${ledger.progress.nextTier.label}」まであと${ledger.progress.remaining}回` : "狩り名が定着した最終頁";
+        return `<li class="shared-hunt-ledger-page ${focusedPage ? "is-focused" : ""}"><strong>${focusedPage ? "この帰還で育った頁 · " : "狩り帳の頁 · "}${context.escape(window.GameData.monsters[ledger.monsterId].name)}</strong><small>${context.escape(ledger.tier?.label || "書き始めの頁")}</small>${epithet ? `<em class="shared-hunt-ledger-epithet">二人の呼び名 · ${context.escape(epithet)}</em>` : ""}<p>${context.escape(window.GameData.items[ledger.itemId].name)}を二人で持ち帰った記録。収穫 ${number(ledger.successes)}回・${number(ledger.items)}点。</p><div class="shared-hunt-ledger-progress"><span>${context.escape(progressText)}</span><i><b style="width:${Math.round(ledger.progress.ratio * 100)}%"></b></i></div>${ledger.tier?.description ? `<p class="shared-hunt-ledger-story">${context.escape(ledger.tier.description)}</p>` : ""}${ledger.tier?.combatSupport ? `<p class="shared-hunt-ledger-support"><b>${context.escape(ledger.tier.combatSupport.label)}</b>${context.escape(ledger.tier.combatSupport.description)}</p>` : ""}<button type="button" class="text-button" data-action="resume-ledger-hunt" data-monster="${context.escape(ledger.monsterId)}" data-item="${context.escape(ledger.itemId)}">この狩りをもう一度追う</button></li>`;
+      }).join("")}</ol></details>`;
+    }).join("")}</div></section>` : "";
+    const signatureEntries = characters.flatMap(character => window.Characters.signatureSkills(character)
+      .filter(entry => entry.mastery.current)
+      .map(entry => ({ character, ...entry })))
+      .sort((left, right) => right.mastery.current.minimumUses - left.mastery.current.minimumUses || right.uses - left.uses || left.character.name.localeCompare(right.character.name, "ja"));
+    const signatureCharacters = new Set(signatureEntries.map(entry => entry.character.id)).size;
+    const signatureLedger = signatureEntries.length ? `<details class="adventurer-signature-ledger"><summary><span><small>SIGNATURE SKILLS</small><strong>技能の使い手</strong></span><b>${signatureCharacters}人・${signatureEntries.length}技</b><i aria-hidden="true">›</i></summary><div>${signatureEntries.slice(0, 12).map(entry => `<button type="button" data-action="open-adventurer-record" data-character="${entry.character.id}">${context.portraitImage(entry.character, true)}<span><strong>${context.escape(entry.character.name)}</strong><small>${context.escape(entry.skill.name)} · ${context.escape(entry.mastery.current.name)}</small></span><b>${number(entry.uses)}回</b><i aria-hidden="true">›</i></button>`).join("")}${signatureEntries.length > 12 ? `<small>ほか${signatureEntries.length - 12}件は各冒険者の足跡に記録されています。</small>` : ""}</div></details>` : "";
     const boards = [
       { field: "sorties", label: "遠征回数", unit: "回", icon: "⌁" },
       { field: "victories", label: "攻略回数", unit: "回", icon: "⚑" },
@@ -399,7 +513,7 @@
         return `<li><button type="button" data-action="open-adventurer-record" data-character="${entry.character.id}"><b>${index + 1}</b>${context.portraitImage(entry.character, true)}<span><strong>${context.escape(entry.character.name)}</strong><small>${context.escape(window.Characters.jobName(entry.character))} · Lv.${entry.character.level}${title ? ` · ${context.escape(title.icon)} ${context.escape(title.name)}` : ""}</small></span><em>${number(entry.value)}${board.unit}</em><i aria-hidden="true">›</i></button></li>`;
       }).join("")}</ol>` : '<p>まだ記録はありません。</p>'}</section>`;
     }).join("");
-    return `<section class="panel archive-content adventurer-record-ledger"><div class="section-heading"><div><span class="label">ADVENTURER RECORDS</span><h3>遠征者の記録</h3></div><strong>個人記章 ${earned}</strong></div><p>帰還した冒険者たちの足跡を、六つの記録に分けて綴っています。順位は能力の優劣ではなく、実際に歩いた遠征の記録です。</p>${relationshipLedger}${characters.length ? `<div class="adventurer-record-boards">${contents}</div>` : '<div class="notice muted"><span class="notice-icon">◇</span><div><strong>まだ記録はありません</strong><p>最初の冒険者を雇用すると、この頁に名前が刻まれます。</p></div></div>'}</section>`;
+    return `<section class="panel archive-content adventurer-record-ledger"><div class="section-heading"><div><span class="label">ADVENTURER RECORDS</span><h3>遠征者の記録</h3></div><strong>個人記章 ${earned}</strong></div><p>帰還した冒険者たちの足跡を、六つの記録に分けて綴っています。順位は能力の優劣ではなく、実際に歩いた遠征の記録です。</p>${signatureLedger}${namedHuntLedger}${relationshipLedger}${characters.length ? `<div class="adventurer-record-boards">${contents}</div>` : '<div class="notice muted"><span class="notice-icon">◇</span><div><strong>まだ記録はありません</strong><p>最初の冒険者を雇用すると、この頁に名前が刻まれます。</p></div></div>'}</section>`;
   }
 
   function page(context) {

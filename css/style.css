@@ -127,10 +127,20 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-member-highlights article > span { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 50%; color: #fff; background: #755e3c; font-size: .62rem; font-weight: 900; }
 .result-member-highlights article.exploration > span { background: #68763f; }
 .result-member-highlights article.healing > span { background: #46755c; }
+.result-member-highlights article.status > span { background: #72517d; }
 .result-member-highlights article.endurance > span { background: #526c85; }
 .result-member-highlights article div { min-width: 0; }
 .result-member-highlights article small, .result-member-highlights article p { display: block; margin: 0; color: var(--muted); font-size: .58rem; line-height: 1.35; }
 .result-member-highlights article strong { display: block; overflow: hidden; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.result-signature-skills { margin: 0 0 .7rem; padding: .65rem; border: 1px solid #b8a0ca; border-radius: 6px; background: linear-gradient(145deg,#f7f1fb,#fff8e8); }
+.result-signature-skills > div:first-child { display: flex; align-items: baseline; gap: .5rem; margin-bottom: .45rem; }
+.result-signature-skills > div:first-child strong { font-size: .8rem; }
+.result-signature-skills > div:last-child { display: grid; grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); gap: .35rem; }
+.result-signature-skills article { display: grid; grid-template-columns: 1.55rem minmax(0,1fr); align-items: center; gap: .42rem; min-width: 0; padding: .42rem; border-radius: 4px; background: rgba(255,255,255,.8); }
+.result-signature-skills article > span { display: grid; place-items: center; width: 1.45rem; height: 1.45rem; border-radius: 50%; color: #fff8dc; background: #76548c; font-size: .62rem; font-weight: 900; }
+.result-signature-skills article p { display: grid; min-width: 0; margin: 0; }
+.result-signature-skills article small,.result-signature-skills article em { color: var(--muted); font-size: .56rem; font-style: normal; }
+.result-signature-skills article strong { overflow: hidden; color: #523868; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
 .result-highlight.growth, .result-highlight.discovery, .result-highlight.story { border-color: #cfb875; background: #fff9e9; }
 .result-highlight.ultra { border-color: #c36f45; background: #5e1b25; }
 .result-highlight.ultra small { color: #e5b96c; }
@@ -157,6 +167,20 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-treasure-list article.is-partial { opacity: .78; background: #eee9df; box-shadow: inset 3px 0 #8b8170; }
 .result-treasure-list article.is-partial > span { color: #e8e2d6; background: #766e63; box-shadow: none; }
 @media (max-width: 720px) {
+  .character-recent-expeditions button {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  }
+
+  .character-recent-expeditions button > span:nth-child(3) {
+    grid-column: 2 / -1;
+    grid-template-columns: repeat(3, auto);
+    justify-content: start;
+  }
+
+  .character-recent-expeditions button > span:nth-child(3) small {
+    text-align: left;
+  }
+
   .result-route-events { grid-template-columns: 1fr; }
   .result-route-events .button { grid-column: 1; grid-row: auto; }
   .result-treasure-finds { grid-template-columns: 1fr; }
@@ -214,6 +238,12 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-growth-stats > span { padding: .12rem .28rem; display: flex; gap: .2rem; border-radius: 3px; background: #f0ead8; }
 .result-growth-stats small { color: #75633a !important; font-size: .58rem !important; }
 .result-growth-stats strong { color: #4a6d54; font-size: .65rem; }
+.result-growth-group { display: grid !important; grid-template-columns: auto minmax(0,1fr); align-items: start; gap: .3rem; margin-top: .28rem; }
+.result-growth-group > em { padding-top: .13rem; color: #8a7960; font-size: .56rem; font-style: normal; font-weight: 900; white-space: nowrap; }
+.result-growth-group .result-growth-stats { margin-top: 0; }
+.result-growth-stats.primary > span { background: #e9eef0; }
+.result-growth-stats.primary small { color: #566b75 !important; }
+.result-growth-stats.primary strong { color: #31596b; }
 .result-learned-skills { min-width: 0; display: flex; flex-wrap: wrap; gap: .25rem; align-items: start; }
 .result-learned-skills > span { padding: .2rem .1rem; color: #8a6724; font-size: .62rem; font-weight: 800; }
 .result-learned-skill { max-width: 100%; border: 1px solid #d7c181; border-radius: 4px; background: #fffdf6; }
@@ -267,6 +297,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .battle-log-entry.enemy-skill p, .battle-log-entry.enemy-skill .battle-log-icon { color: #efa4b2; font-weight: 700; }
 .battle-log-entry.status p, .battle-log-entry.status .battle-log-icon { color: #efbd75; font-weight: 600; }
 .battle-log-entry.formation p, .battle-log-entry.formation .battle-log-icon { color: #8eacc6; }
+.battle-log-entry.reputation { margin: 4px 0; padding: 7px 6px; background: rgba(185,139,62,.08); border-left: 2px solid rgba(210,172,91,.75); }
+.battle-log-entry.reputation p, .battle-log-entry.reputation .battle-log-icon { color: #dfc784; font-weight: 600; }
 .journey-discovery.companion { background: linear-gradient(90deg,rgba(185,139,62,.14),rgba(255,255,255,.72)); border-left-color: #b98b3e; }
 .journey-discovery.companion .journey-discovery-marker { color: #7f5b25; background: #f1dfb6; }
 .battle-observation-summary { margin: .55rem .7rem 0; overflow: hidden; border: 1px solid #3d5264; border-radius: 5px; background: #172431; }
@@ -611,6 +643,50 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .attempt-comparison-row small { color: #7a7f83; font-size: .62rem; }
 .attempt-comparison-row strong { text-align: right; font-size: .76rem; overflow-wrap: anywhere; }
 .attempt-comparison-row i { color: #9a7a35; font-style: normal; }
+.attempt-setup-changes { margin-top: .55rem; border-top: 1px solid rgba(117,94,60,.22); }
+.attempt-setup-changes summary { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: .45rem; padding: .55rem .15rem .05rem; cursor: pointer; list-style: none; }
+.attempt-setup-changes summary::-webkit-details-marker { display: none; }
+.attempt-setup-changes summary span, .attempt-setup-changes summary small, .attempt-setup-changes summary strong { display: block; }
+.attempt-setup-changes summary small { color: #8b734a; font-size: .56rem; letter-spacing: .08em; }
+.attempt-setup-changes summary strong { font-size: .74rem; }
+.attempt-setup-changes summary b { color: #755e3c; font-size: .68rem; }
+.attempt-setup-changes summary i { color: #9a7a35; font-style: normal; transition: transform .16s ease; }
+.attempt-setup-changes[open] summary i { transform: rotate(90deg); }
+.attempt-setup-changes > div { padding: .45rem .15rem 0; }
+.attempt-setup-changes ul { margin: 0; padding-left: 1.15rem; }
+.attempt-setup-changes li, .attempt-setup-changes p { margin: .2rem 0; color: #59636b; font-size: .68rem; line-height: 1.45; }
+.attempt-damage-changes ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .3rem; padding: 0; list-style: none; }
+.attempt-damage-changes li { display: flex; justify-content: space-between; gap: .5rem; margin: 0; padding: .35rem .45rem; border-radius: 4px; background: rgba(255,255,255,.62); }
+.attempt-damage-changes li strong { color: #333d45; }
+.attempt-damage-changes li span { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.attempt-skill-changes ul, .attempt-member-changes ul { padding: 0; list-style: none; }
+.attempt-skill-changes li, .attempt-member-changes li { display: grid; grid-template-columns: minmax(5.5rem, auto) minmax(0, 1fr); gap: .25rem .55rem; padding: .35rem .45rem; border-radius: 4px; background: rgba(255,255,255,.62); }
+.attempt-skill-changes li strong, .attempt-member-changes li strong { color: #333d45; }
+.attempt-skill-changes li span, .attempt-member-changes li span { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.result-skill-usage { margin: .65rem 0; border: 1px solid #c9b98e; border-radius: 7px; background: #f8f3e8; color: #222b33; }
+.result-skill-usage > summary { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: .5rem; padding: .65rem .75rem; cursor: pointer; list-style: none; }
+.result-skill-usage summary::-webkit-details-marker { display: none; }
+.result-skill-usage > summary span, .result-skill-usage > summary small, .result-skill-usage > summary strong { display: block; }
+.result-skill-usage > summary small { color: #8b734a; font-size: .56rem; letter-spacing: .08em; }
+.result-skill-usage > summary strong { font-size: .78rem; }
+.result-skill-usage > summary b { color: #755e3c; font-size: .68rem; }
+.result-skill-usage summary i { color: #9a7a35; font-style: normal; transition: transform .16s ease; }
+.result-skill-usage[open] > summary > i, .result-skill-usage article details[open] summary i { transform: rotate(90deg); }
+.result-skill-usage > div { display: grid; gap: .4rem; padding: 0 .65rem .65rem; }
+.result-skill-usage article { display: grid; grid-template-columns: minmax(4.5rem,.65fr) minmax(0,2fr); gap: .5rem; align-items: start; padding: .45rem; border-radius: 5px; background: rgba(255,255,255,.68); }
+.result-skill-usage article > strong { font-size: .7rem; }
+.result-skill-usage article > div { display: flex; flex-wrap: wrap; gap: .3rem; }
+.result-skill-usage article details { max-width: 100%; border: 1px solid rgba(117,94,60,.22); border-radius: 4px; background: #fffdf8; }
+.result-skill-usage article summary { display: flex; align-items: center; gap: .3rem; padding: .28rem .4rem; cursor: pointer; list-style: none; font-size: .66rem; }
+.result-skill-usage article summary b { color: #755e3c; }
+.result-skill-usage article details p { margin: 0; padding: .4rem; border-top: 1px solid rgba(117,94,60,.16); color: #59636b; font-size: .64rem; line-height: 1.5; }
+.result-damage-breakdown article > strong small { display: block; margin-top: .12rem; color: #7a6b58; font-size: .58rem; font-weight: normal; }
+.result-damage-breakdown article > div > span { display: grid; min-width: 4rem; gap: .08rem; padding: .28rem .38rem; border-radius: 4px; background: #eee9df; }
+.result-damage-breakdown article > div > span.element { background: #f4ecd7; }
+.result-damage-breakdown article > div > span small { color: #746d65; font-size: .56rem; }
+.result-damage-breakdown article > div > span b { color: #27313a; font-size: .68rem; }
+.result-damage-breakdown > div > p { margin: .1rem 0 0; color: #6d675f; font-size: .62rem; line-height: 1.55; }
+.result-skill-performance { display: block; padding: 0 .4rem .4rem; color: #755e3c; font-size: .6rem; font-weight: 800; }
 .failure-evidence-links { margin: .8rem 0; padding: .55rem; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; border: 1px solid #c99b94; border-left: 4px solid #a94a43; border-radius: 6px; background: #fbefed; }
 .failure-evidence-links > span { margin-right: auto; color: #8f3f39; font-size: .72rem; font-weight: 900; }
 .failure-evidence-links .button { min-height: 38px; padding: .35rem .55rem; font-size: .7rem; }
@@ -1371,6 +1447,20 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .story-replay-bookmarks button > span:nth-child(2) { display: grid; min-width: 0; gap: .05rem; }
 .story-replay-bookmarks button small { overflow: hidden; color: #84683d; font-size: .58rem; text-overflow: ellipsis; white-space: nowrap; }
 .story-replay-bookmarks button strong { overflow: hidden; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.story-guild-whisper { margin: .75rem 0; padding: .75rem; border: 1px solid rgba(130,105,54,.28); border-radius: 10px; background: linear-gradient(145deg,rgba(255,252,240,.92),rgba(235,229,207,.62)); box-shadow: inset 0 1px rgba(255,255,255,.72); }
+.story-guild-whisper header { display: flex; gap: .55rem; align-items: center; }
+.story-guild-whisper header > span:first-child { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid #9a7d43; border-radius: 50%; color: #765b20; font-family: Georgia,"Yu Mincho",serif; font-weight: 900; }
+.story-guild-whisper header small,.story-guild-whisper header strong { display: block; }
+.story-guild-whisper header small { color: #85795f; font-size: .54rem; letter-spacing: .11em; }
+.story-guild-whisper header strong { margin-top: .08rem; color: #4e452f; font-size: .73rem; }
+.story-guild-whisper > div { margin: .55rem 0 .45rem 2.55rem; }
+.story-guild-whisper p { margin: .38rem 0; color: #514b3f; font-family: Georgia,"Yu Mincho",serif; font-size: .67rem; line-height: 1.65; }
+.story-guild-whisper p b { margin-right: .35rem; color: #765b20; font-family: inherit; }
+.story-guild-whisper .text-button { margin-left: 2.55rem; }
+.story-guild-whisper.is-developing { border-style: dashed; background: linear-gradient(145deg,rgba(246,248,240,.94),rgba(224,232,216,.64)); }
+.story-guild-whisper.is-developing header > span:first-child { color: #536957; border-color: #758a78; }
+.story-guild-whisper.is-developing header strong,.story-guild-whisper.is-developing p b { color: #49604d; }
+@media (max-width: 560px) { .story-guild-whisper > div,.story-guild-whisper .text-button { margin-left: 0; } }
 .story-character-archive { margin: .7rem 0 1rem; border-block: 1px solid var(--line); }
 .story-character-archive > summary { display: flex; align-items: center; justify-content: space-between; gap: .65rem; min-height: 48px; padding: .55rem 0; cursor: pointer; list-style: none; }
 .story-character-archive > summary > span:first-child { display: grid; }
@@ -1425,6 +1515,31 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-new-discoveries .label, .result-new-discoveries strong, .result-new-discoveries p { grid-column: 1; }
 .result-new-discoveries p { margin: .1rem 0 0; color: #735b27; font-size: .78rem; }
 .result-new-discoveries .button { grid-column: 2; grid-row: 1 / 4; min-height: 42px; }
+.result-adventurer-reputations > div { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: .4rem; margin-top: .35rem; }
+.result-adventurer-reputations article { display: grid; grid-template-columns: 1.7rem minmax(0,1fr) auto; align-items: center; gap: .45rem; padding: .5rem; border: 1px solid rgba(153,115,37,.3); border-radius: 5px; background: rgba(255,255,255,.7); }
+.result-adventurer-reputations article > span { display: grid; place-items: center; width: 1.55rem; height: 1.55rem; color: #fff; border-radius: 50%; background: #6e805f; font-size: .62rem; font-weight: 900; }
+.result-adventurer-reputations article p { display: grid; min-width: 0; margin: 0; }
+.result-adventurer-reputations article small,.result-adventurer-reputations article em { overflow: hidden; color: var(--muted); font-size: .56rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.result-adventurer-reputations article b { color: #594719; font-size: .78rem; }
+.result-adventurer-reputations article .text-button { white-space: nowrap; }
+.result-party-reputation-moment { grid-template-columns: minmax(0,1fr); border-color: #b99555; border-left-color: #607e70; background: linear-gradient(120deg,#eef6ed,#fff9e9 72%); }
+.result-party-reputation-moment article { display: grid; grid-template-columns: minmax(0,1fr); gap: .12rem; margin-top: .35rem; padding: .55rem .65rem; border: 1px solid rgba(78,111,94,.28); border-radius: 5px; background: rgba(255,255,255,.68); }
+.result-party-reputation-moment article small { color: #66766d; font-size: .59rem; font-weight: 800; }
+.result-party-reputation-moment article b { color: #315446; font-size: .78rem; }
+.result-party-reputation-moment article p { margin-top: .2rem; color: #565347; font-family: Georgia,"Yu Mincho",serif; font-size: .7rem; line-height: 1.65; }
+.result-party-return-moment { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .35rem .7rem; margin: .75rem 0; padding: .62rem .72rem; color: #e9e4d7; border: 1px solid rgba(194,169,108,.42); border-radius: 6px; background: linear-gradient(120deg,#273a35,#1d2927); }
+.result-party-return-moment > div { display: grid; }
+.result-party-return-moment .label { color: #d8bb73; }
+.result-party-return-moment > span { display: grid; justify-items: end; align-content: center; }
+.result-party-return-moment > span small { color: #b9c5bf; font-size: .55rem; }
+.result-party-return-moment > span b { color: #f0d692; font-size: .68rem; }
+.result-party-return-moment p { grid-column: 1 / -1; margin: 0; padding-top: .4rem; color: #e0ded5; border-top: 1px solid rgba(255,255,255,.1); font-family: Georgia,"Yu Mincho",serif; font-size: .69rem; line-height: 1.65; }
+.result-loot-reaction { display: grid; grid-template-columns: 2rem minmax(0,1fr); gap: .55rem; align-items: start; margin: .75rem 0; padding: .62rem .72rem; color: #4d422d; border: 1px solid #d8c89e; border-radius: 6px; background: linear-gradient(110deg,#fffaf0,#f7f1df); }
+.result-loot-reaction > span { display: grid; place-items: center; width: 2rem; height: 2rem; color: #fff8de; border-radius: 50%; background: #8a6b31; font-size: 1rem; }
+.result-loot-reaction > div { display: grid; min-width: 0; }
+.result-loot-reaction small { color: #8b7347; font-size: .56rem; font-weight: 800; }
+.result-loot-reaction strong { color: #4b3c21; font-size: .72rem; }
+.result-loot-reaction p { margin: .2rem 0 0; color: #615944; font-family: Georgia,"Yu Mincho",serif; font-size: .68rem; line-height: 1.6; }
 .result-set-discoveries > div { display: grid; grid-column: 1; gap: .35rem; }
 .result-set-discoveries article { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .1rem .55rem; align-items: center; padding: .4rem .5rem; border: 1px solid rgba(132,101,37,.24); border-radius: 4px; background: rgba(255,255,255,.55); }
 .result-set-discoveries article span { min-width: 0; overflow: hidden; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
@@ -1435,12 +1550,24 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-adventurer-milestones article,.result-personal-bests article { display: grid; grid-template-columns: minmax(5rem,auto) minmax(0,1fr) auto; gap: .45rem; align-items: center; padding: .42rem .5rem; border: 1px solid rgba(151,111,26,.25); border-radius: 4px; background: rgba(255,255,255,.62); }
 .result-adventurer-milestones article > span,.result-personal-bests article > span { font-size: .72rem; font-weight: 700; }
 .result-adventurer-milestones article p,.result-personal-bests article p { display: flex; flex-wrap: wrap; gap: .25rem; margin: 0; }
-.result-adventurer-milestones article b { padding: .18rem .34rem; border-radius: 999px; background: #f2df9f; color: #5a4212; font-size: .64rem; }
+.result-adventurer-milestones .new-record-title-choice { display: inline-grid; justify-items: start; gap: .05rem; padding: .2rem .36rem; color: #5a4212; border: 1px solid #dac173; border-radius: 6px; background: #fff7d8; text-align: left; cursor: pointer; }
+.result-adventurer-milestones .new-record-title-choice b { padding: 0; color: inherit; background: none; font-size: .64rem; }
+.result-adventurer-milestones .new-record-title-choice small { color: #846b2e; font-size: .56rem; font-weight: 700; }
+.result-adventurer-milestones .new-record-title-choice.is-selected { color: #fff8dc; border-color: #7b5f20; background: #7b5f20; }
+.result-adventurer-milestones .new-record-title-choice.is-selected small { color: #f5df9f; }
 .result-adventurer-milestones article .button,.result-personal-bests article .button { grid-column: auto; grid-row: auto; min-height: 34px; padding: .3rem .5rem; font-size: .65rem; }
 .result-personal-bests { border-color: #8ea9b9; border-left-color: #52788e; background: linear-gradient(110deg,#e9f4f7,#fffdf5 72%); }
 .result-personal-bests article { border-color: rgba(61,106,130,.22); }
 .result-personal-bests article b { display: inline-flex; gap: .3rem; align-items: baseline; padding: .16rem .34rem; border-radius: 3px; background: #dcecf1; color: #284f63; font-size: .62rem; }
 .result-personal-bests article b i { color: #176b80; font-size: .68rem; font-style: normal; }
+.result-skill-masteries { border-color: #9c86b9; border-left-color: #665080; background: linear-gradient(110deg,#f1eafa,#fffdf5 72%); }
+.result-skill-masteries article { border-color: rgba(91,67,120,.22); }
+.result-skill-masteries article b { color: #4b3563; background: #e7dcf2; }
+.result-harvest-practices { border-color: #b89a58; border-left-color: #55745c; background: linear-gradient(110deg,#edf5e9,#fffaf0 72%); }
+.result-harvest-practices article { border-color: rgba(74,105,80,.25); }
+.result-harvest-practices article p { display: grid; gap: .12rem; }
+.result-harvest-practices article b { justify-self: start; padding: .16rem .34rem; color: #385443; background: #e0ede0; border-radius: 3px; font-size: .64rem; }
+.result-harvest-practices article small { color: #765b22; font-size: .6rem; font-weight: 800; }
 .dungeon-rumor-note { display: grid; grid-template-columns: auto minmax(0,1fr); gap: .12rem .5rem; margin: 0 .65rem .55rem; padding: .48rem .58rem; border: 1px solid #c7a85a; border-radius: 5px; background: linear-gradient(100deg,#fff1bc,#fffaf0); }
 .dungeon-rumor-note > span { grid-row: 1 / 3; align-self: center; color: #936d17; font-size: .62rem; font-weight: 800; }
 .dungeon-rumor-note strong { color: #5a4313; font-size: .72rem; }
@@ -1451,9 +1578,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-rumor small { color: #9b751d; font-size: .52rem; font-weight: 800; letter-spacing: .1em; }
 .result-rumor strong { font-size: .75rem; }
 .result-rumor p { margin: 0; color: #75633d; font-size: .65rem; line-height: 1.45; }
-.result-monster-insights ul { grid-column: 1; display: grid; gap: .25rem; margin: .2rem 0 0; padding: 0; list-style: none; }
-.result-monster-insights li { display: grid; grid-template-columns: auto minmax(0,1fr); gap: .4rem; font-size: .76rem; }
-.result-monster-insights li span { color: #735b27; }
+.result-monster-insights ul, .result-monster-habitats ul { grid-column: 1; display: grid; gap: .25rem; margin: .2rem 0 0; padding: 0; list-style: none; }
+.result-monster-insights li, .result-monster-habitats li { display: grid; grid-template-columns: auto minmax(0,1fr); gap: .4rem; font-size: .76rem; }
+.result-monster-insights li span, .result-monster-habitats li span { color: #735b27; }
+.result-monster-habitats > small { grid-column: 1; color: var(--muted); }
+.habitat-survey-complete { grid-column: 1; display: flex; flex-wrap: wrap; gap: .25rem .6rem; align-items: baseline; margin: .25rem 0; padding: .45rem .55rem; border: 1px solid rgba(87,119,79,.35); background: rgba(224,237,217,.72); }
+.habitat-survey-complete b { color: #47653d; }
+.habitat-survey-complete span { color: var(--muted); font-size: .72rem; }
 .result-first-clear { display: grid; gap: .2rem; margin: 1rem 0; padding: .85rem .9rem; color: #49391f; border: 1px solid #c9a34b; border-left: 4px solid #9c7321; border-radius: 6px; background: linear-gradient(110deg,#f9e8aa,#fffaf0 75%); }
 .result-first-clear .label { color: #8b651c; }
 .result-first-clear p { margin: .1rem 0 0; color: #674f21; }
@@ -1470,7 +1601,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .result-adventurer-milestones article > span,.result-personal-bests article > span { grid-column: 1; }
   .result-adventurer-milestones article p,.result-personal-bests article p { grid-column: 1; }
   .result-adventurer-milestones article .button,.result-personal-bests article .button { grid-column: 2; grid-row: 1 / 3; margin: 0; }
-  .result-monster-insights li { grid-template-columns: 1fr; gap: 0; }
+  .result-monster-insights li, .result-monster-habitats li { grid-template-columns: 1fr; gap: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .result-new-discoveries { animation: none; } }
 @media (max-width: 600px) {
@@ -1504,6 +1635,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-overview-actions > strong { white-space: nowrap; }
 .fleet-target-strip { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .65rem; margin: 0 0 .75rem; padding: .65rem .75rem; border: 1px solid #b6a36d; border-radius: 6px; background: linear-gradient(100deg,#f6f0dd,#fffdf7); }
 .fleet-target-strip.is-complete { border-color: #85ad98; background: linear-gradient(100deg,#e6f2eb,#f9fcfa); }
+.fleet-target-strip.monster-target { border-color: #9daeb5; background: linear-gradient(100deg,#e9f0f2,#fbfdfd); }
+.fleet-target-strip.monster-target.is-complete { border-color: #85ad98; background: linear-gradient(100deg,#e6f2eb,#f9fcfa); }
+.fleet-target-strip.monster-target .fleet-target-icon { background: #3d4e55; }
+.fleet-target-strip.monster-target > div > small { color: #526c76; }
+.fleet-target-strip.harvest-target { border-color: #9f8b4d; background: linear-gradient(100deg,#edf3e8,#fffaf0); }
+.fleet-target-strip.harvest-target .fleet-target-icon { background: #55623f; }
+.fleet-target-strip.harvest-target > div > small { color: #69733e; }
 .fleet-target-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #283944; color: #f4d791; font-size: 1rem; }
 .fleet-target-strip > div { min-width: 0; display: grid; gap: .12rem; }
 .fleet-target-strip > div > small { color: var(--gold); font-size: .64rem; font-weight: 800; letter-spacing: .07em; }
@@ -1513,11 +1651,27 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-target-strip > div > i > b { display: block; height: 100%; background: var(--green); }
 .fleet-target-strip > div:last-child { display: flex; gap: .35rem; }
 .fleet-target-strip .button { min-height: 38px; padding: .35rem .6rem; font-size: .7rem; }
+.harvest-target-progress { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .5rem; margin-top: .16rem; }
+.harvest-target-progress > span { display: grid; grid-template-columns: auto minmax(40px,1fr); align-items: center; gap: .35rem; color: var(--muted); font-size: .66rem; font-weight: 700; white-space: nowrap; }
+.harvest-target-progress i { height: 4px; overflow: hidden; border-radius: 999px; background: #d8d1c2; }
+.harvest-target-progress i > b { display: block; height: 100%; background: var(--green); }
 .fleet-target-routes { display: flex; gap: .3rem; min-width: 0; margin-top: .25rem; overflow-x: auto; scrollbar-width: none; }
 .fleet-target-routes::-webkit-scrollbar { display: none; }
 .fleet-target-route { flex: 0 0 auto; min-height: 30px; padding: .22rem .48rem; color: #3f5360; border: 1px solid #b9c8d2; border-radius: 4px; background: #f1f5f7; font-size: .64rem; font-weight: 800; white-space: nowrap; }
 .fleet-target-route:disabled { color: #8b8b83; border-color: #d5d1c9; background: #eeece7; }
 .fleet-target-routes > span, .fleet-target-no-route { color: var(--muted); font-size: .64rem; line-height: 1.4; }
+.journey-hunt-progress { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .6rem; margin: .65rem 0; padding: .55rem .65rem; border: 1px solid #9daeb5; border-radius: 6px; background: linear-gradient(100deg,#e9f0f2,#fbfdfd); }
+.journey-hunt-progress > span { display: grid; place-items: center; width: 32px; height: 32px; color: #f4d791; border-radius: 50%; background: #3d4e55; }
+.journey-hunt-progress > div { display: grid; gap: .08rem; min-width: 0; }
+.journey-hunt-progress small { color: #526c76; font-size: .62rem; font-weight: 800; }
+.journey-hunt-progress strong { overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.journey-hunt-progress i { height: 4px; overflow: hidden; border-radius: 999px; background: #d8d1c2; }
+.journey-hunt-progress i b { display: block; height: 100%; background: #526c76; }
+.journey-hunt-progress em { color: var(--muted); font-size: .68rem; font-style: normal; white-space: nowrap; }
+.journey-hunt-progress.is-complete { border-color: #85ad98; background: linear-gradient(100deg,#e6f2eb,#f9fcfa); }
+.journey-hunt-progress.is-complete i b { background: var(--green); }
+.journey-encounter.has-hunt-target { border-color: #879fa8; box-shadow: inset 3px 0 #526c76; }
+.journey-hunt-target-badge { padding: .16rem .38rem; color: #fff; border-radius: 999px; background: #526c76; font-size: .58rem; font-weight: 800; white-space: nowrap; }
 .target-party-modal { width: min(430px, calc(100vw - 2rem)); }
 .target-party-list { display: grid; gap: .4rem; margin: .85rem 0; }
 .target-party-choice { display: flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; min-height: 54px; padding: .55rem .7rem; color: var(--ink); border: 1px solid #c9c1b3; border-radius: 5px; background: #fffdf7; text-align: left; }
@@ -1557,9 +1711,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-party { min-width: 0; }
 .fleet-party-meta { grid-column: 1 / -1; display: flex; gap: .22rem; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .fleet-party-meta::-webkit-scrollbar { display: none; }
-.fleet-party-meta > span, .fleet-preset-link { flex: 0 0 auto; min-height: 22px; padding: .18rem .4rem; color: #5c6468; background: #ece9e1; border: 1px solid #d6d0c1; border-radius: 999px; font-size: .65rem; line-height: 1.2; white-space: nowrap; }
+.fleet-party-meta > span, .fleet-preset-link, .fleet-named-hunt-link, .fleet-developing-hunt-link { flex: 0 0 auto; min-height: 22px; padding: .18rem .4rem; color: #5c6468; background: #ece9e1; border: 1px solid #d6d0c1; border-radius: 999px; font-size: .65rem; line-height: 1.2; white-space: nowrap; }
 .fleet-party-meta > .fleet-bond-status { color: #6f5120; background: #fff4d8; border-color: #d8b867; }
 .fleet-preset-link { color: #526c5c; background: #e6efe9; border-color: #b9cdbf; font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer; }
+.fleet-named-hunt-link { color: #74501b; background: linear-gradient(100deg,#fff4d8,#f0e3c2); border-color: #c9a755; font: inherit; font-size: .65rem; font-weight: 900; cursor: pointer; }
+.fleet-named-hunt-link:hover { border-color: #9f772c; }
+.fleet-developing-hunt-link { color: #48606a; background: linear-gradient(100deg,#f0f6f4,#e1ece8); border-color: #9db4ac; font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer; }
+.fleet-developing-hunt-link:hover { border-color: #6d9387; }
 .fleet-preset-link.is-changed { color: #8a5c23; }
 .fleet-party-select { display: inline-flex; align-items: center; gap: .35rem; max-width: 100%; color: var(--ink); background: transparent; border: 0; padding: .25rem 0; font-size: 1rem; font-weight: 700; min-height: 44px; text-align: left; cursor: pointer; }
 .fleet-party-select > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1574,6 +1732,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-journey { display: grid; gap: .5rem; min-width: 0; font-size: .875rem; }
 .fleet-journey > strong { overflow-wrap: anywhere; font-size: 1rem; }
 .fleet-journey small { color: var(--muted); font-size: .875rem; line-height: 1.6; }
+.fleet-journey .fleet-hunt-assignment { justify-self: start; padding: .13rem .4rem; color: #526c76; border-radius: 999px; background: #dfeaed; font-size: .65rem; font-weight: 800; line-height: 1.35; }
+.fleet-journey .fleet-hunt-assignment.is-active { color: #fff; background: #526c76; }
 .fleet-result-mark { display: inline-block; margin-right: .45rem; padding: .12rem .4rem; border-radius: 3px; font-size: .72rem; font-weight: 800; }
 .fleet-result-mark.success { color: #205c3d; background: #d8eadf; }
 .fleet-result-mark.failure { color: #7b302d; background: #f2d9d6; }
@@ -1600,6 +1760,40 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-adventurer-bond-tiers article b { width: 100%; color: #604813; }
 .result-adventurer-bond-tiers article small { color: var(--muted); }
 .result-adventurer-bond-tiers article em { color: #76581b; font-size: .68rem; font-style: normal; font-weight: 800; }
+.result-hunt-ledger-story { margin: -.1rem 0 .55rem !important; color: #5d553f !important; font-family: Georgia,"Yu Mincho",serif; font-size: .65rem !important; line-height: 1.6; }
+.result-hunt-ledger-epithet { margin: -.25rem 0 .55rem !important; color: #765b20 !important; font-size: .65rem !important; font-weight: 900; }
+.result-hunt-recognition-scene { display: grid !important; gap: .28rem !important; margin: -.2rem 0 .58rem !important; padding: .55rem .62rem; border: 1px solid rgba(122,94,42,.28); border-radius: 6px; background: linear-gradient(135deg,rgba(255,252,238,.94),rgba(233,226,203,.72)); }
+.result-hunt-recognition-scene > small { color: #8d7848; font-size: .5rem; font-weight: 900; letter-spacing: .09em; }
+.result-hunt-recognition-scene > p { margin: 0 !important; color: #544c3b !important; font-family: Georgia,"Yu Mincho",serif; font-size: .61rem !important; line-height: 1.6; }
+.result-hunt-recognition-scene > p b { margin-right: .35rem; color: #755a20; }
+.result-hunt-ledger-reward { display: grid; grid-template-columns: auto 1fr; gap: .08rem .45rem; align-items: center; margin: -.28rem 0 .58rem !important; padding: .45rem .55rem; border: 1px solid rgba(162,122,46,.38); border-radius: 5px; background: linear-gradient(100deg,rgba(255,244,216,.92),rgba(241,232,210,.72)); font-size: .64rem !important; }
+.result-hunt-ledger-reward b { color: #76581b; }
+.result-hunt-ledger-reward span { color: #604813; font-weight: 900; }
+.result-hunt-ledger-reward small { grid-column: 1 / -1; color: var(--muted); }
+.result-hunt-ledger-support { margin: -.28rem 0 .58rem !important; padding: .42rem .55rem; border-left: 3px solid #66806c; border-radius: 0 4px 4px 0; background: rgba(91,119,97,.08); color: #4f6253 !important; font-size: .62rem !important; line-height: 1.5; }
+.result-hunt-ledger-support b { display: block; color: #35533d; font-size: .64rem; }
+.result-hunt-ledger-progress-card { display: grid; grid-template-columns: 2rem minmax(0,1fr) auto; align-items: center; gap: .55rem; margin: .65rem 0; padding: .62rem .7rem; color: #3f5148; border: 1px solid #b7c5b8; border-radius: 7px; background: linear-gradient(105deg,#eef4e9,#fbf5e4); }
+.result-hunt-ledger-progress-card > span { display: grid; place-items: center; width: 1.9rem; height: 1.9rem; color: #f8edc7; border-radius: 50%; background: #4d6358; font-family: Georgia,"Yu Mincho",serif; font-size: .7rem; font-weight: 900; }
+.result-hunt-ledger-progress-card > div { display: grid; min-width: 0; gap: .06rem; }
+.result-hunt-ledger-progress-card small { color: #857044; font-size: .5rem; font-weight: 900; letter-spacing: .06em; }
+.result-hunt-ledger-progress-card strong { font-size: .7rem; }
+.result-hunt-ledger-progress-card p { margin: .08rem 0 !important; color: #62675c !important; font-size: .58rem !important; }
+.result-hunt-ledger-progress-card p i { color: #98835a; font-style: normal; }
+.result-hunt-ledger-progress-card em,.history-hunt-ledger-progress { display: grid; grid-template-columns: minmax(0,auto) minmax(3rem,1fr); align-items: center; gap: .4rem; color: #765b20; font-size: .54rem; font-style: normal; font-weight: 900; }
+.result-hunt-ledger-progress-card em > i,.history-hunt-ledger-progress > i { display: block; height: 3px; overflow: hidden; border-radius: 999px; background: #ded5bd; }
+.result-hunt-ledger-progress-card em > i > b,.history-hunt-ledger-progress > i > b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#97722e,#d5b357); }
+.result-hunt-ledger-progress-card > .text-button { padding: .25rem .35rem; color: #6e5931; font-size: .56rem; white-space: nowrap; }
+@media (max-width: 480px) { .result-hunt-ledger-progress-card { grid-template-columns: 1.8rem minmax(0,1fr); } .result-hunt-ledger-progress-card > .text-button { grid-column: 2; justify-self: start; } }
+.result-named-hunt-support { display: grid; grid-template-columns: 2rem minmax(0,1fr) auto; gap: .55rem; align-items: center; margin: .65rem 0; padding: .65rem; border: 1px solid rgba(91,119,97,.32); border-radius: 8px; background: linear-gradient(135deg,rgba(91,119,97,.12),rgba(184,146,64,.08)); }
+.result-named-hunt-support > span { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid #66806c; border-radius: 50%; color: #35533d; font-family: Georgia,"Yu Mincho",serif; font-weight: 900; }
+.result-named-hunt-support div { min-width: 0; }
+.result-named-hunt-support small,.result-named-hunt-support strong,.result-named-hunt-support em { display: block; }
+.result-named-hunt-support small { color: #667066; font-size: .56rem; letter-spacing: .08em; }
+.result-named-hunt-support strong { margin-top: .1rem; color: #35533d; font-size: .72rem; }
+.result-named-hunt-support p { margin: .18rem 0 0; color: #4f554f; font-size: .64rem; line-height: 1.45; }
+.result-named-hunt-support em { margin-top: .18rem; color: #6b624d; font-size: .59rem; font-style: normal; }
+.result-named-hunt-support .text-button { white-space: nowrap; }
+@media (max-width: 560px) { .result-named-hunt-support { grid-template-columns: 1.8rem minmax(0,1fr); } .result-named-hunt-support > span { width: 1.8rem; height: 1.8rem; } .result-named-hunt-support .text-button { grid-column: 2; justify-self: start; } }
 .fleet-result-loot .skill-growth { color: #4d3b72; border-color: #bba8d4; background: #f2ecfa; font-weight: 900; }
 .fleet-result-loot .route-event { color: #3c5158; border-color: #aebcc0; background: #edf3f3; font-weight: 900; }
 .fleet-result-loot .route-event.success { color: #285f3e; border-color: #9cbca8; background: #e8f4ec; }
@@ -1635,6 +1829,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-list { display: grid; gap: .45rem; }
 .party-history-record { border: 1px solid var(--line); border-left: 4px solid #4f8a68; border-radius: 7px; background: #fff; overflow: hidden; }
 .party-history-record.failure { border-left-color: #a65b58; }
+.party-history-record.is-character-focus { border-color: #b8923d; border-left-color: #b8923d; box-shadow: 0 0 0 2px rgba(184,146,61,.13); }
 .party-history-record > summary { display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto auto; align-items: center; gap: .55rem; padding: .65rem .75rem; cursor: pointer; list-style: none; }
 .party-history-record > summary::-webkit-details-marker { display: none; }
 .party-history-mark { display: grid; place-items: center; width: 2rem; height: 2rem; border: 1px solid #6d9a7b; border-radius: 50%; color: #47765a; font-weight: 900; }
@@ -1644,9 +1839,27 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-name small, .party-history-reward small { color: var(--muted); font-size: .68rem; }
 .party-history-reward { text-align: right; }
 .party-history-detail { padding: .65rem .75rem; border-top: 1px solid var(--line); background: #faf8f2; }
+.party-history-character-focus { display: grid; grid-template-columns: 2rem minmax(0,1fr); gap: .55rem; align-items: start; margin: 0 0 .65rem; padding: .55rem .65rem; border: 1px solid #d8c185; border-radius: 6px; background: #fff9e8; }
+.party-history-character-focus > span { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; color: #7a5d1d; border-radius: 50%; background: #eadcae; font-weight: 900; }
+.party-history-character-focus > div { display: grid; gap: .14rem; min-width: 0; }
+.party-history-character-focus small { color: #8a7138; font-size: .58rem; }
+.party-history-character-focus strong { color: #4f3e19; font-size: .75rem; }
+.party-history-character-focus p { display: flex; flex-wrap: wrap; gap: .18rem .55rem; margin: .14rem 0 0; }
+.party-history-character-focus p b, .party-history-character-focus p em { color: var(--ink); font-size: .61rem; font-style: normal; white-space: nowrap; }
+.party-history-character-focus p em { color: #705a28; }
+.party-history-character-focus .text-button { justify-self: start; margin-top: .12rem; padding: .1rem 0; font-size: .6rem; }
 .party-history-battle { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; }
 .party-history-battle span { display: grid; gap: .1rem; padding: .4rem; border-radius: 4px; background: #fff; color: var(--muted); font-size: .65rem; }
 .party-history-battle strong { color: var(--ink); font-size: .78rem; }
+.party-history-damage { margin-top: .4rem; border: 1px solid var(--line); border-radius: 5px; background: rgba(255,255,255,.66); }
+.party-history-damage > summary { display: flex; justify-content: space-between; gap: .5rem; padding: .45rem .55rem; cursor: pointer; list-style: none; color: var(--ink); font-size: .7rem; font-weight: 700; }
+.party-history-damage > summary::-webkit-details-marker { display: none; }
+.party-history-damage > summary span { color: var(--muted); font-size: .64rem; }
+.party-history-damage > div { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: .3rem; padding: 0 .45rem .45rem; }
+.party-history-damage > div > span { display: grid; gap: .08rem; padding: .3rem; border-radius: 4px; background: #f3efe5; }
+.party-history-damage > div > span.element { background: #f8f0da; }
+.party-history-damage small { color: var(--muted); font-size: .56rem; }
+.party-history-damage strong { color: var(--ink); font-size: .7rem; }
 .party-history-contributions { margin-top: .5rem; }
 .party-history-contributions > strong { display: block; margin-bottom: .25rem; color: #69562e; font-size: .68rem; }
 .party-history-contributions > div { display: grid; grid-template-columns: repeat(auto-fit,minmax(125px,1fr)); gap: .3rem; }
@@ -1654,9 +1867,30 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-contributions i { grid-row: 1 / 4; display: grid; place-items: center; width: 1.2rem; height: 1.2rem; border-radius: 50%; color: #fff; background: #755e3c; font-size: .55rem; font-style: normal; font-weight: 900; }
 .party-history-contributions .exploration i { background: #68763f; }
 .party-history-contributions .healing i { background: #46755c; }
+.party-history-contributions .status i { background: #72517d; }
 .party-history-contributions .endurance i { background: #526c85; }
 .party-history-contributions small, .party-history-contributions em { overflow: hidden; color: var(--muted); font-size: .54rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
 .party-history-contributions b { overflow: hidden; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.party-history-skills { margin-top: .45rem; border: 1px solid var(--line); border-radius: 5px; background: rgba(255,255,255,.52); }
+.party-history-skills > summary { display: flex; justify-content: space-between; gap: .5rem; padding: .45rem .55rem; cursor: pointer; list-style: none; font-size: .68rem; font-weight: 800; }
+.party-history-skills summary::-webkit-details-marker { display: none; }
+.party-history-skills > summary span { color: var(--muted); font-weight: 600; }
+.party-history-skills > div { display: flex; flex-wrap: wrap; gap: .3rem; padding: 0 .45rem .45rem; }
+.party-history-skills > div > details { max-width: 100%; border: 1px solid rgba(117,94,60,.22); border-radius: 4px; background: #fff; }
+.party-history-skills > div > details summary { display: flex; align-items: center; gap: .3rem; padding: .28rem .4rem; cursor: pointer; list-style: none; font-size: .64rem; }
+.party-history-skills > div > details summary b { color: #755e3c; }
+.party-history-skills > div > details summary i { color: #9a7a35; font-style: normal; transition: transform .16s ease; }
+.party-history-skills > div > details[open] summary i { transform: rotate(90deg); }
+.party-history-skills > div > details p { margin: 0; padding: .4rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .62rem; line-height: 1.5; }
+.party-history-skills > div > details > small { display: block; padding: 0 .4rem .4rem; color: #755e3c; font-size: .58rem; font-weight: 800; }
+.party-history-skill-comparison { margin: .45rem 0; border: 1px solid rgba(117,94,60,.2); border-radius: 4px; background: rgba(255,255,255,.55); }
+.party-history-skill-comparison > summary { display: flex; justify-content: space-between; gap: .5rem; padding: .4rem .5rem; cursor: pointer; list-style: none; font-size: .66rem; font-weight: 800; }
+.party-history-skill-comparison > summary::-webkit-details-marker { display: none; }
+.party-history-skill-comparison > summary span { color: var(--muted); }
+.party-history-skill-comparison ul { margin: 0; padding: .15rem .55rem .45rem 1.35rem; }
+.party-history-skill-comparison li { margin: .15rem 0; font-size: .64rem; }
+.party-history-skill-comparison li span { margin-left: .35rem; color: var(--muted); }
+.party-history-skill-comparison p { margin: 0; padding: .35rem .5rem .5rem; color: var(--muted); font-size: .64rem; }
 .party-history-story { margin-top: .5rem; border: 1px solid #c8b784; border-radius: 4px; background: #fffaf0; }
 .party-history-story > summary { display: flex; justify-content: space-between; gap: .5rem; padding: .45rem .55rem; color: #675629; cursor: pointer; font-size: .72rem; font-weight: 900; }
 .party-history-story > summary span { color: #7b704f; white-space: nowrap; }
@@ -1685,6 +1919,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-growth article > span { display: grid; gap: .08rem; }
 .party-history-growth article small { color: #7d708b; font-size: .62rem; }
 .party-history-growth article p { margin: 0; color: #59496d; font-size: .68rem; line-height: 1.5; }
+.party-history-growth article p b { color: #31596b; font-weight: 800; }
 .party-history-setup { margin-top: .5rem; border: 1px solid #d8d1c1; border-radius: 4px; background: #fff; }
 .party-history-setup > summary { padding: .45rem .55rem; color: #66562e; cursor: pointer; font-size: .72rem; font-weight: 900; }
 .party-history-setup > div { border-top: 1px solid #e2dccf; }
@@ -1696,6 +1931,86 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-setup article small { color: var(--muted); font-size: .64rem; }
 .party-history-setup article p { margin: .1rem 0 0; overflow: hidden; color: var(--muted); font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
 .party-history-setup article > small { text-align: right; white-space: nowrap; }
+.party-history-reputation { display: inline-block; margin-left: .35rem; padding: .05rem .28rem; color: #76591f; border: 1px solid #d6bb75; border-radius: 999px; background: #fff6d9; font-size: .56rem; font-style: normal; vertical-align: .08rem; }
+.party-history-mood { padding: .45rem .55rem; color: #62522d; border-bottom: 1px solid #e2dccf; background: #fbf4df; }
+.party-history-mood small,.party-history-mood strong { display: block; }
+.party-history-mood small { color: #987336; font-size: .55rem; font-weight: 900; letter-spacing: .06em; }
+.party-history-mood strong { margin-top: .08rem; font-size: .7rem; }
+.party-history-mood p { margin: .2rem 0 0 !important; overflow: visible !important; color: #625b4e !important; font-size: .64rem !important; line-height: 1.55; text-overflow: clip !important; white-space: normal !important; }
+.party-history-new-mood { display: grid; gap: .08rem; padding: .55rem .65rem; color: #40574c; border-block: 1px solid #d5dfd4; background: linear-gradient(110deg,#edf5ec,#fbf7e9); }
+.party-history-new-mood small { color: #7c6d45; font-size: .54rem; font-weight: 900; letter-spacing: .05em; }
+.party-history-new-mood strong { font-size: .75rem; }
+.party-history-new-mood span { color: #758078; font-size: .58rem; font-weight: 800; }
+.party-history-new-mood p { margin: .15rem 0 0 !important; color: #585b51 !important; font-family: Georgia,"Yu Mincho",serif; font-size: .64rem !important; line-height: 1.55; }
+.party-history-return-mood { display: grid; gap: .08rem; padding: .52rem .65rem; color: #e7e3d8; border-block: 1px solid #52645e; background: #2c3c37; }
+.party-history-return-mood small { color: #c8b77e; font-size: .54rem; font-weight: 800; }
+.party-history-return-mood strong { color: #f0d99e; font-size: .7rem; }
+.party-history-return-mood p { margin: .12rem 0 0 !important; color: #e0ded6 !important; font-family: Georgia,"Yu Mincho",serif; font-size: .64rem !important; line-height: 1.55; }
+.party-history-loot-reaction { display: grid; grid-template-columns: 1.75rem minmax(0,1fr); gap: .45rem; padding: .5rem .65rem; color: #564a32; border-block: 1px solid #e0d3ae; background: #fff9e9; }
+.party-history-loot-reaction > span { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; color: #fff7dc; border-radius: 50%; background: #8c703b; font-size: .78rem; }
+.party-history-loot-reaction > div { display: grid; min-width: 0; }
+.party-history-loot-reaction small { color: #8a7345; font-size: .53rem; font-weight: 800; }
+.party-history-loot-reaction strong { font-size: .68rem; }
+.party-history-loot-reaction p { margin: .12rem 0 0 !important; color: #625a48 !important; font-family: Georgia,"Yu Mincho",serif; font-size: .62rem !important; line-height: 1.55; }
+.party-history-shared-hunt-ledger { display: grid; grid-template-columns: 1.75rem minmax(0,1fr) auto; align-items: center; gap: .45rem; padding: .5rem .65rem; color: #3f5148; border-block: 1px solid #cfd7ca; background: linear-gradient(105deg,#eef4e9,#fbf5e4); }
+.party-history-shared-hunt-ledger > span { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; color: #f8edc7; border-radius: 50%; background: #4d6358; font-family: Georgia,"Yu Mincho",serif; font-size: .68rem; font-weight: 900; }
+.party-history-shared-hunt-ledger > div { display: grid; min-width: 0; gap: .03rem; }
+.party-history-shared-hunt-ledger small { color: #857044; font-size: .5rem; font-weight: 900; letter-spacing: .04em; }
+.party-history-shared-hunt-ledger strong { overflow: hidden; font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
+.party-history-shared-hunt-ledger p { margin: .08rem 0 0 !important; color: #62675c !important; font-size: .56rem !important; }
+.party-history-shared-hunt-ledger p i { color: #98835a; font-style: normal; }
+.party-history-shared-hunt-ledger .tier-story { margin-top: .12rem; color: #6d674f; font-family: Georgia,"Yu Mincho",serif; font-size: .54rem; font-weight: 500; letter-spacing: 0; line-height: 1.45; }
+.party-history-shared-hunt-ledger .tier-epithet { margin-top: .12rem; color: #765b20; font-size: .55rem; font-weight: 900; }
+.party-history-shared-hunt-ledger > .text-button { padding: .25rem .35rem; color: #6e5931; font-size: .55rem; white-space: nowrap; }
+.party-history-shared-hunt-ledger.is-progress { background: linear-gradient(105deg,#f2f6ef,#f8f3e8); }
+.party-history-shared-hunt-ledger.is-progress > span { color: #eef7f2; background: #61766b; }
+.history-hunt-ledger-progress { margin-top: .14rem; letter-spacing: 0 !important; }
+.party-history-targeted-harvest { display: grid; gap: .28rem; padding: .55rem .65rem; color: #e9e4d4; border-block: 1px solid #4b605e; background: linear-gradient(115deg,#263937,#1d2d31); }
+.party-history-targeted-harvest > small { color: #c9ae66; font-size: .5rem; font-weight: 900; letter-spacing: .08em; }
+.party-history-targeted-harvest > strong { display: flex; align-items: center; gap: .3rem; font-size: .7rem; }
+.party-history-targeted-harvest > strong i { color: #9ea9a3; font-style: normal; }
+.party-history-targeted-harvest > div,.party-history-targeted-harvest > p { display: flex; flex-wrap: wrap; gap: .3rem .65rem; margin: 0 !important; }
+.party-history-targeted-harvest > div span,.party-history-targeted-harvest > p span { color: #d4d7ce; font-size: .58rem; }
+.party-history-targeted-harvest > div b,.party-history-targeted-harvest > p b { color: #f2df9e; }
+.party-history-targeted-harvest .is-found b { color: #a9ddbb; }
+.party-history-targeted-harvest .is-missed b { color: #bbbcb6; }
+.party-history-targeted-harvest > .button { justify-self: start; min-height: 1.8rem; margin-top: .08rem; padding: .3rem .65rem; color: #f1dfaa; border-color: #8b784b; background: rgba(13,24,25,.55); font-size: .58rem; }
+.fleet-hunt-ledger-pairs { display: grid; gap: .22rem; margin-top: .35rem; padding-top: .35rem; border-top: 1px dashed rgba(91,104,90,.28); }
+.fleet-hunt-ledger-pairs > small { color: #776641; font-size: .55rem; font-weight: 900; }
+.fleet-hunt-ledger-pairs > div { display: flex; flex-wrap: wrap; gap: .25rem; }
+.fleet-hunt-ledger-pairs button { display: grid; gap: .02rem; max-width: 15rem; padding: .28rem .4rem; color: #425149; border: 1px solid #c7bea2; border-radius: 4px; background: rgba(255,252,240,.82); font: inherit; text-align: left; cursor: pointer; }
+.fleet-hunt-ledger-pairs button strong { overflow: hidden; font-size: .59rem; text-overflow: ellipsis; white-space: nowrap; }
+.fleet-hunt-ledger-pairs button span,.fleet-hunt-ledger-pairs > div > small { color: #7d765f; font-size: .5rem; }
+.fleet-hunt-ledger-pairs button em { display: grid; grid-template-columns: minmax(0,1fr) 3rem; align-items: center; gap: .35rem; margin-top: .12rem; color: #765b20; font-size: .49rem; font-style: normal; font-weight: 800; }
+.fleet-hunt-ledger-pairs button em > i,.harvest-ledger-progress > i,.shared-hunt-ledger-progress > i { display: block; height: 3px; overflow: hidden; border-radius: 999px; background: #ded5bd; }
+.fleet-hunt-ledger-pairs button em > i > b,.harvest-ledger-progress > i > b,.shared-hunt-ledger-progress > i > b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#97722e,#d5b357); }
+.party-history-harvest-ledger { margin: .55rem .65rem; overflow: hidden; border: 1px solid #9d8a5a; border-radius: .65rem; background: #273936; color: #eee8d8; }
+.party-history-harvest-ledger > summary { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: .5rem; min-height: 2.7rem; padding: .45rem .6rem; cursor: pointer; list-style: none; }
+.party-history-harvest-ledger > summary::-webkit-details-marker { display: none; }
+.party-history-harvest-ledger > summary span { display: grid; }
+.party-history-harvest-ledger > summary small { color: #c8aa61; font-size: .46rem; font-weight: 900; letter-spacing: .1em; }
+.party-history-harvest-ledger > summary strong { font-size: .72rem; }
+.party-history-harvest-ledger > summary b { color: #d8c997; font-size: .58rem; }
+.party-history-harvest-ledger > summary > i { color: #c8aa61; font-style: normal; transition: transform .18s; }
+.party-history-harvest-ledger[open] > summary > i { transform: rotate(90deg); }
+.party-history-harvest-ledger > div { display: grid; gap: 1px; border-top: 1px solid #53645d; background: #53645d; }
+.party-history-harvest-ledger article { display: grid; gap: .35rem; padding: .55rem .6rem; background: #f9f5e9; color: #343b37; }
+.party-history-harvest-ledger article header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .2rem .6rem; }
+.party-history-harvest-ledger article header strong { font-size: .66rem; }
+.party-history-harvest-ledger article header strong i { color: #8b907d; font-style: normal; }
+.party-history-harvest-ledger article header small { color: #817553; font-size: .52rem; font-weight: 800; }
+.party-history-harvest-ledger article > div { display: flex; flex-wrap: wrap; gap: .25rem .7rem; }
+.party-history-harvest-ledger article > div span { color: #68716b; font-size: .54rem; }
+.party-history-harvest-ledger article > div b { color: #3c5047; }
+.party-history-harvest-ledger article > p { display: flex; align-items: center; gap: .2rem; margin: 0; }
+.party-history-harvest-ledger article > p small { margin-right: .12rem; color: #8b897f; font-size: .48rem; }
+.party-history-harvest-ledger article > p i { display: grid; place-items: center; width: 1.1rem; height: 1.1rem; border-radius: 50%; font-size: .46rem; font-style: normal; font-weight: 900; }
+.party-history-harvest-ledger article > p .is-found { color: #315e48; background: #d8eadb; }
+.party-history-harvest-ledger article > p .is-missed { color: #77756f; background: #e8e5dd; }
+.party-history-harvest-ledger article footer { display: flex; align-items: center; justify-content: space-between; gap: .45rem; padding-top: .35rem; border-top: 1px solid #ded8c6; }
+.party-history-harvest-ledger article footer > span { color: #69685f; font-family: Georgia,"Yu Mincho",serif; font-size: .54rem; line-height: 1.45; }
+.party-history-harvest-ledger .party-history-harvest-reuse { flex: 0 0 auto; min-height: 1.55rem; padding: .18rem .35rem; color: #6e5926; font-size: .52rem; }
+@media (max-width: 480px) { .party-history-harvest-ledger article footer { align-items: stretch; flex-direction: column; } .party-history-harvest-ledger .party-history-harvest-reuse { align-self: flex-end; } }
 .party-history-changes { margin-top: .4rem; border: 1px solid #cad4d8; border-radius: 4px; background: #f5f8f8; }
 .party-history-changes > summary { display: flex; justify-content: space-between; gap: .5rem; padding: .42rem .55rem; color: #405966; cursor: pointer; font-size: .7rem; font-weight: 900; }
 .party-history-changes > summary span { color: #6b7980; white-space: nowrap; }
@@ -1722,6 +2037,11 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-loot ul { margin: .25rem 0 0; padding: 0; list-style: none; }
 .party-history-loot li { display: flex; justify-content: space-between; gap: .5rem; padding: .15rem 0; color: var(--muted); font-size: .68rem; }
 .party-history-loot li strong { color: var(--ink); white-space: nowrap; }
+.party-history-reuse { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .5rem; padding: .5rem; border: 1px solid #c8b784; border-radius: 5px; background: #fffaf0; }
+.party-history-reuse > span { display: grid; gap: .1rem; min-width: 0; }
+.party-history-reuse strong { color: #675629; font-size: .7rem; }
+.party-history-reuse small { overflow: hidden; color: var(--muted); font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
+.party-history-reuse .button { flex: none; min-height: 36px; }
 .fleet-journey .progress { margin: 0; }
 .fleet-timer { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
 .fleet-actions { display: flex; flex-wrap: wrap; gap: .375rem; }
@@ -1752,6 +2072,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .party-history-attempt li { grid-template-columns: 1fr; gap: .1rem; }
   .party-history-growth article { grid-template-columns: 1fr; gap: .15rem; }
   .party-history-loot { grid-template-columns: 1fr; }
+  .party-history-reuse { align-items: stretch; flex-direction: column; }
 }
 .battle-log-entry.warning { color: #ffcf70; background: rgba(255,180,70,.08); }
 .battle-log-entry.burst { color: #ff9a9a; background: rgba(255,90,90,.08); }
@@ -1873,6 +2194,39 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .adventurer-record-board li em { color: #684c13; font-size: .72rem; font-style: normal; font-weight: 800; white-space: nowrap; }
 .adventurer-record-board li i { color: #a69368; font-style: normal; }
 .adventurer-record-board > p { margin: 0; padding: .8rem; color: var(--muted); font-size: .68rem; text-align: center; }
+.adventurer-signature-ledger { margin: .8rem 0; overflow: hidden; border: 1px solid #b8a0ca; border-radius: 7px; background: linear-gradient(145deg,#f7f1fb,#fffdf7); }
+.adventurer-signature-ledger > summary { min-height: 56px; padding: .55rem .7rem; display: grid; grid-template-columns: minmax(0,1fr) auto 14px; align-items: center; gap: .55rem; cursor: pointer; }
+.adventurer-signature-ledger > summary > span { display: grid; }
+.adventurer-signature-ledger > summary small { color: #846a99; font-size: .52rem; letter-spacing: .12em; }
+.adventurer-signature-ledger > summary strong { color: #49385a; font-size: .78rem; }
+.adventurer-signature-ledger > summary b { color: #6b4c82; font-size: .66rem; }
+.adventurer-signature-ledger > summary i,.adventurer-signature-ledger button > i { color: #8b76a0; font-style: normal; }
+.adventurer-signature-ledger[open] > summary > i { transform: rotate(90deg); }
+.adventurer-signature-ledger > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px; border-top: 1px solid #d8c9e3; background: #d8c9e3; }
+.adventurer-signature-ledger button { min-width: 0; display: grid; grid-template-columns: 34px minmax(0,1fr) auto 12px; align-items: center; gap: .45rem; padding: .42rem .5rem; color: var(--ink); border: 0; background: rgba(255,255,255,.92); text-align: left; cursor: pointer; }
+.adventurer-signature-ledger button:hover { background: #fbf6ff; }
+.adventurer-signature-ledger button .character-avatar { --portrait-width: 34px; }
+.adventurer-signature-ledger button > span { display: grid; min-width: 0; }
+.adventurer-signature-ledger button strong,.adventurer-signature-ledger button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adventurer-signature-ledger button strong { font-size: .7rem; }
+.adventurer-signature-ledger button small { color: var(--muted); font-size: .56rem; }
+.adventurer-signature-ledger button > b { color: #67417e; font-size: .66rem; white-space: nowrap; }
+.adventurer-signature-ledger > div > small { grid-column: 1 / -1; padding: .45rem; color: var(--muted); background: #fff; font-size: .6rem; text-align: center; }
+.named-hunt-ledger { border-color: #b7aa7e; background: linear-gradient(145deg,#f1f4e9,#fffaf0); }
+.named-hunt-ledger > summary small { color: #7d734b; }
+.named-hunt-ledger > summary strong { color: #4d5238; }
+.named-hunt-ledger > summary b,.named-hunt-ledger button > b { color: #765b20; }
+.named-hunt-ledger > div { border-top-color: #d7cda8; background: #d7cda8; }
+.named-hunt-ledger button > i:first-child { display: grid; place-items: center; width: 28px; height: 28px; color: #f7edc9; border-radius: 50%; background: #58634a; font-size: .59rem; font-weight: 900; }
+.named-hunt-next-ledgers { grid-column: 1 / -1; padding: .55rem; background: #fffdf7; }
+.named-hunt-next-ledgers > header { display: flex; align-items: end; justify-content: space-between; gap: .6rem; margin-bottom: .45rem; }
+.named-hunt-next-ledgers > header > span { display: grid; }
+.named-hunt-next-ledgers > header small { color: #7d734b; font-size: .5rem; letter-spacing: .11em; }
+.named-hunt-next-ledgers > header strong { color: #4d5238; font-size: .72rem; }
+.named-hunt-next-ledgers > header b { color: #765b20; font-size: .62rem; }
+.named-hunt-next-ledgers > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .35rem; }
+.named-hunt-next-ledgers button { border: 1px solid #ded5b7; border-radius: 5px; background: #fff; }
+.named-hunt-next-ledgers > small { display: block; padding: .4rem .2rem 0; color: var(--muted); font-size: .58rem; text-align: center; }
 .codex-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr)); gap: 1rem; }
 .codex-card { min-height: 220px; padding: 1.1rem; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.62); }
 .codex-card h4 { margin: .55rem 0; font-size: 1.05rem; font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
@@ -1880,6 +2234,30 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .codex-card small { display: block; color: var(--muted); font-size: .875rem; line-height: 1.65; overflow-wrap: anywhere; }
 .codex-icon { width: 46px; height: 46px; display: grid; place-items: center; float: right; color: var(--gold); background: var(--night-2); border-radius: 50%; font-size: 1.35rem; }
 .codex-effect { padding: .65rem; border-left: 3px solid var(--gold); background: rgba(185,139,62,.08); }
+.codex-first-discovery { margin: .65rem 0; padding: .5rem; display: flex; align-items: center; gap: .5rem; border: 1px solid rgba(185,139,62,.34); border-radius: 4px; background: linear-gradient(120deg,rgba(185,139,62,.1),rgba(255,255,255,.42)); }
+.codex-first-discovery > span { flex: 0 0 28px; color: var(--gold); font-size: 1.15rem; text-align: center; }
+.codex-first-discovery div { min-width: 0; display: grid; gap: .08rem; }
+.codex-first-discovery small { color: #80632d; font-size: .6rem; letter-spacing: .08em; }
+.codex-first-discovery strong { overflow-wrap: anywhere; font-size: .74rem; }
+.codex-first-discovery p { margin: 0; color: var(--muted); font-size: .62rem; }
+.recent-discovery-ledger { margin: .8rem 0; padding: .7rem; border: 1px solid rgba(185,139,62,.42); border-radius: 5px; background: linear-gradient(135deg,#fffaf0,#f4eee1); }
+.recent-discovery-ledger > header { display: flex; align-items: flex-end; justify-content: space-between; gap: .5rem; }
+.recent-discovery-ledger > header div { display: grid; gap: .08rem; }
+.recent-discovery-ledger > header span { color: #9b7731; font-size: .55rem; font-weight: 800; letter-spacing: .12em; }
+.recent-discovery-ledger > header h4 { margin: 0; color: #594725; font-size: .88rem; }
+.recent-discovery-ledger > header strong { color: #80632d; font-size: .68rem; }
+.recent-discovery-ledger > p { margin: .3rem 0 .55rem; color: var(--muted); font-size: .62rem; }
+.recent-discovery-ledger > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .35rem; }
+.recent-discovery-ledger button, .recent-discovery-ledger article { min-width: 0; padding: .42rem; display: grid; grid-template-columns: 1.5rem minmax(0,1fr) auto; align-items: center; gap: .4rem; color: var(--ink); border: 1px solid #ddd1b0; border-radius: 4px; background: rgba(255,255,255,.82); text-align: left; }
+.recent-discovery-ledger button { cursor: pointer; }
+.recent-discovery-ledger button:hover { border-color: var(--gold); background: #fff; }
+.recent-discovery-ledger button > i, .recent-discovery-ledger article > i { font-size: 1rem; font-style: normal; text-align: center; }
+.recent-discovery-ledger button > span, .recent-discovery-ledger article > span { min-width: 0; display: grid; gap: .04rem; }
+.recent-discovery-ledger button strong, .recent-discovery-ledger button small, .recent-discovery-ledger button em, .recent-discovery-ledger article strong, .recent-discovery-ledger article small, .recent-discovery-ledger article em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-discovery-ledger button strong, .recent-discovery-ledger article strong { font-size: .67rem; }
+.recent-discovery-ledger button small, .recent-discovery-ledger article small { color: #7c5d16; font-size: .56rem; }
+.recent-discovery-ledger button em, .recent-discovery-ledger article em { color: var(--muted); font-size: .53rem; font-style: normal; }
+.recent-discovery-ledger button > b, .recent-discovery-ledger article > b { color: #9a7a35; font-size: .8rem; }
 .codex-card.is-unknown { color: #777; border-style: dashed; background: rgba(225,222,214,.5); }
 .codex-card.is-unknown .codex-icon { color: #a5a19a; background: #d5d1c8; }
 .codex-card.codex-unknown-stack { min-height: 170px; }
@@ -1906,9 +2284,79 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .monster-dungeon-group > summary b { color: #e8c677; font-size: .7rem; white-space: nowrap; }
 .monster-dungeon-group > summary i { font-style: normal; font-size: 1.35rem; transform: rotate(90deg); transition: transform .15s ease; }
 .monster-dungeon-group[open] > summary i { transform: rotate(-90deg); }
+.monster-habitat-surveys { margin: .65rem .7rem 0; padding: .52rem; border: 1px solid #d8c9a4; border-radius: 4px; background: #f8f3e6; }
+.monster-habitat-surveys > header { margin-bottom: .4rem; display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; }
+.monster-habitat-surveys > header strong { color: #5e4820; font-size: .76rem; letter-spacing: .06em; }
+.monster-habitat-surveys > header small { color: var(--muted); font-size: .62rem; }
+.monster-habitat-surveys > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .36rem; }
+.monster-habitat-surveys article { min-width: 0; padding: .4rem .42rem; display: grid; gap: .08rem; border: 1px solid #ddd3bd; border-radius: 3px; background: rgba(255,255,255,.72); }
+.monster-habitat-surveys article > span { color: var(--muted); font-size: .6rem; font-weight: 900; }
+.monster-habitat-surveys article > strong { color: #282621; font-size: .8rem; }
+.monster-habitat-surveys article > small { overflow: hidden; color: #746b59; font-size: .57rem; text-overflow: ellipsis; white-space: nowrap; }
+.monster-habitat-surveys article.is-complete { border-color: #7f9d82; background: #eef6eb; }
+.monster-habitat-surveys article.is-complete > strong, .monster-habitat-surveys article.is-complete > small { color: #365e3e; }
+.monster-habitat-surveys article.is-locked { opacity: .55; }
+.habitat-survey-ledger { margin: .75rem 0; padding: .72rem; border: 1px solid #bba873; border-radius: 5px; background: linear-gradient(135deg,#faf5e7,#f3ead4); }
+.habitat-survey-ledger > header { display: flex; align-items: end; justify-content: space-between; gap: .7rem; }
+.habitat-survey-ledger > header span { display: block; color: #886a2b; font-size: .58rem; font-weight: 900; letter-spacing: .12em; }
+.habitat-survey-ledger > header h4 { margin: .08rem 0 0; font: 700 1rem "Yu Mincho","Hiragino Mincho ProN",serif; }
+.habitat-survey-ledger > header > strong { color: #6e5420; font-size: .78rem; white-space: nowrap; }
+.habitat-survey-ledger > p { margin: .35rem 0 .55rem; color: var(--muted); font-size: .68rem; }
+.habitat-survey-ledger > div { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .4rem; }
+.habitat-survey-ledger article { min-width: 0; padding: .42rem; display: grid; gap: .12rem; border: 1px solid #d9ccb0; border-radius: 3px; background: rgba(255,255,255,.7); }
+.habitat-survey-ledger article > span { color: #75613a; font-size: .62rem; font-weight: 900; }
+.habitat-survey-ledger article > strong { color: #2e2a23; font-size: .82rem; }
+.habitat-survey-ledger article > i { height: 3px; overflow: hidden; background: #ddd4c1; border-radius: 99px; }
+.habitat-survey-ledger article > i > b { display: block; height: 100%; background: #9b7a36; }
+.habitat-survey-ledger article > small { overflow: hidden; color: var(--muted); font-size: .56rem; text-overflow: ellipsis; white-space: nowrap; }
+.habitat-survey-ledger article > button { min-height: 28px; margin-top: .2rem; padding: .2rem .28rem; border: 1px solid #b69b62; border-radius: 3px; color: #684f1d; background: #fffaf0; font-size: .58rem; font-weight: 900; cursor: pointer; }
+.habitat-survey-ledger article > button:hover { background: #f3e5c5; }
+.habitat-survey-ledger article.is-complete { border-color: #819b80; background: #edf5e9; }
+.habitat-survey-ledger article.is-complete > i > b { background: #55815d; }
 .monster-dungeon-group > .codex-grid { padding: .7rem; }
 .monster-dungeon-locked { grid-column: 1 / -1; padding: 1rem; color: var(--muted); text-align: center; }
 .monster-codex-card { min-width: 0; }
+.monster-first-defeat { margin: .6rem 0; padding: .5rem .55rem; display: grid; grid-template-columns: auto minmax(0,1fr); gap: .08rem .45rem; border-left: 3px solid #9b762f; background: #f5efe1; }
+.monster-first-defeat > span { grid-row: 1 / span 3; align-self: start; padding: .16rem .3rem; color: #fff; background: #8b6828; border-radius: 2px; font-size: .62rem; font-weight: 900; letter-spacing: .08em; }
+.monster-first-defeat > strong, .monster-first-defeat > p, .monster-first-defeat > small { grid-column: 2; min-width: 0; margin: 0; }
+.monster-first-defeat > strong { color: #5b431c; font-size: .82rem; }
+.monster-first-defeat > p { overflow: hidden; color: #504a40; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.monster-first-defeat > small { color: var(--muted); font-size: .62rem; }
+.monster-hunt-ledger { margin: .55rem 0; padding: .48rem .55rem; border: 1px solid #d9c99f; border-radius: 4px; background: #fbf7ec; }
+.monster-hunt-ledger > span { display: block; margin-bottom: .28rem; color: #735822; font-size: .64rem; font-weight: 900; letter-spacing: .08em; }
+.monster-hunt-ledger > div { display: flex; flex-wrap: wrap; gap: .28rem; }
+.monster-hunt-ledger abbr { display: inline-flex; align-items: center; gap: .22rem; padding: .2rem .34rem; border: 1px solid #b99a55; border-radius: 999px; color: #554019; background: #fffaf0; font-size: .66rem; font-weight: 800; text-decoration: none; }
+.monster-hunt-ledger abbr i { display: grid; width: 1.1rem; height: 1.1rem; place-items: center; border-radius: 50%; color: #fff; background: #8b6828; font-size: .58rem; font-style: normal; }
+.monster-hunt-ledger abbr em { color: #8b6828; font-size: .56rem; font-style: normal; }
+.monster-hunt-ledger > small { display: block; margin-top: .3rem; color: var(--muted); font-size: .62rem; }
+.monster-shared-hunt-ledger { margin: .55rem 0; overflow: hidden; border: 1px solid #b9ad83; border-radius: 4px; background: #fffdf7; }
+.monster-shared-hunt-ledger > summary { min-height: 44px; padding: .4rem .48rem; display: grid; grid-template-columns: minmax(0,1fr) auto 12px; align-items: center; gap: .4rem; color: #4e523a; list-style: none; cursor: pointer; }
+.monster-shared-hunt-ledger > summary::-webkit-details-marker { display: none; }
+.monster-shared-hunt-ledger > summary > span { min-width: 0; display: grid; }
+.monster-shared-hunt-ledger > summary small { color: #80754f; font-size: .47rem; font-weight: 900; letter-spacing: .1em; }
+.monster-shared-hunt-ledger > summary strong { overflow: hidden; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.monster-shared-hunt-ledger > summary b { color: #765b20; font-size: .58rem; white-space: nowrap; }
+.monster-shared-hunt-ledger > summary i { color: #8b7950; font-size: .8rem; font-style: normal; }
+.monster-shared-hunt-ledger[open] > summary i { transform: rotate(90deg); }
+.monster-shared-hunt-ledger > div { display: grid; gap: 1px; border-top: 1px solid #ded5b7; background: #ded5b7; }
+.monster-shared-hunt-ledger button { min-width: 0; padding: .38rem .45rem; display: grid; grid-template-columns: 25px minmax(0,1fr) auto; align-items: center; gap: .38rem; color: var(--ink); border: 0; background: #fff; text-align: left; cursor: pointer; }
+.monster-shared-hunt-ledger button:hover { background: #faf6e8; }
+.monster-shared-hunt-ledger button > span:first-child { display: grid; width: 25px; height: 25px; place-items: center; color: #f7edc9; border-radius: 50%; background: #58634a; font-size: .52rem; font-weight: 900; }
+.monster-shared-hunt-ledger button > span:nth-child(2) { min-width: 0; display: grid; }
+.monster-shared-hunt-ledger button strong,.monster-shared-hunt-ledger button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.monster-shared-hunt-ledger button strong { font-size: .64rem; }
+.monster-shared-hunt-ledger button small { color: var(--muted); font-size: .54rem; }
+.monster-shared-hunt-ledger button em { color: #765b20; font-size: .56rem; font-style: normal; font-weight: 900; white-space: nowrap; }
+.monster-shared-hunt-ledger > div > small { padding: .35rem; color: var(--muted); background: #fff; font-size: .55rem; text-align: center; }
+.item-shared-hunt-ledger { border-color: #b4c1a7; background: #f8fbf2; }
+.item-shared-hunt-ledger > summary { color: #43513e; }
+.item-shared-hunt-ledger > summary small { color: #687b60; }
+.item-shared-hunt-ledger > div { border-top-color: #ced8c4; background: #ced8c4; }
+.result-monster-hunt-marks ul { display: grid; gap: .4rem; margin: .55rem 0; padding: 0; list-style: none; }
+.result-monster-hunt-marks li { display: grid; grid-template-columns: 2rem minmax(0,1fr); gap: .5rem; align-items: center; padding: .45rem; border: 1px solid rgba(155,118,47,.32); background: rgba(255,250,235,.72); }
+.result-monster-hunt-marks li > i { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 50%; color: #fff; background: #8b6828; font-style: normal; font-weight: 900; }
+.result-monster-hunt-marks li span { display: grid; gap: .1rem; }
+.result-monster-hunt-marks li small { color: var(--muted); }
 .monster-difficulty-drops { margin: .7rem 0; display: grid; gap: .35rem; }
 .monster-difficulty-drop { min-width: 0; padding: .45rem .5rem; display: grid; grid-template-columns: 42px minmax(0,1fr); align-items: center; gap: .15rem .4rem; background: #efebe2; border: 1px solid #ddd5c6; border-radius: 4px; }
 .monster-difficulty-drop > strong { grid-row: 1 / span 2; color: #624d25; font-size: .68rem; }
@@ -1918,6 +2366,11 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .monster-difficulty-drop.is-unknown { opacity: .68; }
 .monster-drop-chip, .monster-drop-unknown { padding: .2rem .35rem; border-radius: 3px; font-size: .62rem; line-height: 1.35; }
 .monster-drop-chip { color: #2f4437; background: #e0e9df; border: 1px solid #b9cbb8; }
+.monster-drop-chip.is-action { display: inline-flex; align-items: center; gap: .35rem; font-family: inherit; cursor: pointer; }
+.monster-drop-chip.is-action i { padding-left: .35rem; color: #6d5422; border-left: 1px solid #b9cbb8; font-size: .56rem; font-style: normal; font-weight: 700; }
+.monster-drop-chip.is-action:hover { border-color: #8f7438; box-shadow: 0 1px 3px rgba(76,58,23,.16); }
+.monster-drop-chip.is-action.is-paired { color: #f6eed3; background: #4a4435; border-color: #9d8141; cursor: default; }
+.monster-drop-chip.is-action.is-paired i { color: #ead18e; border-left-color: #756744; }
 .monster-skill-record { align-items: start; }
 .monster-skill-chip { min-width: min(100%,180px); color: #57406f; background: #eee7f3; border: 1px solid #cfc0da; border-radius: 3px; font-size: .62rem; }
 .monster-skill-chip > summary { padding: .2rem .35rem; cursor: pointer; font-weight: 700; list-style: none; }
@@ -2059,10 +2512,57 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .character-expedition-record > summary small { color: var(--muted); font-size: .64rem; }
 .character-expedition-record > summary i { color: #9a7a35; font-style: normal; }
 .character-expedition-record[open] > summary i { transform: rotate(90deg); }
+.character-recent-role { display: grid; grid-template-columns: auto auto minmax(0,1fr); align-items: center; gap: .35rem .5rem; margin: 0; padding: .5rem .65rem; border-top: 1px solid #ded2ae; background: #f2ead2; }
+.character-recent-role > small { color: #80682f; font-size: .58rem; font-weight: 800; letter-spacing: .05em; }
+.character-recent-role > strong { display: flex; align-items: center; gap: .28rem; color: #4f4327; font-size: .72rem; white-space: nowrap; }
+.character-recent-role > strong i { display: grid; place-items: center; width: 1.2rem; height: 1.2rem; color: #fff; border-radius: 50%; background: #6e805f; font-size: .55rem; font-style: normal; }
+.character-recent-role > span { color: #5f5a4c; font-size: .62rem; line-height: 1.45; }
 .character-expedition-record > div { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 1px; border-top: 1px solid #ded2ae; background: #ded2ae; }
 .character-expedition-record > div span { display: grid; gap: .08rem; min-width: 0; padding: .42rem .5rem; background: #fff; }
 .character-expedition-record > div small { overflow: hidden; color: var(--muted); font-size: .56rem; text-overflow: ellipsis; white-space: nowrap; }
 .character-expedition-record > div strong { font-size: .72rem; }
+.character-recent-expeditions { padding: .55rem .65rem; border-top: 1px solid #ded2ae; background: #f8f3e6; }
+.character-recent-expeditions > header { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .35rem; }
+.character-recent-expeditions > header strong { color: #6e5723; font-size: .68rem; }
+.character-recent-expeditions > header small { color: var(--muted); font-size: .56rem; }
+.character-recent-expeditions > div { display: grid; gap: .3rem; }
+.character-recent-expeditions button { display: grid; grid-template-columns: 1.5rem minmax(7rem,1fr) minmax(9rem,auto) auto; align-items: center; gap: .4rem; width: 100%; min-width: 0; padding: .4rem .45rem; color: var(--ink); border: 1px solid #ddd1b0; border-radius: 4px; background: #fff; text-align: left; cursor: pointer; }
+.character-recent-expeditions button > span:first-child { display: grid; place-items: center; width: 1.35rem; height: 1.35rem; color: #fff; border-radius: 50%; background: #4f8a68; font-size: .58rem; font-weight: 900; }
+.character-recent-expeditions button > span:first-child.failure { background: #a65b58; }
+.character-recent-expeditions button > span:nth-child(2), .character-recent-expeditions button > span:nth-child(3) { display: grid; min-width: 0; gap: .08rem; }
+.character-recent-expeditions button strong, .character-recent-expeditions button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character-recent-expeditions button strong { font-size: .68rem; }
+.character-recent-expeditions button small { color: var(--muted); font-size: .55rem; }
+.character-recent-expeditions button .character-expedition-context { color: #7f652d; }
+.character-recent-expeditions button > span:nth-child(3) { grid-template-columns: repeat(3,auto); gap: .08rem .4rem; justify-content: end; }
+.character-recent-expeditions button b { font-size: .6rem; white-space: nowrap; }
+.character-recent-expeditions button > span:nth-child(3) small { grid-column: 1 / -1; text-align: right; }
+.character-recent-expeditions button > i { color: #9a7a35; font-style: normal; }
+.character-first-discoveries { border-top: 1px solid #ded2ae; background: #fffdf7; }
+.character-first-discoveries > summary { min-height: 46px; padding: .45rem .65rem; display: flex; align-items: center; gap: .5rem; cursor: pointer; list-style: none; }
+.character-first-discoveries > summary::-webkit-details-marker { display: none; }
+.character-first-discoveries > summary > span { display: grid; gap: .05rem; min-width: 0; }
+.character-first-discoveries > summary strong { color: #6e5723; font-size: .68rem; }
+.character-first-discoveries > summary small { color: var(--muted); font-size: .56rem; }
+.character-first-discoveries > summary b { margin-left: auto; color: #7c5d16; font-size: .68rem; }
+.character-first-discoveries > summary > i { color: #9a7a35; font-style: normal; }
+.character-first-discoveries[open] > summary > i { transform: rotate(90deg); }
+.character-first-discoveries > div { padding: 0 .65rem .55rem; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .3rem; }
+.character-first-discoveries > div > span { min-width: 0; padding: .35rem .4rem; display: flex; align-items: center; gap: .4rem; border: 1px solid #ddd1b0; border-radius: 4px; background: #fff; }
+.character-first-discoveries > div > span > i { flex: 0 0 1.3rem; font-size: .9rem; font-style: normal; text-align: center; }
+.character-first-discoveries > div > span > span { min-width: 0; display: grid; gap: .05rem; }
+.character-first-discoveries > div strong, .character-first-discoveries > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character-first-discoveries > div strong { font-size: .64rem; }
+.character-first-discoveries > div small { color: var(--muted); font-size: .54rem; }
+.character-shared-hunt-ledgers > div { grid-template-columns: 1fr; }
+.character-shared-hunt-ledgers > div > button { width: 100%; min-width: 0; padding: .38rem .42rem; display: grid; grid-template-columns: 1.3rem minmax(0,1fr) auto; align-items: center; gap: .4rem; border: 1px solid #ddd1b0; border-radius: 4px; color: inherit; background: linear-gradient(105deg,#f2f5ec,#fffaf0); text-align: left; }
+.character-shared-hunt-ledgers > div > button > i { font-size: .9rem; font-style: normal; text-align: center; }
+.character-shared-hunt-ledgers > div > button > span { min-width: 0; display: grid; gap: .05rem; }
+.character-shared-hunt-ledgers > div > button strong, .character-shared-hunt-ledgers > div > button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character-shared-hunt-ledgers > div > button strong { font-size: .64rem; }
+.character-shared-hunt-ledgers > div > button small { color: var(--muted); font-size: .54rem; }
+.character-shared-hunt-ledgers > div > button .hunt-ledger-next { color: #765b20; font-weight: 800; }
+.character-shared-hunt-ledgers > div > button > em { color: #9a7a35; font-size: .8rem; font-style: normal; }
 .character-route-experience { padding: .5rem .65rem; border-top: 1px solid #ded2ae; background: #fffdf7; }
 .character-route-experience > strong { display: block; margin-bottom: .35rem; color: #6e5723; font-size: .68rem; }
 .character-field-specialties { display: flex; align-items: center; gap: .4rem; margin: 0 0 .4rem; padding: .32rem .45rem; color: #294f40; border-left: 3px solid #478064; background: #edf7f0; }
@@ -2073,10 +2573,28 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .character-route-experience small { font-size: .6rem; }
 .character-route-experience b { color: #7c5d16; font-size: .64rem; white-space: nowrap; }
 .character-travel-companions > button { margin-top: .45rem; color: #765817; font-size: .64rem; }
+.character-signature-skills { padding: .55rem .65rem; border-top: 1px solid #ded2ae; background: #f8f3e6; }
+.character-signature-skills > header { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .38rem; }
+.character-signature-skills > header strong { color: #6e5723; font-size: .68rem; }
+.character-signature-skills > header small { color: var(--muted); font-size: .56rem; }
+.character-signature-skills > div { display: grid; gap: .3rem; }
+.character-signature-skills details { overflow: hidden; border: 1px solid #ddd1b0; border-radius: 4px; background: #fff; }
+.character-signature-skills summary { min-height: 42px; padding: .35rem .5rem; display: flex; align-items: center; justify-content: space-between; gap: .5rem; cursor: pointer; }
+.character-signature-skills summary span { display: grid; min-width: 0; }
+.character-signature-skills summary strong { overflow: hidden; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.character-signature-skills summary strong b { margin-left: .25rem; padding: .08rem .28rem; color: #fff8dc; border-radius: 999px; background: #8b6a25; font-size: .52rem; }
+.character-signature-skills summary small,.character-signature-skills details > small { color: #8a6b26; font-size: .58rem; }
+.character-signature-skills summary i { color: #9a7a35; font-style: normal; }
+.character-signature-skills details[open] summary i { transform: rotate(90deg); }
+.character-signature-skills details > p { margin: 0; padding: .45rem .5rem .2rem; border-top: 1px solid #ece4d0; color: #4e4b45; font-size: .62rem; line-height: 1.55; }
+.character-signature-skills details > small { display: block; padding: .2rem .5rem .45rem; }
+.skill-mastery-progress { height: 3px; margin: .35rem .5rem 0; overflow: hidden; border-radius: 999px; background: #e5ddc8; }
+.skill-mastery-progress span { display: block; height: 100%; background: #a17b29; }
 .adventurer-bond-ledger { margin: .8rem 0 1rem; padding: .7rem; border: 1px solid #cbb577; border-radius: 6px; background: linear-gradient(145deg,#fffaf0,#f5ecd5); }
 .adventurer-bond-ledger > p { margin: .25rem 0 .65rem; color: var(--muted); font-size: .68rem; }
 .adventurer-bond-list { display: grid; gap: .4rem; }
 .adventurer-bond-list details { overflow: hidden; border: 1px solid #d8c99f; border-radius: 5px; background: rgba(255,255,255,.82); }
+.adventurer-bond-list details.is-focused { border-color: #887038; box-shadow: 0 0 0 2px rgba(153,122,50,.13); }
 .adventurer-bond-list summary { min-height: 52px; padding: .45rem .55rem; display: grid; grid-template-columns: 28px minmax(0,1fr) auto 16px; align-items: center; gap: .45rem; cursor: pointer; }
 .adventurer-bond-list summary > span:first-child { display: grid; place-items: center; width: 28px; height: 28px; color: #fff7dc; border-radius: 50%; background: #826326; font-weight: 900; }
 .adventurer-bond-list summary > span:nth-child(2) { display: grid; min-width: 0; }
@@ -2089,6 +2607,14 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .adventurer-bond-list li + li { margin-top: .55rem; padding-top: .55rem; border-top: 1px dashed #ddd0ae; }
 .adventurer-bond-list li strong { color: #654c18; font-size: .7rem; }
 .adventurer-bond-list li p { margin: .18rem 0 0; color: #4d4b46; font-size: .68rem; line-height: 1.65; }
+.adventurer-bond-list .shared-hunt-ledger-page.is-focused { margin-inline: -.35rem; padding: .5rem .45rem; border: 1px solid #d7c17d; border-radius: 4px; background: #fff7db; }
+.adventurer-bond-list .shared-hunt-ledger-page.is-focused + li { margin-top: .55rem; }
+.adventurer-bond-list .shared-hunt-ledger-story { color: #6d634c; font-family: Georgia,"Yu Mincho",serif; font-size: .63rem; }
+.shared-hunt-ledger-progress { display: grid; grid-template-columns: minmax(0,1fr) 4.5rem; align-items: center; gap: .45rem; margin-top: .3rem; color: #765b20; font-size: .58rem; font-weight: 800; }
+.adventurer-bond-list .shared-hunt-ledger-epithet { display: block; margin-top: .18rem; color: #765b20; font-size: .61rem; font-style: normal; font-weight: 900; }
+.adventurer-bond-list .shared-hunt-ledger-support { margin: .32rem 0; padding: .38rem .48rem; border-left: 3px solid #66806c; background: rgba(91,119,97,.08); color: #506254; font-size: .61rem; line-height: 1.5; }
+.adventurer-bond-list .shared-hunt-ledger-support b { display: block; color: #35533d; }
+.adventurer-bond-list .shared-hunt-ledger-page > .text-button { margin-top: .28rem; padding: .22rem 0; color: #765b20; font-size: .59rem; }
 .result-bond-actions { display: flex; flex-wrap: wrap; gap: .4rem; }
 .character-record-medals { padding: .55rem .65rem; border-top: 1px solid #ded2ae; background: #fffaf0; }
 .character-record-medals > div { display: flex; flex-wrap: wrap; gap: .3rem; }
@@ -2171,6 +2697,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .dungeon-route-metrics span { padding: .3rem .45rem; display: grid; background: #eeebe3; border-radius: 4px; text-align: center; }
 .dungeon-route-metrics small { color: var(--muted); font-size: .58rem; }
 .dungeon-route-metrics strong { color: #4d3b20; font-size: .75rem; }
+.dungeon-route-metrics .is-complete { background: #e3edda; }
+.dungeon-route-metrics .is-complete strong { color: #416238; }
 .dungeon-route-controls { padding: .45rem .7rem; display: grid; grid-template-columns: minmax(0,1fr) 112px; align-items: end; gap: .55rem; background: rgba(238,235,227,.72); border-top: 1px solid var(--line); }
 .dungeon-route-controls label { display: grid; grid-template-columns: auto minmax(0,1fr); align-items: center; gap: .5rem; color: var(--muted); font-size: .66rem; font-weight: 700; }
 .dungeon-route-controls select { min-width: 0; height: 40px; padding-block: .3rem; }
@@ -2214,14 +2742,26 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-member strong { font-size: .62rem; }
 .fleet-member small { color: var(--muted); font-size: .58rem; }
 .fleet-member i { position: absolute; top: 13px; left: 1px; width: 16px; height: 16px; display: grid; place-items: center; color: white; background: #18232d; border-radius: 50%; font: normal 700 .55rem sans-serif; }
+.fleet-party-mood { grid-column: 1 / -1; margin-top: .28rem; overflow: hidden; border: 1px solid rgba(173,132,53,.28); border-radius: 4px; background: rgba(249,241,216,.56); }
+.fleet-party-mood > summary { min-height: 28px; display: flex; align-items: center; gap: .35rem; padding: .28rem .45rem; color: #705521; cursor: pointer; list-style: none; }
+.fleet-party-mood > summary::-webkit-details-marker { display: none; }
+.fleet-party-mood > summary span { flex: 0 0 auto; font-size: .58rem; font-weight: 900; letter-spacing: .06em; }
+.fleet-party-mood > summary strong { min-width: 0; overflow: hidden; font-size: .66rem; text-overflow: ellipsis; white-space: nowrap; }
+.fleet-party-mood > summary i { margin-left: auto; font-size: .65rem; font-style: normal; transition: transform .18s ease; }
+.fleet-party-mood[open] > summary i { transform: rotate(180deg); }
+.fleet-party-mood > p { margin: 0; padding: .4rem .5rem .5rem; color: #625b4e; border-top: 1px solid rgba(173,132,53,.18); font-size: .66rem; line-height: 1.65; }
 .fleet-empty-member { min-height: 54px; display: grid; place-items: center; color: var(--muted); font-size: .75rem; }
 .party-equipment-back { width: auto; min-width: 76px; padding: .35rem .55rem; font-size: .72rem; }
 .equipment-modal-backdrop.party-equipment-route { padding: 0; background: #111820; }
 .equipment-modal-backdrop.party-equipment-route .equipment-modal { width: min(960px,100%); min-height: 100dvh; max-height: 100dvh; margin: 0 auto; padding-bottom: 3rem; overflow-y: auto; border-width: 0 1px; border-radius: 0; }
+.equipment-character-identity { min-height: 66px; margin: .45rem .45rem 0; padding: .4rem .55rem; display: grid; grid-template-columns: 46px minmax(0,1fr); align-items: center; gap: .65rem; background: white; border: 1px solid var(--line); border-radius: 5px; }
+.equipment-character-identity .portrait-edit-button .character-avatar { --portrait-width: 40px; }
+.equipment-character-identity > span { min-width: 0; display: grid; gap: .12rem; }
+.equipment-character-identity strong { overflow: hidden; font-size: .95rem; text-overflow: ellipsis; white-space: nowrap; }
+.equipment-character-identity small { overflow: hidden; color: var(--muted); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
 .equipment-character-settings { margin: .45rem; overflow: hidden; background: white; border: 1px solid var(--line); border-radius: 5px; }
-.equipment-character-settings > summary { min-height: 58px; padding: .35rem .55rem; display: grid; grid-template-columns: 38px minmax(0,1fr) 18px; align-items: center; gap: .5rem; list-style: none; cursor: pointer; }
+.equipment-character-settings > summary { min-height: 52px; padding: .35rem .65rem; display: grid; grid-template-columns: minmax(0,1fr) 18px; align-items: center; gap: .5rem; list-style: none; cursor: pointer; }
 .equipment-character-settings > summary::-webkit-details-marker { display: none; }
-.equipment-character-settings > summary .character-avatar { --portrait-width: 34px; }
 .equipment-character-settings > summary > span { min-width: 0; display: grid; }
 .equipment-character-settings > summary strong, .equipment-character-settings > summary small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .equipment-character-settings > summary strong { font-size: .85rem; }
@@ -2256,7 +2796,10 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .equipment-ability-list li.is-empty { display: block; min-height: 44px; padding: .6rem .45rem; color: var(--muted); font-size: .72rem; }
 .equipment-ability-entry > summary { min-height: 44px; display: grid; grid-template-columns: 54px minmax(0,1fr) 16px; align-items: center; gap: .45rem; padding: .35rem .4rem; list-style: none; cursor: pointer; }
 .equipment-ability-entry > summary::-webkit-details-marker { display: none; }
-.equipment-ability-entry > summary strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.equipment-ability-entry > summary strong { min-width: 0; display: flex; align-items: center; gap: .35rem; overflow: hidden; white-space: nowrap; }
+.equipment-ability-entry > summary strong > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.equipment-skill-mastery { flex: 0 0 auto; padding: .08rem .3rem; color: #fff8dc; border-radius: 999px; background: #76548c; font-size: .55rem; font-style: normal; font-weight: 800; }
+.equipment-ability-detail .equipment-skill-mastery-detail { display: block; margin-top: .25rem; color: #67417e; font-weight: 700; }
 .equipment-ability-entry > summary > i { color: var(--gold); font: normal 1rem serif; text-align: center; transition: transform .15s ease; }
 .equipment-ability-entry[open] > summary > i { transform: rotate(90deg); }
 .equipment-ability-entry[open] > summary { background: #fff9eb; }
@@ -2331,6 +2874,16 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .roster-scope-shortcuts { display: grid; grid-template-columns: repeat(3,1fr); gap: 3px; padding: .4rem .65rem; background: rgba(20,31,41,.05); border-bottom: 1px solid var(--line); }
 .roster-scope-shortcuts button { min-height: 34px; padding: .3rem .55rem; color: var(--muted); background: transparent; border: 1px solid transparent; border-radius: 4px; font: inherit; font-size: .72rem; font-weight: 700; cursor: pointer; }
 .roster-scope-shortcuts button.is-active { color: #5f4718; background: #f3e8c9; border-color: #d6c18a; }
+.roster-current-harvest { display: flex; align-items: center; gap: .45rem .65rem; flex-wrap: wrap; margin: .45rem .65rem 0; padding: .48rem .62rem; color: #6b5120; background: #fbf4de; border: 1px solid #d5bd79; border-radius: 6px; font-size: .75rem; }
+.roster-current-harvest > span { flex: 0 0 auto; font-weight: 800; }
+.roster-current-harvest > strong { min-width: 0; color: #423514; overflow-wrap: anywhere; }
+.roster-current-harvest > small { margin-left: auto; color: #765b22; font-size: .7rem; }
+.current-harvest-party-state { flex:1 0 100%; display:flex; align-items:center; gap:.35rem .55rem; margin:0; padding-top:.38rem; border-top:1px solid rgba(133,103,37,.2); color:#625a49; font-style:normal; }
+.current-harvest-party-state b { color:#4d432e; font-size:.66rem; }
+.current-harvest-party-state span { font-weight:800; }
+.current-harvest-party-state i { margin-left:auto; color:#7a6a3e; font-size:.65rem; font-style:normal; }
+.current-harvest-party-state.is-consulting i { color:#55704a; }
+.current-harvest-party-state.is-remembered i { color:#8a5b21; }
 .roster-empty { display: grid; justify-items: center; gap: .35rem; padding: .6rem; }
 .roster-empty .empty-line { margin: 0; padding: .25rem; }
 .roster-empty .button { min-height: 34px; padding: .35rem .8rem; }
@@ -2350,8 +2903,23 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .roster-quick-stats .is-near-limit strong { color: inherit; }
 .roster-quick-stats .roster-route-specialty { color: #41654e; border-color: #a9c2ad; background: #eff7ef; }
 .roster-quick-stats .roster-route-specialty strong { color: #2f5840; }
+.roster-quick-stats .roster-harvest-specialty { color: #6b5120; border-color: #d5bd79; background: #fbf4de; }
+.roster-quick-stats .roster-harvest-specialty strong { color: #584216; }
+.harvest-practice-note { display:block; margin-top:5px; color:#765b22; font-weight:700; }
+.harvest-consultation-note { display:block; margin-top:7px; padding:7px 9px; border-left:3px solid #8b7b45; border-radius:3px; background:rgba(255,255,255,.58); color:#555044; font-weight:600; line-height:1.55; }
+.harvest-consultation-note b { display:block; margin-bottom:2px; color:#6d5b27; font-size:.68rem; letter-spacing:.08em; }
+.harvest-consultation-note em { display:block; margin-top:4px; color:#35533d; font-size:.62rem; font-style:normal; }
+.harvest-ledger-progress { display:grid; grid-template-columns:minmax(0,1fr) 4.5rem; align-items:center; gap:.45rem; margin-top:5px; color:#765b20; font-size:.6rem; font-weight:800; }
+@media (max-width:600px) {
+  .current-harvest-party-state { align-items:flex-start; flex-direction:column; gap:.12rem; }
+  .current-harvest-party-state i { margin-left:0; }
+}
 .roster-quick-stats .roster-bond-specialty { color: #704f19; border-color: #d6c18a; background: #faf2dc; }
 .roster-quick-stats .roster-bond-specialty strong { color: #5f4718; }
+.roster-quick-stats .roster-skill-specialty { color: #67417e; border-color: #c8add8; background: #f7effb; }
+.roster-quick-stats .roster-skill-specialty strong { color: #523168; }
+.roster-quick-stats .roster-recent-role { color: #365d6d; border-color: #9dbbc4; background: #eef7f8; }
+.roster-quick-stats .roster-recent-role strong { color: #294e5d; }
 .roster-position { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: .875rem; }
 .roster-quick-action { width: 42px; min-height: 44px; display: grid; place-items: center; color: white; background: var(--gold); border: 0; border-radius: 6px; font-size: 1.3rem; }
 .roster-quick-action.remove { color: #7b2c2c; background: #f0dddd; }
@@ -2394,6 +2962,14 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .equipment-picker-diff > span em { grid-column: 1 / -1; text-align: right; font-style: normal; font-weight: 700; }
 .equipment-picker-diff > span em.positive { color: var(--green); }
 .equipment-picker-diff > span em.negative { color: #9a4b30; }
+.equipment-picker-attribute-diff,.equipment-picker-trait-diff { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; padding: .42rem .5rem; border: 1px solid rgba(174,132,45,.36); border-radius: 5px; background: rgba(238,220,170,.25); }
+.equipment-picker-trait-diff { border-color: rgba(76,112,129,.3); background: rgba(219,233,237,.34); }
+.equipment-picker-attribute-diff > small,.equipment-picker-trait-diff > small { flex: 0 0 100%; color: var(--muted); font-size: .75rem; }
+.equipment-picker-attribute-diff > span,.equipment-picker-trait-diff > span { display: inline-flex; align-items: baseline; gap: .3rem; padding: .2rem .38rem; border-radius: 4px; background: rgba(255,255,255,.66); font-size: .75rem; font-variant-numeric: tabular-nums; }
+.equipment-picker-attribute-diff b,.equipment-picker-trait-diff b { color: var(--muted); font-weight: 500; }
+.equipment-picker-attribute-diff em,.equipment-picker-trait-diff em { font-style: normal; font-weight: 700; }
+.equipment-picker-attribute-diff em.positive,.equipment-picker-trait-diff em.positive { color: var(--green); }
+.equipment-picker-attribute-diff em.negative,.equipment-picker-trait-diff em.negative { color: #9a4b30; }
 .equipment-picker-name strong { overflow-wrap: anywhere; }
 .equipment-picker-name small, .equipment-picker-diff small, .equipment-picker-skill > small { color: var(--muted); font-size: .8125rem; line-height: 1.45; }
 .equipment-picker-stats { display: grid; grid-template-columns: repeat(2,1fr); gap: .2rem .5rem; font-size: .8125rem; }
@@ -3113,6 +3689,10 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .recurring-mission-card .card-heading { margin: 0 0 .12rem; }
 .recurring-mission-card h4, .recurring-mission-card p { margin: 0; }
 .recurring-mission-card p, .recurring-mission-card small { color: #59666e; font-size: .75rem; }
+.recurring-mission-card .recurring-mission-issuer { display: -webkit-box; margin: .18rem 0 .22rem; overflow: hidden; color: #554d3c; font-family: Georgia,"Yu Mincho",serif; font-size: .68rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.recurring-mission-issuer b { margin-right: .35rem; color: #795d24; }
+.recurring-mission-card .recurring-mission-issuer.is-complete { color: #3f6658; }
+.recurring-mission-issuer.is-complete b { color: #3f6658; }
 .recurring-mission-card small { color: #775a22; }
 .recurring-mission-card > .button { min-width: 72px; min-height: 42px; padding-inline: .6rem; }
 
@@ -3385,6 +3965,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .archive-progress strong { font-size: .72rem; }
   .archive-content { margin-top: .5rem; }
   .adventurer-record-boards { grid-template-columns: 1fr; gap: .45rem; margin-top: .5rem; }
+  .adventurer-signature-ledger > div { grid-template-columns: 1fr; }
+  .named-hunt-next-ledgers > div { grid-template-columns: 1fr; }
   .codex-grid { gap: .45rem; }
   .codex-card, .codex-card.codex-unknown-stack { min-height: 0; padding: .6rem; }
   .codex-card h4 { margin: .3rem 0; font-size: .9rem; }
@@ -3464,6 +4046,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .codex-target-progress > i { grid-column: 1 / -1; height: 5px; overflow: hidden; border-radius: 999px; background: #d8d1c2; }
 .codex-target-progress > i > b { display: block; height: 100%; background: var(--green); }
 .codex-tracked-target.is-complete, .tracked-loot-guide.is-complete { border-color: color-mix(in srgb, var(--green) 65%, var(--line)); background: #edf6f0; }
+.tracked-loot-guide.tracked-harvest-guide { border-color: color-mix(in srgb, var(--green) 42%, var(--gold)); background: linear-gradient(100deg,#edf3e8,#fffaf0); }
+.tracked-loot-guide.tracked-harvest-guide > span { color: #69733e; }
 #item-target-form { grid-column: 1 / 3; display: flex; align-items: end; gap: .4rem; }
 #item-target-form label { display: flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .68rem; }
 #item-target-form input { width: 70px; min-height: 36px; padding: .3rem .45rem; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
@@ -3487,6 +4071,17 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .tracked-loot-match > span { color: var(--gold); font-size: .65rem; font-weight: 800; }
 .tracked-loot-match > strong { font-size: .76rem; }
 .tracked-loot-match > small { margin-left: auto; color: var(--muted); font-size: .64rem; }
+.tracked-loot-match.tracked-harvest-match { border-left-color: #69733e; background: linear-gradient(90deg,rgba(105,115,62,.12),rgba(190,139,35,.08)); }
+.tracked-loot-match.tracked-harvest-match > span { color: #69733e; }
+.result-tracked-achievement.result-tracked-harvest { border-color: #a59a62; background: linear-gradient(120deg,#edf3e8,#fffaf0); }
+.result-tracked-harvest > div:not(.result-tracked-actions):not(.result-harvest-progress) { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; margin-top: .45rem; }
+.result-tracked-harvest > div > p { display: grid; gap: .12rem; margin: 0; padding: .45rem .55rem; border-radius: 5px; background: rgba(255,255,255,.66); font-size: .74rem; font-weight: 800; }
+.result-tracked-harvest > div > p small { color: var(--muted); font-size: .56rem; font-weight: 700; }
+.result-tracked-harvest > div > p.is-found { box-shadow: inset 3px 0 var(--green); }
+.result-tracked-harvest > div > p.is-missed { color: #736d61; box-shadow: inset 3px 0 #aaa394; }
+.result-harvest-progress { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .35rem; margin-top: .4rem; }
+.result-harvest-progress > span { min-width: 0; }
+.result-harvest-progress > span > small { display: block; overflow: hidden; color: var(--muted); font-size: .62rem; text-overflow: ellipsis; white-space: nowrap; }
 .dungeon-difficulty-selector > .tracked-loot-match { grid-column: 1 / -1; }
 @media (max-width: 600px) {
   .codex-tracked-target, .tracked-loot-guide { padding: .5rem .6rem; }
@@ -3494,6 +4089,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .codex-tracked-target > .button { grid-row: 1; }
   #item-target-form { grid-column: 1 / -1; }
   .tracked-loot-match { flex-wrap: wrap; }
+  .result-tracked-harvest > div:not(.result-tracked-actions):not(.result-harvest-progress), .result-harvest-progress { grid-template-columns: 1fr; }
   .preset-panel { padding: .65rem; }
   .preset-panel > h3 { margin-top: 0; }
   .preset-form { gap: .45rem; margin: .65rem 0; }
@@ -3541,6 +4137,19 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .dungeon-rivalry-lead span { grid-row: 1 / 3; padding: .2rem .35rem; border-radius: 4px; background: #754038; color: #fff4df; font-size: .68rem; font-weight: 800; }
 .dungeon-rivalry-lead strong { font-size: .82rem; }
 .dungeon-rivalry-lead small { color: var(--ink-soft); }
+.dungeon-named-hunts { display: grid; gap: .4rem; margin: .55rem .75rem; padding: .6rem .65rem; border: 1px solid rgba(162,122,46,.34); border-left: 3px solid #a27325; border-radius: 6px; background: linear-gradient(100deg,rgba(255,244,216,.82),rgba(241,232,210,.68)); }
+.dungeon-named-hunts > header { display: flex; align-items: center; gap: .45rem; }
+.dungeon-named-hunts > header > span:first-child { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; color: #fff5dc; border-radius: 50%; background: #795a28; font-weight: 900; }
+.dungeon-named-hunts > header > span:last-child { display: grid; }
+.dungeon-named-hunts > header small { color: #9b752e; font-size: .55rem; font-weight: 900; letter-spacing: .12em; }
+.dungeon-named-hunts > header strong { font-size: .8rem; }
+.dungeon-named-hunts > div { display: grid; gap: .3rem; }
+.dungeon-named-hunts article { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .5rem; padding: .4rem .45rem; border-radius: 5px; background: rgba(255,255,255,.58); }
+.dungeon-named-hunts article > span { display: grid; min-width: 0; }
+.dungeon-named-hunts article strong { overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.dungeon-named-hunts article small,.dungeon-named-hunts > small { color: var(--ink-soft); font-size: .66rem; }
+.dungeon-named-hunts .button { min-height: 36px; padding: .3rem .55rem; font-size: .68rem; }
+@media (max-width: 560px) { .dungeon-named-hunts article { grid-template-columns: 1fr; } .dungeon-named-hunts .button { width: 100%; min-height: 44px; } }
 .result-boss-rivalries { margin: .8rem 0; padding: .8rem; border: 1px solid rgba(125,68,56,.35); border-radius: 8px; background: linear-gradient(135deg,rgba(119,52,44,.09),rgba(173,133,63,.08)); }
 .result-boss-rivalries > div:last-child { display: grid; gap: .45rem; margin-top: .55rem; }
 .result-boss-rivalries article { display: grid; grid-template-columns: 2rem 1fr; gap: .55rem; align-items: center; padding: .5rem; background: rgba(255,255,255,.48); border-radius: 6px; }
@@ -3560,4 +4169,20 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .attribute-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.attribute-entry{border:1px solid rgba(128,112,80,.18);border-radius:8px;background:rgba(255,255,255,.58)}.attribute-entry summary{display:grid;grid-template-columns:1fr auto;align-items:center;gap:2px 8px;padding:7px 9px;cursor:pointer}.attribute-entry summary small{grid-column:1/-1;color:#9b731e}.attribute-entry p{margin:0;padding:0 9px 8px;color:var(--muted);font-size:.78rem;line-height:1.55}.attribute-radar-card.is-compact .attribute-radar-layout{grid-template-columns:minmax(170px,220px) 1fr}
 .attribute-radar-card.is-chart-only{padding:8px}.attribute-radar-card.is-chart-only .attribute-radar-layout{grid-template-columns:1fr}.attribute-radar-card.is-chart-only .attribute-radar{max-width:180px}.attribute-radar-card.is-chart-only .attribute-radar-heading>small{display:none}
 .reveal-applicant .attribute-radar-card{width:100%;margin:.55rem 0 0;color:var(--ink);background:linear-gradient(145deg,#fffdf6,#e9e1cf)}.reveal-applicant .attribute-radar-heading{align-items:center}.reveal-applicant .attribute-radar-heading .label{font-size:.52rem}.reveal-applicant .attribute-radar-heading strong{font-size:.72rem}.reveal-applicant .attribute-labels{font-size:10px}
-@media(max-width:620px){.attribute-radar-layout,.attribute-radar-card.is-compact .attribute-radar-layout{grid-template-columns:1fr}.attribute-radar{max-width:230px}.attribute-values{grid-template-columns:repeat(4,minmax(0,1fr))}.attribute-entry summary{display:flex;flex-direction:column;gap:1px;padding:6px 3px}.attribute-entry summary small{font-size:.65rem}.attribute-entry p{display:none}.attribute-radar-heading>small{max-width:52%;font-size:.7rem}}
+@media(max-width:620px){
+  .attribute-radar-layout,.attribute-radar-card.is-compact .attribute-radar-layout{grid-template-columns:1fr}
+  .attribute-radar{max-width:230px}
+  .attribute-values{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .attribute-entry summary{display:flex;flex-direction:column;gap:1px;padding:6px 3px}
+  .attribute-entry summary small{font-size:.65rem}
+  .attribute-entry p{display:none}
+  .attribute-radar-heading>small{max-width:52%;font-size:.7rem}
+
+  /* v0.458 compact mobile primary attributes */
+  .equipment-modal .attribute-radar-card.is-compact{margin:.45rem;padding:8px;border-radius:8px}
+  .equipment-modal .attribute-radar-card.is-compact .attribute-radar-layout{grid-template-columns:minmax(136px,42%) minmax(0,1fr);gap:4px}
+  .equipment-modal .attribute-radar-card.is-compact .attribute-radar{max-width:156px}
+  .equipment-modal .attribute-radar-card.is-compact .attribute-values{grid-template-columns:repeat(2,minmax(0,1fr));gap:4px}
+  .equipment-modal .attribute-radar-card.is-compact .attribute-entry summary{min-height:40px;padding:4px 2px}
+  .equipment-modal .attribute-radar-card.is-compact .attribute-radar-heading{margin-bottom:0}
+}

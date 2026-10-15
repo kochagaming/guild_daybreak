@@ -35,6 +35,13 @@
     "party.select": p => window.Party.select(p.partyIndex),
     "party.readResult": p => window.Party.markResultRead(p.partyIndex),
     "party.setPlan": p => window.Party.setPlan(p, p.partyIndex),
+    "party.reuseHarvest": p => {
+      const plan = window.Party.setPlan(p, p.partyIndex);
+      if (!plan.ok) return plan;
+      const harvest = window.Encyclopedia.setTrackedHarvest(p.itemId, p.monsterId);
+      if (!harvest.ok) return harvest;
+      return { ok: true, plan: plan.plan, message: `${harvest.message} 過去の行き先も指定しました。` };
+    },
     "party.rename": p => window.Party.rename(p.name, p.partyIndex),
     "party.toggle": p => window.Party.toggle(p.characterId, p.partyIndex),
     "party.move": p => window.Party.move(p.characterId, p.direction, p.partyIndex),
@@ -47,6 +54,9 @@
     "encyclopedia.trackItem": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity ?? 1),
     "encyclopedia.trackRequirement": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity, true),
     "encyclopedia.clearTrackedItem": () => window.Encyclopedia.setTrackedItem(null),
+    "encyclopedia.trackMonster": p => window.Encyclopedia.setTrackedMonster(p.monsterId, p.targetQuantity ?? 1),
+    "encyclopedia.trackHarvest": p => window.Encyclopedia.setTrackedHarvest(p.itemId, p.monsterId),
+    "encyclopedia.clearTrackedMonster": () => window.Encyclopedia.setTrackedMonster(null),
     "expedition.start": p => window.Dungeon.start(p.dungeonId, p.partyIndex, p.timeMultiplier, p.difficultyId),
     "expedition.collect": () => {
       const recurringChanged = window.RecurringMissions.sync();
@@ -94,7 +104,7 @@
     "autosell.add": ["instanceId"],
     "autosell.remove": ["ruleId"], "autosell.toggle": ["enabled"],
     "shop.buy": ["itemId"], "shop.daily.buy": ["offerId"], "blacksmith.craft": ["recipeId"],
-    "party.select": ["partyIndex"], "party.readResult": ["partyIndex"], "party.setPlan": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier"], "party.rename": ["partyIndex", "name"], "party.toggle": ["characterId", "partyIndex?"],
+    "party.select": ["partyIndex"], "party.readResult": ["partyIndex"], "party.setPlan": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier"], "party.reuseHarvest": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier", "itemId", "monsterId"], "party.rename": ["partyIndex", "name"], "party.toggle": ["characterId", "partyIndex?"],
     "party.move": ["characterId", "direction", "partyIndex?"], "party.actionPreset": ["presetId", "partyIndex?"], "party.unlock": ["partySlot"],
     "accessCode.redeem": ["featureId", "code"],
     "observation.read": ["noteId"],
@@ -103,6 +113,9 @@
     "encyclopedia.trackItem": ["itemId", "targetQuantity?"],
     "encyclopedia.trackRequirement": ["itemId", "targetQuantity"],
     "encyclopedia.clearTrackedItem": [],
+    "encyclopedia.trackMonster": ["monsterId", "targetQuantity?"],
+    "encyclopedia.trackHarvest": ["itemId", "monsterId"],
+    "encyclopedia.clearTrackedMonster": [],
     "expedition.start": ["dungeonId", "difficultyId?", "partyIndex?", "timeMultiplier?"],
     "expedition.collect": [], "progress.sync": [], "save.reset": [], "save.import": ["state"]
   };

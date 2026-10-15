@@ -38,6 +38,8 @@ for (const id of ["thundersteel_katana", "cloudweave_mantle", "aurora_staff"]) {
 }
 assert.strictEqual(data.monsters.sky_monk.bossDrop.itemId, "sky_monk_gauntlets");
 assert.strictEqual(data.monsters.white_dragon.bossDrop.itemId, "white_dragon_shield");
+assert.deepStrictEqual({ ...data.items.sky_monk_gauntlets.attributeBonuses }, { dexterity: 2, agility: 2 });
+assert.deepStrictEqual({ ...data.items.white_dragon_shield.attributeBonuses }, { vitality: 3, fortitude: 3 });
 assert(data.relations.itemSkillGrants.cloudweave_mantle.includes("chill_resistance_35"));
 assert(data.relations.itemSkillGrants.aurora_staff.includes("paralysis_resistance_35"));
 for (const id of ["pass_colossus", "thunder_rook", "sky_monk", "aurora_warden", "white_dragon"]) assert.strictEqual(data.monsters[id].mechanic.kind, "telegraphed_burst");

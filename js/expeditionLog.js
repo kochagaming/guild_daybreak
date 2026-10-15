@@ -53,6 +53,7 @@
     const duration = Math.max(1, expedition.endsAt - expedition.startedAt);
     const progress = Math.min(1, Math.max(0, (now - expedition.startedAt) / duration));
     const events = [];
+    const trackedMonsterId = expedition.trackedMonsterId || null;
     let revision = `s${groups.setup.length}`;
     const actualEncounters = Math.max(0, ...groups.encounters.keys());
     let nextAt = expedition.startedAt + duration * (.22 / plan.encounters.length);
@@ -70,7 +71,8 @@
       const defeated = visible.some(entry => entry.kind === "defeat");
       const won = visible.some(entry => entry.kind === "victory");
       const fighting = visible.some(entry => entry.kind === "encounter");
-      events.push({ number, title: encounterTitle(number, entries, plan.encounters[number - 1]), entries: visible, status: defeated ? "撤退" : won ? "勝利" : fighting ? "交戦中" : "探索中", complete: defeated || won });
+      const visibleEncounter = visible.find(entry => entry.kind === "encounter");
+      events.push({ number, title: encounterTitle(number, entries, plan.encounters[number - 1]), entries: visible, status: defeated ? "撤退" : won ? "勝利" : fighting ? "交戦中" : "探索中", complete: defeated || won, huntTargetPresent: Boolean(trackedMonsterId && visibleEncounter?.encounteredMonsterIds?.includes(trackedMonsterId)) });
       revision += `-${number}:${visible.length}:${fraction >= 1 ? 1 : 0}`;
       if (fraction < 1) {
         const nextEntryFraction = Math.min(1, (visibleCount + 1) / Math.max(1, entries.length));
@@ -84,13 +86,21 @@
     const last = events[events.length - 1];
     const resolved = last && last.complete && (last.status === "撤退" || events.length === plan.encounters.length);
     const next = Math.max(0, nextAt - now);
+    const trackedMonsterQuantity = trackedMonsterId ? events.reduce((sum, event) => sum + event.entries.reduce((entrySum, entry) => entrySum + (entry.defeatedMonsterCounts?.[trackedMonsterId] || 0), 0), 0) : 0;
+    const huntTarget = trackedMonsterId ? {
+      monsterId: trackedMonsterId,
+      goal: expedition.trackedMonsterGoal || 1,
+      progressAtDeparture: expedition.trackedMonsterProgressAtDeparture || 0,
+      quantity: trackedMonsterQuantity
+    } : null;
     return {
       active: true, revision, progress, setup: groups.setup, events,
       status: last?.status === "撤退" ? "撤退・帰還中" : resolved ? "帰還中" : last?.status === "交戦中" ? `第${last.number}戦・交戦中` : last ? `第${last.number}区画・探索中` : "探索中",
       next, outcome, totalEncounters: plan.encounters.length,
       dungeonName: dungeon.name,
       partyIndex: expedition.partyIndex || 0,
-      partyNames: (expedition.partySnapshot || []).map(member => member.name).filter(Boolean)
+      partyNames: (expedition.partySnapshot || []).map(member => member.name).filter(Boolean),
+      huntTarget
     };
   }
 
@@ -98,7 +108,8 @@
     const groups = grouped(result.battleLog);
     const events = Array.from(groups.encounters.entries()).sort((a, b) => a[0] - b[0]).map(([number, entries]) => ({
       number, title: encounterTitle(number, entries), entries,
-      status: entries.some(entry => entry.kind === "defeat") ? "撤退" : "勝利", complete: true
+      status: entries.some(entry => entry.kind === "defeat") ? "撤退" : "勝利", complete: true,
+      huntTargetPresent: Boolean(result.trackedMonsterId && entries.find(entry => entry.kind === "encounter")?.encounteredMonsterIds?.includes(result.trackedMonsterId))
     }));
     return {
       active: false, revision: `complete-${result.id || result.completedAt}`, progress: 1,

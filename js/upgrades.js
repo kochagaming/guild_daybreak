@@ -32,6 +32,7 @@
     item.upgradeLevel = result.next;
     const name = window.Items.displayName(item);
     const learned = result.addedSkills.length ? ` ${result.addedSkills.map(skill => `「${skill.name}」`).join("、")}を得ました。` : "";
+    if (window.RecurringMissions) window.RecurringMissions.record("equipment_upgrade");
     window.GameState.addLog(`${name}へ強化しました。${learned}`, "success");
     window.GameState.save();
     return { ok: true, message: `${name}へ強化しました。${learned}`, addedSkills: result.addedSkills };

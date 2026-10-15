@@ -15,6 +15,11 @@ assert.strictEqual(game.GameData.items.sticky_fluid.name, "ねばねばした液
 assert.strictEqual(game.GameData.items.tattered_cloth.name, "ぼろぼろの布切れ");
 assert.strictEqual(game.GameData.relations.monsterSignatureDrops.slime.equipment.itemId, "slimecloth_mantle");
 assert(!game.Shop.buy("slimecloth_mantle").ok, "Monster-only equipment must not appear as purchasable shop stock");
+const normalFixedDrops = game.MonsterLoot.fixedDropIds("slime", "normal");
+assert(normalFixedDrops.includes("sticky_fluid") && normalFixedDrops.includes("tattered_cloth") && normalFixedDrops.includes("slimecloth_mantle"), "Fixed-drop lookup includes ordinary materials and signature equipment");
+assert(!normalFixedDrops.includes("wooden_sword"), "Standard shop equipment is not treated as a fixed monster drop");
+const divineFixedDrops = game.MonsterLoot.fixedDropIds("slime", "divine");
+assert(divineFixedDrops.includes("sticky_fluid") && divineFixedDrops.includes("slimecloth_mantle") && divineFixedDrops.includes("divine_slime_core") && divineFixedDrops.includes("divine_slime_mantle"), "Higher difficulties inherit lower fixed drops and add their own title drops");
 
 const slime = game.GameData.monsters.slime;
 const slimeSignature = game.GameData.relations.monsterSignatureDrops.slime;

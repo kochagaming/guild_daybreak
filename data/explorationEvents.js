@@ -26,7 +26,49 @@
     },
     routeMastery: { successes: 3, successChanceBonus: .08 },
     personalPractice: { successes: 5, successChanceBonus: .05 },
+    attributeAptitude: { maximumBonus: .1, bonusPerSurplusRatio: .15 },
     treasurePersonalPractice: { openings: 10, successChanceBonus: .05 },
+    targetedHarvestPractice: [
+      { id: "known_quarry", minimumSuccesses: 3, multiplier: 1.1, label: "獲物の癖を知る" },
+      { id: "seasoned_harvester", minimumSuccesses: 10, multiplier: 1.2, label: "採り方を心得る" }
+    ],
+    targetedHarvestPersistence: [
+      { id: "trace_reader", minimumMisses: 3, multiplier: 1.1, label: "空振りの痕跡を読む" },
+      { id: "patient_tracker", minimumMisses: 8, multiplier: 1.2, label: "見失った跡をつなぐ" }
+    ],
+    targetedHarvestConsultation: {
+      multiplier: 1.05, bondMomentId: "shared_hunt_ledger",
+      rememberedTiers: [
+        {
+          id: "first_page", minimumSuccesses: 1, multiplier: 1.1, label: "書き始めの頁",
+          description: "成功した手順と空振りの跡が、初めて同じ綴じ紐へ収まった頁。",
+          departure: "まだ新しい綴じ紐をほどき、左右の記録を声に出して確かめた。",
+          encounter: "左右の頁を交互に読み、成功した場所と消えた跡を一つずつ照らし合わせた。",
+          growth: "最初の収穫を左右の頁へ分け、二人だけが続きを書ける一冊にした。"
+        },
+        {
+          id: "annotated_pages", minimumSuccesses: 3, multiplier: 1.15, label: "書き込まれた頁",
+          description: "余白の印や書き直した線が増え、前の収穫との違いまで読めるようになった頁。",
+          departure: "余白の印と消した線を指で追い、前回と違う地形だけを拾い直した。",
+          encounter: "古い印に新しい痕跡を重ね、前とは違う足場でも同じ手順が通るか確かめた。",
+          growth: "前の頁へ新しい印を書き足し、偶然だった収穫を比べられる記録へ変えた。"
+        },
+        {
+          id: "weathered_ledger", minimumSuccesses: 8, multiplier: 1.2, label: "使い込んだ頁",
+          epithet: "{monster}追いの二人",
+          combatSupport: {
+            label: "獲物を読む合図",
+            description: "この獲物と戦う時、二人の命中精度・行動速度・会心率が少し高まる。",
+            hitRateMultiplier: 1.05, speedMultiplier: 1.05, criticalRateBonus: .03
+          },
+          recognitionReward: { itemId: "guild_seal", quantity: 1 },
+          description: "雨染みも泥の跡も消さず、二人の判断そのものが道標になった古い頁。",
+          departure: "雨染みと泥の跡まで道標にし、言葉を交わす前から同じ頁を開いた。",
+          encounter: "一人が頁の端へ触れただけで、もう一人は次に確かめる痕跡を選び取った。",
+          growth: "書き足す場所を探すほど使い込まれ、二人の迷いまで狩りの道標になった。"
+        }
+      ]
+    },
     teamSurvey: { specialtyCount: 3, memberCount: 2, extraEvents: 1 },
     rumorWeightMultiplier: 2,
     rumorConfirmationReward: { itemId: "guild_seal", quantity: 1 },
@@ -42,6 +84,7 @@
       { minimumSharedSorties: 20, statMultiplier: 1.04, label: "背中を預ける布陣" }
     ],
     adventurerBondMoments: [
+      { id: "shared_hunt_ledger", title: "二人で綴じた狩り帳", minimumSharedSorties: 1, trigger: "targetedHarvestConsultation", text: "{left}は持ち帰れた手順を頁の左へ、{right}は空振りで消えた跡を右へ書いた。二人は異なる記録を重ね、次の狩りへ持ち出す一冊に綴じた。" },
       { id: "shared_rest", title: "先回りした休息", minimumSharedSorties: 5, text: "{left}が足を止めるより先に、{right}はいつもの休憩場所を見つけて荷を下ろした。二人の間では、合図より先に歩調が揃っていた。" },
       { id: "shared_crossroad", title: "相談のいらない分かれ道", minimumSharedSorties: 5, text: "分かれ道で{left}が地図を開くと、{right}は迷わず片方の道を指した。何度も同じ景色を見た二人には、相談の前から答えが分かっていた。" },
       { id: "shared_maintenance", title: "旅支度の順番", minimumSharedSorties: 5, text: "{right}が装具の緩みに気づき、{left}へ無言で留め具を渡した。小さな手入れの順番まで、いつの間にか旅支度の一部になっていた。" },
@@ -52,23 +95,28 @@
     aptitudes: {
       scouting: {
         jobIds: ["thief", "ranger", "ninja"], raceIds: ["elf", "beastkin", "halfling", "goblin"], birthIds: ["hunter", "frontier", "orphan"],
-        bonuses: { job: .35, race: .16, birth: .14 }
+        bonuses: { job: .35, race: .16, birth: .14 },
+        attributeWeights: { dexterity: .4, agility: .4, luck: .2 }
       },
       camping: {
         jobIds: ["cleric", "bard", "druid", "summoner"], raceIds: ["fairy", "celestial", "gnome"], birthIds: ["sacred", "troupe", "alchemist"],
-        bonuses: { job: .35, race: .16, birth: .14 }
+        bonuses: { job: .35, race: .16, birth: .14 },
+        attributeWeights: { spirit: .4, vitality: .35, fortitude: .25 }
       },
       traversal: {
         jobIds: ["warrior", "knight", "monk", "spellblade"], raceIds: ["dwarf", "orc", "dragonewt", "automaton", "giantkin"], birthIds: ["guard", "mercenary", "blacksmith", "dragon_ward"],
-        bonuses: { job: .35, race: .16, birth: .14 }
+        bonuses: { job: .35, race: .16, birth: .14 },
+        attributeWeights: { strength: .4, fortitude: .4, vitality: .2 }
       },
       arcana: {
         jobIds: ["mage", "spellblade", "summoner", "druid"], raceIds: ["elf", "fairy", "celestial", "demonkin"], birthIds: ["scholar", "alchemist", "sacred", "noble"],
-        bonuses: { job: .35, race: .16, birth: .14 }
+        bonuses: { job: .35, race: .16, birth: .14 },
+        attributeWeights: { intelligence: .55, spirit: .3, luck: .15 }
       },
       gathering: {
         jobIds: ["ranger", "druid", "thief", "summoner"], raceIds: ["elf", "beastkin", "gnome", "halfling"], birthIds: ["hunter", "frontier", "alchemist", "orphan"],
-        bonuses: { job: .35, race: .16, birth: .14 }
+        bonuses: { job: .35, race: .16, birth: .14 },
+        attributeWeights: { luck: .35, dexterity: .35, intelligence: .3 }
       }
     },
     routeEvents: [

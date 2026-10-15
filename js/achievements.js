@@ -48,6 +48,13 @@
       const required = window.GameData.config.explorationEvents?.treasureMastery?.openings || 3;
       return (window.GameData.config.explorationEvents?.treasure?.types || []).filter(tier => tier.challenge && (records[tier.id]?.openings || 0) >= required).length;
     }
+    if (condition.type === "namedHunts") {
+      const epithetThresholds = (window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [])
+        .filter(tier => tier.epithet).map(tier => tier.minimumSuccesses);
+      const required = epithetThresholds.length ? Math.min(...epithetThresholds) : Infinity;
+      return Object.values(state.adventurerBonds?.huntLedgers || {}).reduce((total, ledgers) => total
+        + Object.values(ledgers || {}).filter(record => Math.max(0, Number(record?.successes) || 0) >= required).length, 0);
+    }
     if (condition.type === "ultraRareOwned") return (state.inventory?.equipment || []).filter(item => item.ultraRareTitleId).length;
     if (condition.type === "facilityUpgrades") {
       const trackIds = window.GameData.config.facilities?.trackOrder || [];

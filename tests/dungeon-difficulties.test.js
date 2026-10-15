@@ -55,13 +55,13 @@ assert.strictEqual(game.GameState.data.expeditions[0].endsAt - game.GameState.da
 const sealsBefore = game.Items.count("guild_seal");
 const firstClearResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
 assert(firstClearResult.success && firstClearResult.firstClearReward, "First hard-mode clear grants a separate reward");
-assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1 + (firstClearResult.rumorConfirmationReward?.quantity || 0));
+assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1 + (firstClearResult.rumorConfirmationReward?.quantity || 0) + (firstClearResult.monsterHuntSealReward || 0) + (firstClearResult.newMonsterHabitatSurvey?.sealReward || 0));
 const sealsAfterFirstClear = game.Items.count("guild_seal");
 assert(game.DungeonDifficulty.cleared("meadow", "abyss") && game.DungeonDifficulty.unlocked("meadow", "divine"));
 assert(game.Dungeon.start("meadow", 0, 1, "abyss").ok);
 const repeatResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
 assert(repeatResult.success && !repeatResult.firstClearReward, "Repeat clears do not grant the one-time reward again");
-assert.strictEqual(game.Items.count("guild_seal"), sealsAfterFirstClear + (repeatResult.rumorConfirmationReward?.quantity || 0));
+assert.strictEqual(game.Items.count("guild_seal"), sealsAfterFirstClear + (repeatResult.rumorConfirmationReward?.quantity || 0) + (repeatResult.monsterHuntSealReward || 0) + (repeatResult.newMonsterHabitatSurvey?.sealReward || 0));
 
 const slimeHp = game.GameData.monsters.slime.hp, slimeAttack = game.GameData.monsters.slime.attack;
 game.GameData.monsters.slime.hp = 9999; game.GameData.monsters.slime.attack = 5;

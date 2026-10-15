@@ -37,6 +37,7 @@
       return Object.assign({}, base, effect, {
         offerId: offer.id,
         qualityId: offer.qualityId,
+        attributeBonuses: window.Items.attributeBonuses(offer),
         name: window.Items.displayName(offer),
         price: offer.price,
         purchased: offer.purchased,

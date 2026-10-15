@@ -101,6 +101,48 @@
     return tier ? { member: partner.member, sharedSorties: partner.sharedSorties, bonus: tier.successChanceBonus, label: tier.label } : null;
   }
 
+  function primaryAttributes(member) {
+    if (member?.primaryAttributes && typeof member.primaryAttributes === "object") return member.primaryAttributes;
+    if (Array.isArray(member?.equipment) && window.Characters?.attributes) return window.Characters.attributes(member);
+    return null;
+  }
+
+  function attributeAptitudeBonus(aptitude, member, definitions) {
+    const attributes = primaryAttributes(member), weights = aptitude?.attributeWeights;
+    if (!attributes || !weights) return 0;
+    const growth = window.GameData.config.characterGrowth?.attributes || {};
+    const expected = (Number(growth.expectedInitial) || 10) + Math.max(0, (Number(member?.level) || 1) - 1) * (Number(growth.growthPerLevel) || 0);
+    const surplusRatio = Object.entries(weights).reduce((total, [attributeId, weight]) => (
+      total + Math.max(0, (Number(attributes[attributeId]) || 0) / expected - 1) * Number(weight)
+    ), 0);
+    const rule = definitions.attributeAptitude || {};
+    return Math.min(Number(rule.maximumBonus) || 0, surplusRatio * (Number(rule.bonusPerSurplusRatio) || 0));
+  }
+
+  function attributeClueIds(aptitude, member) {
+    const attributes = primaryAttributes(member), weights = aptitude?.attributeWeights;
+    if (!attributes || !weights) return [];
+    const growth = window.GameData.config.characterGrowth?.attributes || {};
+    const expected = (Number(growth.expectedInitial) || 10) + Math.max(0, (Number(member?.level) || 1) - 1) * (Number(growth.growthPerLevel) || 0);
+    const order = growth.order || Object.keys(weights);
+    return Object.entries(weights).map(([attributeId, weight]) => ({
+      attributeId,
+      score: Math.max(0, (Number(attributes[attributeId]) || 0) / expected - 1) * Number(weight),
+      order: order.indexOf(attributeId)
+    })).filter(entry => entry.score > 0)
+      .sort((left, right) => right.score - left.score || left.order - right.order)
+      .slice(0, 2).map(entry => entry.attributeId);
+  }
+
+  function aptitudeBonuses(aptitude, member, definitions) {
+    if (!aptitude) return { identity: 0, attributes: 0, total: 0 };
+    const identity = (aptitude.jobIds.includes(member.jobId) ? aptitude.bonuses.job : 0)
+      + (aptitude.raceIds.includes(member.raceId) ? aptitude.bonuses.race : 0)
+      + (aptitude.birthIds.includes(member.birthId) ? aptitude.bonuses.birth : 0);
+    const attributes = attributeAptitudeBonus(aptitude, member, definitions);
+    return { identity, attributes, total: identity + attributes };
+  }
+
   function routeReadiness(dungeon, partySnapshot = [], knownRouteMasteryIds = []) {
     const rumor = routeRumorEntry(dungeon);
     const definitions = window.GameData.config.explorationEvents || {};
@@ -112,13 +154,13 @@
     const candidates = aptitude ? partySnapshot.map(member => {
       const practiced = hasRoutePractice(member, event.id, definitions);
       const support = bondRouteSupport(member, partySnapshot, definitions);
+      const aptitudeResult = aptitudeBonuses(aptitude, member, definitions);
       return {
         member,
         practiced,
         support,
-        bonus: (aptitude.jobIds.includes(member.jobId) ? aptitude.bonuses.job : 0)
-          + (aptitude.raceIds.includes(member.raceId) ? aptitude.bonuses.race : 0)
-          + (aptitude.birthIds.includes(member.birthId) ? aptitude.bonuses.birth : 0)
+        attributeBonus: aptitudeResult.attributes,
+        bonus: aptitudeResult.total
           + (practiced ? definitions.personalPractice.successChanceBonus : 0)
           + (support?.bonus || 0)
       };
@@ -127,8 +169,8 @@
     if (best?.support && (best.practiced || bonus >= .3)) return { eventId: event.id, state: "strong", actorId: best.member.id || null, text: `${best.member.name || "仲間の一人"}には、歩調を知る${best.support.member.name || "旅仲間"}が寄り添っている。` };
     if (best?.practiced) return { eventId: event.id, state: "strong", actorId: best.member.id || null, text: `${best.member.name || "仲間の一人"}は、この兆しを実地で何度も解いている。` };
     if (bonus >= .55) return { eventId: event.id, state: "strong", text: "記録にある複数の経験を併せ持つ者が、この一行にいる。" };
-    if (bonus >= .3) return { eventId: event.id, state: "ready", text: "記録とよく似た経験を持つ者が、この一行にいる。" };
-    if (bonus > 0) return { eventId: event.id, state: "faint", text: "この一行にも、記録と重なる小さな手掛かりがある。" };
+    if (bonus >= .3) return { eventId: event.id, state: "ready", text: best?.attributeBonus > 0 ? "経験に加え、道の兆しへ応えそうな素質を持つ者がいる。" : "記録とよく似た経験を持つ者が、この一行にいる。" };
+    if (bonus > 0) return { eventId: event.id, state: "faint", text: best?.attributeBonus > 0 ? "身のこなしや知恵に、この道と重なる小さな兆しがある。" : "この一行にも、記録と重なる小さな手掛かりがある。" };
     return { eventId: event.id, state: "unfamiliar", text: "記録を照らしたが、この一行に似た経験はまだ見つからない。" };
   }
 
@@ -178,7 +220,7 @@
       ? choose(bondRandom, adventurerPairs)
       : null;
     const adventurerBondDefinitions = adventurerPair
-      ? (definitions.adventurerBondMoments || []).filter(moment => adventurerPair.sharedSorties >= moment.minimumSharedSorties)
+      ? (definitions.adventurerBondMoments || []).filter(moment => !moment.trigger && adventurerPair.sharedSorties >= moment.minimumSharedSorties)
       : [];
     const knownAdventurerBondMomentIds = adventurerPair ? new Set([
       ...(adventurerPair.left.bondMomentIds?.[adventurerPair.right.id] || []),
@@ -194,25 +236,24 @@
     const masteredTreasureTiers = new Set(knownTreasureMasteryIds);
     const aptitudeBonus = (aptitudeId, member) => {
       const aptitude = definitions.aptitudes?.[aptitudeId];
-      return aptitude
-        ? (aptitude.jobIds.includes(member.jobId) ? aptitude.bonuses.job : 0)
-          + (aptitude.raceIds.includes(member.raceId) ? aptitude.bonuses.race : 0)
-          + (aptitude.birthIds.includes(member.birthId) ? aptitude.bonuses.birth : 0)
-        : 0;
+      return aptitudeBonuses(aptitude, member, definitions);
     };
     const bestGuide = (aptitudeIds, personalPractice) => partySnapshot.flatMap(member => aptitudeIds.map(aptitudeId => {
       const practiced = Boolean(personalPractice?.test(member));
-      return { member, aptitudeId, practiced, bonus: aptitudeBonus(aptitudeId, member) + (practiced ? personalPractice.bonus : 0) };
+      const aptitudeResult = aptitudeBonus(aptitudeId, member);
+      return { member, aptitudeId, practiced, attributeBonus: aptitudeResult.attributes, bonus: aptitudeResult.total + (practiced ? personalPractice.bonus : 0) };
     }))
       .sort((a, b) => b.bonus - a.bonus)[0];
     const routeGuide = routeDefinition => partySnapshot.map(member => {
       const practiced = hasRoutePractice(member, routeDefinition.id, definitions);
       const support = bondRouteSupport(member, partySnapshot, definitions);
+      const aptitudeResult = aptitudeBonus(routeDefinition.aptitudeId, member);
       return {
         member,
         practiced,
         support,
-        bonus: aptitudeBonus(routeDefinition.aptitudeId, member) + (practiced ? definitions.personalPractice.successChanceBonus : 0) + (support?.bonus || 0)
+        attributeBonus: aptitudeResult.attributes,
+        bonus: aptitudeResult.total + (practiced ? definitions.personalPractice.successChanceBonus : 0) + (support?.bonus || 0)
       };
     }).sort((left, right) => right.bonus - left.bonus)[0];
     // A longer expedition sees more of the road, but fewer events than the same
@@ -269,7 +310,8 @@
       const eventText = formatEventText(success ? routeDefinition.successText : routeDefinition.failureText, values);
       const supportText = bondSupportApplied ? `${guide.support.member.name}も慣れた合図で${guide.member.name}を支えた。` : "";
       return {
-        id: routeDefinition.id, kind: routeDefinition.kind, success, masteryApplied, personalPracticeApplied: Boolean(guide?.practiced), teamSurveyApplied, bondSupportApplied, rumorMatched: routeDefinition.id === rumoredEventId, gold, exp, drop, effect,
+        id: routeDefinition.id, kind: routeDefinition.kind, success, masteryApplied, personalPracticeApplied: Boolean(guide?.practiced), naturalAptitudeApplied: Number(guide?.attributeBonus) > 0, teamSurveyApplied, bondSupportApplied, rumorMatched: routeDefinition.id === rumoredEventId, gold, exp, drop, effect,
+        attributeIds: Number(guide?.attributeBonus) > 0 ? attributeClueIds(definitions.aptitudes?.[routeDefinition.aptitudeId], guide.member) : [],
         ...(teamSurveyApplied ? { teamSurveyMemberIds: teamSurveyMembers.map(member => member.id), teamSurveyMemberNames: teamSurveyMembers.map(member => member.name) } : {}),
         ...(bondSupportApplied ? { bondSupportMemberIds: [guide.member.id, guide.support.member.id], bondSupportMemberNames: [guide.member.name, guide.support.member.name], bondSupportLabel: guide.support.label } : {}),
         actorId: guide?.bonus > 0 ? guide.member.id : null,
@@ -295,7 +337,7 @@
         { kind: "explore", text: choose(random, environment.discoveries) }
       ];
       const routeEvent = routeEventsByFloor.get(index);
-      if (routeEvent) entries.push({ kind: routeEvent.kind, routeEventId: routeEvent.id, routeEventSuccess: routeEvent.success, routeEventMasteryApplied: routeEvent.masteryApplied, routeEventPersonalPracticeApplied: routeEvent.personalPracticeApplied, routeTeamSurveyApplied: routeEvent.teamSurveyApplied, routeTeamSurveyMemberIds: routeEvent.teamSurveyMemberIds, routeTeamSurveyMemberNames: routeEvent.teamSurveyMemberNames, routeBondSupportApplied: routeEvent.bondSupportApplied, routeBondSupportMemberIds: routeEvent.bondSupportMemberIds, routeBondSupportMemberNames: routeEvent.bondSupportMemberNames, routeBondSupportLabel: routeEvent.bondSupportLabel, routeRumorMatched: routeEvent.rumorMatched, explorationActorId: routeEvent.actorId, explorationActorName: routeEvent.actorName, text: routeEvent.text });
+      if (routeEvent) entries.push({ kind: routeEvent.kind, routeEventId: routeEvent.id, routeEventSuccess: routeEvent.success, routeEventMasteryApplied: routeEvent.masteryApplied, routeEventPersonalPracticeApplied: routeEvent.personalPracticeApplied, routeNaturalAptitudeApplied: routeEvent.naturalAptitudeApplied, explorationAttributeIds: routeEvent.attributeIds, routeTeamSurveyApplied: routeEvent.teamSurveyApplied, routeTeamSurveyMemberIds: routeEvent.teamSurveyMemberIds, routeTeamSurveyMemberNames: routeEvent.teamSurveyMemberNames, routeBondSupportApplied: routeEvent.bondSupportApplied, routeBondSupportMemberIds: routeEvent.bondSupportMemberIds, routeBondSupportMemberNames: routeEvent.bondSupportMemberNames, routeBondSupportLabel: routeEvent.bondSupportLabel, routeRumorMatched: routeEvent.rumorMatched, explorationActorId: routeEvent.actorId, explorationActorName: routeEvent.actorName, text: routeEvent.text });
       if (index === companionFloor) {
         entries.push({ kind: "companion", companionIds: [...companionScene.moment.companionIds], momentId: companionScene.moment.id, companionLineIndex: companionScene.lineIndex, text: companionScene.text });
       }
@@ -333,7 +375,8 @@
         const openChance = challenge ? Math.min(challenge.maximumChance, challenge.baseChance + (guide?.bonus || 0) + masteryBonus + luckBonus) : 1;
         const opened = random() < openChance;
         const chestMeta = {
-          treasureTierId: chest.id, treasureTierRank: chest.rank, treasureOpened: opened, treasureMasteryApplied, treasurePersonalPracticeApplied,
+          treasureTierId: chest.id, treasureTierRank: chest.rank, treasureOpened: opened, treasureMasteryApplied, treasurePersonalPracticeApplied, treasureNaturalAptitudeApplied: Number(guide?.attributeBonus) > 0,
+          explorationAttributeIds: Number(guide?.attributeBonus) > 0 ? attributeClueIds(definitions.aptitudes?.[guide.aptitudeId], guide.member) : [],
           explorationActorId: guide?.bonus > 0 ? guide.member.id : null,
           explorationActorName: guide?.bonus > 0 ? guide.member.name : null
         };

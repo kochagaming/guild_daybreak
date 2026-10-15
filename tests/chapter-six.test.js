@@ -50,6 +50,8 @@ for (const id of ["chronoglass_rapier", "brasswall_shield", "memory_robe"]) {
 }
 assert.strictEqual(data.monsters.gear_king.bossDrop.itemId, "gear_king_blade");
 assert.strictEqual(data.monsters.forgotten_titan.bossDrop.itemId, "titan_clock_armor");
+assert.deepStrictEqual({ ...data.items.gear_king_blade.attributeBonuses }, { strength: 2, dexterity: 1 });
+assert.deepStrictEqual({ ...data.items.titan_clock_armor.attributeBonuses }, { vitality: 2, fortitude: 3 });
 assert(data.relations.itemSkillGrants.ember_bulwark.includes("paralysis_resistance_20"), "a pre-chapter paralysis counter should be obtainable");
 assert(data.relations.itemSkillGrants.brasswall_shield.includes("paralysis_resistance_35"), "chapter-six crafting should provide a stronger paralysis counter");
 const paralysisShield = game.Items.add("brasswall_shield", 1, { qualityId: "standard", source: "craft", modifiers: { hp: 0, attack: 0, defense: 0 } }).instances[0];

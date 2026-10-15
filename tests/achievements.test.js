@@ -9,7 +9,7 @@ for (const [, file] of fs.readFileSync(path.join(root, "index.html"), "utf8").ma
 const game = context.window, definitions = game.GameData.achievements;
 assert(definitions.length >= 15, "The ledger provides enough goals for long-term play");
 assert.strictEqual(new Set(definitions.map(entry => entry.id)).size, definitions.length, "Achievement IDs are unique");
-const conditionTypes = new Set(["characters", "partyMembers", "chapters", "postgameChapters", "specificDungeonClear", "dungeonClears", "optionalClears", "divineClears", "monsterSpecies", "monsterDefeats", "itemTypes", "equipmentSetCompletions", "companionMemories", "companionPairMemories", "companionBonds", "routeEventEncounters", "routeRumorConfirmations", "routeEventMasteries", "teamSurveys", "treasureTierMasteries", "ultraRareOwned", "facilityUpgrades"]);
+const conditionTypes = new Set(["characters", "partyMembers", "chapters", "postgameChapters", "specificDungeonClear", "dungeonClears", "optionalClears", "divineClears", "monsterSpecies", "monsterDefeats", "itemTypes", "equipmentSetCompletions", "companionMemories", "companionPairMemories", "companionBonds", "routeEventEncounters", "routeRumorConfirmations", "routeEventMasteries", "teamSurveys", "treasureTierMasteries", "namedHunts", "ultraRareOwned", "facilityUpgrades"]);
 for (const entry of definitions) {
   assert(entry.id && entry.name && entry.description && entry.category && entry.icon, `${entry.id} has display metadata`);
   assert(entry.secret == null || typeof entry.secret === "boolean", `${entry.id} has a valid secrecy flag`);
@@ -42,6 +42,9 @@ state.story.facts.companionMoments = allTravelMemories;
 state.story.facts.routeEvents = Object.fromEntries(game.GameData.config.explorationEvents.routeEvents.map(event => [event.id, { encounters: 3, successes: 3, rumorMatches: 1 }]));
 state.story.facts.treasureTiers = Object.fromEntries(game.GameData.config.explorationEvents.treasure.types.filter(tier => tier.challenge).map(tier => [tier.id, { encounters: 3, openings: 3 }]));
 state.story.facts.teamSurveys = 10;
+const namedHuntThreshold = game.GameData.config.explorationEvents.targetedHarvestConsultation.rememberedTiers.find(tier => tier.epithet).minimumSuccesses;
+const namedHuntTargets = Object.keys(game.GameData.monsters).slice(0, 5).map((monsterId, index) => `${monsterId}::${Object.keys(game.GameData.items)[index]}`);
+state.adventurerBonds.huntLedgers["hero-1::hero-2"] = Object.fromEntries(namedHuntTargets.map((target, index) => [target, { successes: namedHuntThreshold + index, items: namedHuntThreshold + index, lastAt: index + 1 }]));
 
 const all = game.Achievements.entries();
 assert(all.every(entry => entry.complete && entry.ratio === 1), "Every milestone can be derived from an advanced current save");
@@ -58,9 +61,10 @@ assert.strictEqual(game.Achievements.count({ type: "routeRumorConfirmations" }, 
 assert.strictEqual(game.Achievements.count({ type: "routeEventMasteries" }, state), routeEventCount, "Every route event can become shared field knowledge");
 assert.strictEqual(game.Achievements.count({ type: "treasureTierMasteries" }, state), 2, "Only challenged sealed-chest tiers count toward opening mastery");
 assert.strictEqual(game.Achievements.count({ type: "teamSurveys" }, state), 10, "Coordinated surveys use the durable guild exploration fact");
+assert.strictEqual(game.Achievements.count({ type: "namedHunts" }, state), 5, "Every quarry-specific name is derived from a ledger that reached the data-defined epithet tier");
 state.partyHistory[0] = [];
 assert.strictEqual(game.Achievements.count({ type: "teamSurveys" }, state), 10, "Survey progress survives visible history trimming");
-assert(["first_travel_memory", "shared_travel_memory", "travel_memory_keeper", "four_travel_bonds", "eight_travel_bonds", "all_route_signs", "all_rumors_confirmed", "field_guide_complete", "first_team_survey", "ten_team_surveys", "sealed_chest_scholar"].every(id => definitions.find(entry => entry.id === id).secret), "Discovery achievements remain concealed until completed");
+assert(["first_travel_memory", "shared_travel_memory", "travel_memory_keeper", "four_travel_bonds", "eight_travel_bonds", "all_route_signs", "all_rumors_confirmed", "field_guide_complete", "first_team_survey", "ten_team_surveys", "sealed_chest_scholar", "first_hunting_epithet", "five_hunting_epithets"].every(id => definitions.find(entry => entry.id === id).secret), "Discovery achievements remain concealed until completed");
 assert(Object.isFrozen(all[0]), "Achievement results are read-only views, not save records");
 assert(!Object.prototype.hasOwnProperty.call(state, "achievements"), "Achievements do not add derived data to the save format");
 console.log("Achievements test passed: unique definitions, current-state derivation, all condition types, capped progress and no save-schema changes");

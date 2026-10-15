@@ -9,8 +9,10 @@
     return {
       sorties: 0, victories: 0, retreats: 0, encounterClears: 0,
       routeSuccesses: 0, routeEventSuccesses: {}, treasureOpenings: 0, teamSurveys: 0,
-      damageDealt: 0, healingDone: 0, damageTaken: 0, criticalHits: 0, knockouts: 0,
-      bestDamage: 0, bestHealing: 0, bestEndurance: 0, bossRivalries: {}, lastAt: null
+      targetedHarvestAttempts: 0, targetedHarvestSuccesses: 0, targetedHarvestItems: 0,
+      targetedHarvestRecords: {},
+      damageDealt: 0, healingDone: 0, damageTaken: 0, criticalHits: 0, statusAttempts: 0, statusInflicted: 0, knockouts: 0,
+      bestDamage: 0, bestHealing: 0, bestEndurance: 0, bossRivalries: {}, skillRecords: {}, lastAt: null
     };
   }
 
@@ -18,8 +20,174 @@
     const record = character?.expeditionRecord;
     const normalized = Object.assign(emptyExpeditionRecord(), record && typeof record === "object" && !Array.isArray(record) ? record : {});
     normalized.routeEventSuccesses = Object.assign({}, record?.routeEventSuccesses || {});
+    normalized.targetedHarvestRecords = Object.fromEntries(Object.entries(record?.targetedHarvestRecords || {}).map(([key, entry]) => [key, Object.assign({ attempts: 0, successes: 0, items: 0, lastAt: null }, entry)]));
     normalized.bossRivalries = Object.fromEntries(Object.entries(record?.bossRivalries || {}).map(([bossId, entry]) => [bossId, Object.assign({ defeats: 0, victories: 0, lastOutcome: null, lastAt: null }, entry)]));
+    normalized.skillRecords = Object.fromEntries(Object.entries(record?.skillRecords || {}).map(([skillId, entry]) => [skillId, Object.assign({ uses: 0, damage: 0, healing: 0, statuses: 0 }, entry)]));
     return normalized;
+  }
+
+  const expeditionRoleDefinitions = Object.freeze({
+    exploration: Object.freeze({ label: "道中の難所を解いた", title: "道案内", icon: "路" }),
+    damage: Object.freeze({ label: "敵陣を切り開いた", title: "先陣", icon: "刃" }),
+    healing: Object.freeze({ label: "仲間の命をつないだ", title: "癒し手", icon: "灯" }),
+    status: Object.freeze({ label: "異変で戦機をつくった", title: "撹乱役", icon: "策" }),
+    endurance: Object.freeze({ label: "最後まで立ち続けた", title: "守り手", icon: "盾" })
+  });
+
+  function expeditionRoleLabel(kind) {
+    return expeditionRoleDefinitions[kind]?.label || "";
+  }
+
+  function recentExpeditionRole(character, limit = 5) {
+    if (!character?.id) return null;
+    const entries = (window.GameState.data.partyHistory || [])
+      .flatMap(history => Array.isArray(history) ? history : [])
+      .filter(entry => entry?.battle?.members?.some(member => member.id === character.id))
+      .sort((left, right) => (Number(right.completedAt) || 0) - (Number(left.completedAt) || 0))
+      .slice(0, Math.max(1, Math.round(Number(limit) || 5)));
+    const roles = new Map();
+    entries.forEach((entry, index) => {
+      const kind = (entry.memberHighlights || []).find(highlight => highlight.memberId === character.id)?.kind;
+      if (!expeditionRoleLabel(kind)) return;
+      const role = roles.get(kind) || { kind, count: 0, score: 0, lastIndex: index };
+      role.count += 1;
+      role.score += Math.max(1, entries.length - index);
+      role.lastIndex = Math.min(role.lastIndex, index);
+      roles.set(kind, role);
+    });
+    const selected = [...roles.values()].sort((left, right) => right.count - left.count || right.score - left.score || left.lastIndex - right.lastIndex)[0];
+    if (!selected) return null;
+    const definition = expeditionRoleDefinitions[selected.kind];
+    const established = selected.count >= 3;
+    return Object.freeze({ ...selected, label: definition.label, title: established ? definition.title : null, icon: definition.icon, established, sampleSize: entries.length });
+  }
+
+  const expeditionRoleConversations = Object.freeze([
+    Object.freeze({
+      roles: ["exploration", "endurance"],
+      departure: (guide, guard) => `${guide.name}「先の道を見てくる」　${guard.name}「なら、帰りの印は任せて」――道案内と守り手は、地図の端を一度だけ指でなぞった。`,
+      success: [
+        (guide, guard) => `${guide.name}「帰り道まで残っていた」　${guard.name}「印を消されないよう、最後まで見ていたから」――二人は泥の付いた地図を机の上へ広げた。`,
+        (guide, guard) => `${guard.name}「全員、同じ入口へ戻れた」　${guide.name}「あなたの印が見えた時、ようやく帰った気がした」――数え直した足音は、一つも欠けていなかった。`
+      ],
+      failure: [
+        (guide, guard) => `${guide.name}「道を読み違えた」　${guard.name}「それでも帰る印は見失わなかった。次はそこから始めよう」――破れた地図にも、帰路だけは濃く残った。`,
+        (guide, guard) => `${guard.name}「戻る者は全員いる」　${guide.name}「なら、この遠回りも消さずに残す」――二人は行けなかった道へ、小さな×印を置いた。`
+      ]
+    }),
+    Object.freeze({
+      roles: ["status", "damage"],
+      departure: (tactician, vanguard) => `${tactician.name}「合図で守りを崩す」　${vanguard.name}「その隙をもらう」――撹乱役と先陣は、短く手順を確かめた。`,
+      success: [
+        (tactician, vanguard) => `${vanguard.name}「あの合図、よく見えた」　${tactician.name}「次は半歩早く出しても拾えそうだね」――言葉より短い合図が、また一つ二人の間に増えた。`,
+        (tactician, vanguard) => `${tactician.name}「崩れた瞬間にもう走っていた」　${vanguard.name}「あなたが笑ったから、行けると思った」――帰路でも二人の歩調だけは妙に速かった。`
+      ],
+      failure: [
+        (tactician, vanguard) => `${vanguard.name}「合図を待てなかった」　${tactician.name}「私も遅かった。次は声じゃなく剣先を見る」――責める代わりに、二人は合図を一つ減らした。`,
+        (tactician, vanguard) => `${tactician.name}「敵は崩れた。でも、退路まで読めなかった」　${vanguard.name}「なら次は、飛び込む前に一度振り返る」――失敗した手順も、二人の記録になった。`
+      ]
+    }),
+    Object.freeze({
+      roles: ["damage", "healing"],
+      departure: (vanguard, healer) => `${vanguard.name}「前は任せて」　${healer.name}「戻ったら、傷を隠さないで」――先陣と癒し手は、いつもの距離で頷き合った。`,
+      success: [
+        (vanguard, healer) => `${healer.name}「傷を隠していない。今日は合格」　${vanguard.name}「隠すほど残っていないからね」――包帯を巻く手だけが、冗談を信じていなかった。`,
+        (vanguard, healer) => `${vanguard.name}「前を空けずに済んだ」　${healer.name}「後ろで倒れさせないと決めていたから」――二人は互いの仕事を、自分の手柄には数えなかった。`
+      ],
+      failure: [
+        (vanguard, healer) => `${vanguard.name}「前へ出すぎた」　${healer.name}「戻ってきたから叱れる。次は届く場所で戦って」――ほどかれた包帯の数が、今日の距離を語っていた。`,
+        (vanguard, healer) => `${healer.name}「治せなかった傷を覚えておく」　${vanguard.name}「なら、受けなくていい傷を私が覚える」――二人は同じ撤退を、別々の頁へ書き留めた。`
+      ]
+    }),
+    Object.freeze({
+      roles: ["endurance", "healing"],
+      departure: (guard, healer) => `${guard.name}「危なくなったら、こちらへ」　${healer.name}「そちらも治す人数に入っているから」――守り手と癒し手の声に、隊列の緊張が少しほどけた。`,
+      success: [
+        (guard, healer) => `${healer.name}「また最後まで立っていた」　${guard.name}「立てたのは、後ろから何度も呼ばれたからだ」――盾の傷と薬瓶の空きは、同じ数だけ増えていた。`,
+        (guard, healer) => `${guard.name}「誰も置いてこなかった」　${healer.name}「あなたも含めて、ね」――癒し手は一番大きな傷を最後まで残しておかなかった。`
+      ],
+      failure: [
+        (guard, healer) => `${guard.name}「守り切れなかった」　${healer.name}「退く時間は守ってくれた。今はそれを無かったことにしないで」――伏せた盾の横で、癒し手は残った薬を数えた。`,
+        (guard, healer) => `${healer.name}「次は倒れる前に呼んで」　${guard.name}「声を出す余裕まで、守るものに入れておく」――二人は静かに、帰還者の傷を分け合った。`
+      ]
+    }),
+    Object.freeze({
+      roles: ["exploration", "status"],
+      departure: (guide, tactician) => `${guide.name}「足跡は読める」　${tactician.name}「なら、待ち伏せる側の気持ちも読んでみよう」――道案内と撹乱役は、同じ痕跡を別の角度から覗き込んだ。`,
+      success: [
+        (guide, tactician) => `${guide.name}「足跡の先に、あなたの罠があった」　${tactician.name}「道を教えてくれたのはそっちでしょう」――二人の地図には、線と丸印が重なっていた。`,
+        (guide, tactician) => `${tactician.name}「敵より先に迷わせられた」　${guide.name}「こちらが迷わなかったからね」――同じ曲がり角を見て、二人は違う理由で笑った。`
+      ],
+      failure: [
+        (guide, tactician) => `${guide.name}「足跡は正しかった。でも考えを読み違えた」　${tactician.name}「次は逃げ道の方から考えよう」――二人は敵が来なかった場所も地図へ残した。`,
+        (guide, tactician) => `${tactician.name}「罠を置く場所が一歩ずれた」　${guide.name}「道の癖を一つ見落とした。ずれた分は二人で直せる」――失敗の印は消さず、隣に新しい線を引いた。`
+      ]
+    })
+  ]);
+
+  function expeditionRolePair(members) {
+    const reputed = (Array.isArray(members) ? members : []).map(member => {
+      const isSnapshot = member && Object.prototype.hasOwnProperty.call(member, "reputation");
+      const reputation = isSnapshot ? member.reputation : recentExpeditionRole(member);
+      return reputation?.title ? { member, reputation } : null;
+    }).filter(Boolean);
+    const byRole = new Map();
+    reputed.forEach(entry => { if (!byRole.has(entry.reputation.kind)) byRole.set(entry.reputation.kind, entry); });
+    const definition = expeditionRoleConversations.find(entry => entry.roles.every(role => byRole.has(role)));
+    return definition ? { definition, participants: definition.roles.map(role => byRole.get(role)) } : null;
+  }
+
+  function expeditionRoleConversation(members) {
+    const pair = expeditionRolePair(members);
+    if (!pair) return null;
+    const { definition, participants } = pair;
+    return Object.freeze({
+      label: participants.map(entry => entry.reputation.title).join(" × "),
+      roles: Object.freeze([...definition.roles]),
+      memberIds: Object.freeze(participants.map(entry => entry.member.id)),
+      memberNames: Object.freeze(participants.map(entry => entry.member.name)),
+      text: definition.departure(...participants.map(entry => entry.member))
+    });
+  }
+
+  function expeditionRoleReturnConversation(members, success, variant = 0) {
+    const pair = expeditionRolePair(members);
+    if (!pair) return null;
+    const { definition, participants } = pair;
+    const lines = success ? definition.success : definition.failure;
+    const selected = lines[Math.abs(Math.trunc(Number(variant) || 0)) % lines.length];
+    return Object.freeze({
+      label: participants.map(entry => entry.reputation.title).join(" × "),
+      roles: Object.freeze([...definition.roles]),
+      memberIds: Object.freeze(participants.map(entry => entry.member.id)),
+      memberNames: Object.freeze(participants.map(entry => entry.member.name)),
+      text: selected(...participants.map(entry => entry.member))
+    });
+  }
+
+  function expeditionRoleConversationChange(before, after) {
+    if (!after) return null;
+    const key = entry => entry ? `${entry.roles.join(":")}:${entry.memberIds.join(":")}` : "";
+    return key(before) === key(after) ? null : after;
+  }
+
+  function skillMastery(recordOrUses) {
+    const uses = Math.max(0, Math.round(Number(typeof recordOrUses === "object" ? recordOrUses?.uses : recordOrUses) || 0));
+    const ranks = window.GameData.config.characterGrowth?.skillMasteryRanks || [];
+    const current = [...ranks].reverse().find(rank => uses >= rank.minimumUses) || null;
+    const next = ranks.find(rank => uses < rank.minimumUses) || null;
+    const previousMinimum = current?.minimumUses || 0;
+    return Object.freeze({ uses, current, next, remaining: next ? next.minimumUses - uses : 0, ratio: next ? Math.max(0, Math.min(1, (uses - previousMinimum) / (next.minimumUses - previousMinimum))) : 1 });
+  }
+
+  function signatureSkills(character) {
+    return Object.freeze(Object.entries(expeditionRecord(character).skillRecords)
+      .map(([skillId, record]) => {
+        const skill = window.GameData.skills?.[skillId];
+        return skill && Number(record.uses) > 0 ? Object.freeze({ skillId, skill, uses: Number(record.uses) || 0, damage: Number(record.damage) || 0, healing: Number(record.healing) || 0, statuses: Number(record.statuses) || 0, mastery: skillMastery(record) }) : null;
+      })
+      .filter(Boolean)
+      .sort((left, right) => right.uses - left.uses || (right.damage + right.healing + right.statuses) - (left.damage + left.healing + left.statuses) || left.skill.name.localeCompare(right.skill.name, "ja")));
   }
 
   function bossRivalries(character) {
@@ -114,6 +282,122 @@
     return Object.freeze([...(window.GameState.data.adventurerBonds?.memories?.[bondKey(leftId, rightId)] || [])]);
   }
 
+  function sharedHuntLedger(leftId, rightId, monsterId, itemId) {
+    const record = window.GameState.data.adventurerBonds?.huntLedgers?.[bondKey(leftId, rightId)]?.[`${monsterId}::${itemId}`];
+    return record ? Object.freeze({ monsterId, itemId, successes: record.successes, items: record.items, lastAt: record.lastAt }) : null;
+  }
+
+  function sharedHuntLedgers(leftId, rightId) {
+    return Object.entries(window.GameState.data.adventurerBonds?.huntLedgers?.[bondKey(leftId, rightId)] || {}).map(([targetKey, record]) => {
+      const split = targetKey.indexOf("::"), monsterId = targetKey.slice(0, split), itemId = targetKey.slice(split + 2);
+      return Object.freeze({ monsterId, itemId, successes: record.successes, items: record.items, lastAt: record.lastAt });
+    }).filter(entry => window.GameData.monsters?.[entry.monsterId] && window.GameData.items?.[entry.itemId])
+      .sort((left, right) => right.lastAt - left.lastAt || right.successes - left.successes || left.monsterId.localeCompare(right.monsterId));
+  }
+
+  function sharedHuntLedgerProgress(successes) {
+    const count = Math.max(0, Math.floor(Number(successes) || 0));
+    const tiers = [...(window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [])]
+      .sort((left, right) => left.minimumSuccesses - right.minimumSuccesses);
+    const currentTier = [...tiers].reverse().find(entry => count >= entry.minimumSuccesses) || null;
+    const nextTier = tiers.find(entry => count < entry.minimumSuccesses) || null;
+    return Object.freeze({
+      successes: count,
+      currentTier,
+      nextTier,
+      remaining: nextTier ? Math.max(0, nextTier.minimumSuccesses - count) : 0,
+      ratio: nextTier ? Math.max(0, Math.min(1, count / nextTier.minimumSuccesses)) : 1
+    });
+  }
+
+  function sharedHuntLedgerPairs(monsterId, itemId) {
+    const targetKey = `${monsterId}::${itemId}`;
+    const tiers = window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [];
+    return Object.entries(window.GameState.data.adventurerBonds?.huntLedgers || {}).map(([key, ledgers]) => {
+      const record = ledgers?.[targetKey];
+      const memberIds = key.split("::"), members = memberIds.map(get);
+      if (!record || memberIds.length !== 2 || members.some(member => !member)) return null;
+      const tier = [...tiers].sort((left, right) => right.minimumSuccesses - left.minimumSuccesses)
+        .find(entry => record.successes >= entry.minimumSuccesses) || null;
+      return Object.freeze({
+        key,
+        memberIds: Object.freeze([...memberIds]),
+        memberNames: Object.freeze(members.map(member => member.name)),
+        record: Object.freeze({ monsterId, itemId, successes: record.successes, items: record.items, lastAt: record.lastAt }),
+        tier,
+        progress: sharedHuntLedgerProgress(record.successes)
+      });
+    }).filter(Boolean).sort((left, right) => right.record.lastAt - left.record.lastAt || right.record.successes - left.record.successes || left.key.localeCompare(right.key, "ja"));
+  }
+
+  function namedHuntEpithets() {
+    const tiers = window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [];
+    return Object.entries(window.GameState.data.adventurerBonds?.huntLedgers || {}).flatMap(([bondKey, ledgers]) => {
+      const memberIds = bondKey.split("::"), members = memberIds.map(get);
+      if (memberIds.length !== 2 || members.some(member => !member)) return [];
+      return Object.entries(ledgers || {}).map(([targetKey, record]) => {
+        const split = targetKey.indexOf("::"), monsterId = targetKey.slice(0, split), itemId = targetKey.slice(split + 2);
+        const monster = window.GameData.monsters?.[monsterId], item = window.GameData.items?.[itemId];
+        const tier = [...tiers].sort((left, right) => right.minimumSuccesses - left.minimumSuccesses)
+          .find(entry => record.successes >= entry.minimumSuccesses);
+        if (!monster || !item || !tier?.epithet) return null;
+        return Object.freeze({
+          bondKey, memberIds: Object.freeze([...memberIds]), members: Object.freeze([...members]), monsterId, itemId, monster, item, tier,
+          epithet: tier.epithet.replace("{monster}", monster.name), successes: record.successes, items: record.items, lastAt: record.lastAt
+        });
+      }).filter(Boolean);
+    }).sort((left, right) => right.lastAt - left.lastAt || right.successes - left.successes || left.epithet.localeCompare(right.epithet, "ja"));
+  }
+
+  function developingHuntLedgers() {
+    return Object.entries(window.GameState.data.adventurerBonds?.huntLedgers || {}).flatMap(([pairKey, ledgers]) => {
+      const memberIds = pairKey.split("::"), members = memberIds.map(get);
+      if (memberIds.length !== 2 || members.some(member => !member)) return [];
+      return Object.entries(ledgers || {}).map(([targetKey, record]) => {
+        const split = targetKey.indexOf("::"), monsterId = targetKey.slice(0, split), itemId = targetKey.slice(split + 2);
+        const monster = window.GameData.monsters?.[monsterId], item = window.GameData.items?.[itemId];
+        const progress = sharedHuntLedgerProgress(record.successes);
+        if (!monster || !item || !progress.nextTier) return null;
+        return Object.freeze({
+          bondKey: pairKey,
+          memberIds: Object.freeze([...memberIds]),
+          members: Object.freeze([...members]),
+          monsterId,
+          itemId,
+          monster,
+          item,
+          tier: progress.currentTier,
+          progress,
+          successes: record.successes,
+          items: record.items,
+          lastAt: record.lastAt
+        });
+      }).filter(Boolean);
+    }).sort((left, right) => left.progress.remaining - right.progress.remaining || right.successes - left.successes || right.lastAt - left.lastAt || left.bondKey.localeCompare(right.bondKey, "ja"));
+  }
+
+  function namedHuntsForMembers(memberIds, monsterIds = null) {
+    const members = new Set((memberIds || []).map(String));
+    const monsters = monsterIds == null ? null : new Set((monsterIds || []).map(String));
+    return Object.freeze(namedHuntEpithets().filter(entry => entry.memberIds.every(id => members.has(id))
+      && (!monsters || monsters.has(entry.monsterId))));
+  }
+
+  function recordSharedHuntLedger(memberIds, monsterId, itemId, items, at) {
+    const ids = [...new Set(memberIds || [])];
+    const quantity = Math.max(0, Number(items) || 0);
+    if (ids.length !== 2 || ids.some(id => !get(id)) || !window.GameData.monsters?.[monsterId] || !window.GameData.items?.[itemId] || quantity < 1) return false;
+    const store = window.GameState.data.adventurerBonds || (window.GameState.data.adventurerBonds = { version: 1, pairs: {}, memories: {}, huntLedgers: {} });
+    if (!store.huntLedgers || typeof store.huntLedgers !== "object" || Array.isArray(store.huntLedgers)) store.huntLedgers = {};
+    const pairLedgers = store.huntLedgers[bondKey(ids[0], ids[1])] || (store.huntLedgers[bondKey(ids[0], ids[1])] = {});
+    const targetKey = `${monsterId}::${itemId}`, record = pairLedgers[targetKey] || { successes: 0, items: 0, lastAt: 0 };
+    record.successes += 1;
+    record.items += quantity;
+    record.lastAt = Math.max(0, Number(at) || window.GameRuntime.now());
+    pairLedgers[targetKey] = record;
+    return true;
+  }
+
   function recordBondMemory(memberIds, momentId) {
     const ids = [...new Set(memberIds || [])];
     if (ids.length !== 2 || ids.some(id => !get(id)) || !(window.GameData.config.explorationEvents?.adventurerBondMoments || []).some(moment => moment.id === momentId)) return false;
@@ -127,6 +411,8 @@
 
   function expeditionMilestones(character) {
     const record = expeditionRecord(character);
+    const masteryRanks = window.GameData.config.characterGrowth?.skillMasteryRanks || [];
+    const masteredSkills = signatureSkills(character).filter(entry => entry.mastery.current);
     return (window.GameData.adventurerMilestones || []).map(definition => {
       const condition = definition.condition;
       const current = condition.type === "routeEventRecord"
@@ -135,6 +421,15 @@
           ? fieldSpecialties(character).length
           : condition.type === "sharedSorties"
             ? (sharedSorties(character)[0]?.count || 0)
+             : condition.type === "itemDiscoveryCount"
+               ? (window.Encyclopedia?.itemDiscoveriesByCharacter?.(character.id).length || 0)
+             : condition.type === "monsterFirstDefeatCount"
+               ? (window.Encyclopedia?.monsterFirstDefeatsByCharacter?.(character.id).length || 0)
+            : condition.type === "skillMasteryCount"
+              ? (() => {
+                const required = masteryRanks.find(rank => rank.id === condition.rankId);
+                return required ? masteredSkills.filter(entry => entry.mastery.current.minimumUses >= required.minimumUses).length : 0;
+              })()
           : Math.max(0, Number(record[condition.field]) || 0);
       const target = definition.condition.minimum;
       return Object.freeze(Object.assign({}, definition, {
@@ -183,17 +478,94 @@
     });
     record.treasureOpenings += Math.max(0, Math.round(Number(report.treasureOpenings) || 0));
     record.teamSurveys += Math.max(0, Math.round(Number(report.teamSurveys) || 0));
+    record.targetedHarvestAttempts += Math.max(0, Math.round(Number(report.targetedHarvestAttempts) || 0));
+    record.targetedHarvestSuccesses += Math.max(0, Math.round(Number(report.targetedHarvestSuccesses) || 0));
+    record.targetedHarvestItems += Math.max(0, Math.round(Number(report.targetedHarvestItems) || 0));
+    if (report.targetedHarvestRecord?.monsterId && report.targetedHarvestRecord?.itemId) {
+      const key = `${report.targetedHarvestRecord.monsterId}::${report.targetedHarvestRecord.itemId}`;
+      const previous = record.targetedHarvestRecords[key] || { attempts: 0, successes: 0, items: 0, lastAt: null };
+      record.targetedHarvestRecords[key] = {
+        attempts: previous.attempts + Math.max(0, Math.round(Number(report.targetedHarvestRecord.attempts) || 0)),
+        successes: previous.successes + Math.max(0, Math.round(Number(report.targetedHarvestRecord.successes) || 0)),
+        items: previous.items + Math.max(0, Math.round(Number(report.targetedHarvestRecord.items) || 0)),
+        lastAt: Number(completedAt) || window.GameRuntime.now()
+      };
+    }
     record.damageDealt += damage;
     record.healingDone += healing;
     record.damageTaken += taken;
     record.criticalHits += Math.max(0, Math.round(Number(report.criticalHits) || 0));
+    record.statusAttempts += Math.max(0, Math.round(Number(report.statusAttempts) || 0));
+    record.statusInflicted += Math.max(0, Math.round(Number(report.statusInflicted) || 0));
     record.knockouts += Number(report.remainingHp) <= 0 ? 1 : 0;
     record.bestDamage = Math.max(record.bestDamage, damage);
     record.bestHealing = Math.max(record.bestHealing, healing);
     if (Number(report.remainingHp) > 0) record.bestEndurance = Math.max(record.bestEndurance, taken);
+    const usedSkillIds = new Set([
+      ...Object.keys(report.skillUses || {}), ...Object.keys(report.skillDamage || {}),
+      ...Object.keys(report.skillHealing || {}), ...Object.keys(report.skillStatusInflicted || {})
+    ]);
+    usedSkillIds.forEach(skillId => {
+      if (!window.GameData.skills?.[skillId]) return;
+      const previous = record.skillRecords[skillId] || { uses: 0, damage: 0, healing: 0, statuses: 0 };
+      const next = {
+        uses: previous.uses + Math.max(0, Math.round(Number(report.skillUses?.[skillId]) || 0)),
+        damage: previous.damage + Math.max(0, Math.round(Number(report.skillDamage?.[skillId]) || 0)),
+        healing: previous.healing + Math.max(0, Math.round(Number(report.skillHealing?.[skillId]) || 0)),
+        statuses: previous.statuses + Math.max(0, Math.round(Number(report.skillStatusInflicted?.[skillId]) || 0))
+      };
+      if (next.uses > 0) record.skillRecords[skillId] = next;
+    });
     record.lastAt = Number(completedAt) || window.GameRuntime.now();
     character.expeditionRecord = record;
     return record;
+  }
+  function targetedHarvestRecords(character) {
+    return Object.entries(expeditionRecord(character).targetedHarvestRecords).map(([key, entry]) => {
+      const [monsterId, itemId] = key.split("::");
+      return Object.freeze({ monsterId, itemId, ...entry });
+    }).filter(entry => window.GameData.monsters?.[entry.monsterId] && window.GameData.items?.[entry.itemId])
+      .sort((left, right) => right.successes - left.successes || right.items - left.items || right.attempts - left.attempts || (right.lastAt || 0) - (left.lastAt || 0));
+  }
+  function targetedHarvestPractice(character, monsterId, itemId) {
+    const record = targetedHarvestRecords(character).find(entry => entry.monsterId === monsterId && entry.itemId === itemId) || null;
+    const tier = record ? [...(window.GameData.config.explorationEvents?.targetedHarvestPractice || [])]
+      .sort((left, right) => right.minimumSuccesses - left.minimumSuccesses)
+      .find(entry => record.successes >= entry.minimumSuccesses) || null : null;
+    return Object.freeze({ record, tier });
+  }
+  function targetedHarvestPersistence(character, monsterId, itemId) {
+    const record = targetedHarvestRecords(character).find(entry => entry.monsterId === monsterId && entry.itemId === itemId) || null;
+    const misses = record ? Math.max(0, record.attempts - record.successes) : 0;
+    const tier = record ? [...(window.GameData.config.explorationEvents?.targetedHarvestPersistence || [])]
+      .sort((left, right) => right.minimumMisses - left.minimumMisses)
+      .find(entry => misses >= entry.minimumMisses) || null : null;
+    return Object.freeze({ record, misses, tier });
+  }
+  function targetedHarvestConsultation(practice, persistence) {
+    if (!practice || !persistence || !practice.characterId || !persistence.characterId || practice.characterId === persistence.characterId) return null;
+    const practicedName = String(practice.characterName || "手覚えのある者");
+    const persistentName = String(persistence.characterName || "跡を読む者");
+    return Object.freeze({
+      memberIds: Object.freeze([practice.characterId, persistence.characterId]),
+      memberNames: Object.freeze([practicedName, persistentName]),
+      label: "採れた手順と、空振りの跡",
+      departure: `${practicedName}が持ち帰れた時の手順を話すと、${persistentName}は空振りで消えた跡を地図へ重ねた。別々の経験が、一つの狩り支度になった。`,
+      encounter: `${practicedName}「採れた時は、ここから手を入れた」　${persistentName}「外れた時は、この跡が先に消えた」――二人は成功と空振りの記録を、同じ手順へ重ねた。`,
+      return: `${practicedName}の手覚えと、${persistentName}が拾った空振りの痕跡を、一冊の狩り記録として持ち帰った。`
+    });
+  }
+  function targetedHarvestConsultationRemembered(practice, persistence, monsterId, itemId) {
+    return Boolean(targetedHarvestConsultationLedger(practice, persistence, monsterId, itemId));
+  }
+  function targetedHarvestConsultationLedger(practice, persistence, monsterId, itemId) {
+    const consultation = targetedHarvestConsultation(practice, persistence);
+    const record = consultation && monsterId && itemId ? sharedHuntLedger(...consultation.memberIds, monsterId, itemId) : null;
+    if (!record) return null;
+    const tier = [...(window.GameData.config.explorationEvents?.targetedHarvestConsultation?.rememberedTiers || [])]
+      .sort((left, right) => right.minimumSuccesses - left.minimumSuccesses)
+      .find(entry => record.successes >= entry.minimumSuccesses) || null;
+    return tier ? Object.freeze({ record, tier, progress: sharedHuntLedgerProgress(record.successes) }) : null;
   }
   function companionDefinition(character) {
     return character?.source?.type === "companion" ? window.Companions?.definition(character.source.companionId) || null : null;
@@ -204,8 +576,7 @@
   function attributeEquipmentBonuses(equipment) {
     const bonuses = Object.fromEntries(attributeKeys().map(key => [key, 0]));
     (equipment || []).map(entry => typeof entry === "string" ? window.Items.getInstance(entry) : entry).filter(Boolean).forEach(instance => {
-      const template = window.Items.template(instance.templateId);
-      Object.entries(template?.attributeBonuses || {}).forEach(([key, value]) => { if (key in bonuses) bonuses[key] += Number(value) || 0; });
+      Object.entries(window.Items.attributeBonuses(instance)).forEach(([key, value]) => { if (key in bonuses) bonuses[key] += Number(value) || 0; });
     });
     return bonuses;
   }
@@ -438,8 +809,13 @@
       attackCount: attackCountForSpeed(speed, character.jobId, bonuses.attackCount + gearSkills.bonuses.attackCount),
       criticalRate: Math.min(Number(rates.criticalMaximum) || .8, Math.max(0, (Number(rates.criticalBase) || .02) + normalized("luck") * (Number(rates.criticalLuck) || .005) + normalized("dexterity") * (Number(rates.criticalDexterity) || .003) + gearSkills.bonuses.criticalRate))
     };
+    const attributeScores = attributeChart(character, equipped).total;
     raw.luck = ability.luck;
-    raw.luckScore = attributeChart(character, equipped).total.luck;
+    raw.luckScore = attributeScores.luck;
+    const statusInfliction = config.statusInfliction || {};
+    raw.statusChanceBonus = Math.min(Number(statusInfliction.maximumBonus) || .15,
+      Math.max(0, attributeScores.intelligence - (Number(config.chartStandard) || 50)) * (Number(statusInfliction.intelligencePerChartPoint) || 0)
+      + Math.max(0, attributeScores.luck - (Number(config.chartStandard) || 50)) * (Number(config.luck?.statusChancePerPoint) || 0));
     const scaled = {};
     Object.keys(gearSkills.multipliers).forEach(key => { scaled[key] = raw[key] * gearSkills.multipliers[key]; });
     const converted = {};
@@ -453,8 +829,15 @@
     raw.magicPower = attributePower("magicPower") * gearSkills.magicPower;
     raw.skillPower = buffs.skillPower;
     raw.healingPower = equipped.reduce((power, instance) => (window.Items.template(instance.templateId).specialEffects || []).filter(effect => effect.kind === "healing_boost").reduce((value, effect) => value * effect.multiplier, power), attributePower("healingPower") * buffs.healingPower * gearSkills.healingPower);
+    raw.healingReceived = attributePower("healingReceived");
     raw.elementModifiers = Object.assign({}, buffs.elementModifiers);
     raw.statusResistances = Object.assign({}, buffs.statusResistances);
+    const statusResistanceRules = config.statusResistances || {};
+    Object.entries(statusResistanceRules.byStatus || {}).forEach(([statusId, rule]) => {
+      const gained = Math.min(Number(statusResistanceRules.maximum) || .25, Math.max(0,
+        (normalized(rule.attribute) - (Number(config.expectedInitial) || 10)) * (Number(statusResistanceRules.perPoint) || 0)));
+      if (gained > 0) raw.statusResistances[statusId] = 1 - (1 - (raw.statusResistances[statusId] || 0)) * (1 - gained);
+    });
     Object.entries(gearSkills.statusResistances).forEach(([id, resistance]) => {
       raw.statusResistances[id] = 1 - (1 - (raw.statusResistances[id] || 0)) * (1 - resistance);
     });
@@ -467,7 +850,7 @@
     const base = stats(character, []);
     const total = stats(character, equipment);
     const contribution = {};
-    ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "speed", "attackCount", "criticalRate", "physicalPower", "magicPower", "skillPower", "healingPower"].forEach(key => {
+    ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "speed", "attackCount", "criticalRate", "statusChanceBonus", "physicalPower", "magicPower", "skillPower", "healingPower", "healingReceived"].forEach(key => {
       contribution[key] = (total[key] || 0) - (base[key] || 0);
     });
     return { base, equipment: contribution, total };
@@ -560,5 +943,5 @@
     return { ok: true, message: "キャラクター画像を変更しました。" };
   }
 
-  window.Characters = { get, stats, statBreakdown, attributes, attributeBreakdown, attributeChart, expectedAttribute, attributeKeys, luckAcquisitionMultiplier, addExperience, emptyExpeditionRecord, expeditionRecord, bossRivalries, activeBossRivalries, recordBossEncounter, expeditionMilestones, routeExperience, routeSpecialties, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, recordBondMemory, bondMemories, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseAttributes, companionDefinition, attackCountFor, attackCountForSpeed };
+  window.Characters = { get, stats, statBreakdown, attributes, attributeBreakdown, attributeChart, expectedAttribute, attributeKeys, luckAcquisitionMultiplier, addExperience, emptyExpeditionRecord, expeditionRecord, targetedHarvestRecords, targetedHarvestPractice, targetedHarvestPersistence, targetedHarvestConsultation, targetedHarvestConsultationRemembered, targetedHarvestConsultationLedger, sharedHuntLedger, sharedHuntLedgers, sharedHuntLedgerProgress, sharedHuntLedgerPairs, namedHuntEpithets, developingHuntLedgers, namedHuntsForMembers, recordSharedHuntLedger, expeditionRoleLabel, recentExpeditionRole, expeditionRoleConversation, expeditionRoleReturnConversation, expeditionRoleConversationChange, skillMastery, signatureSkills, bossRivalries, activeBossRivalries, recordBossEncounter, expeditionMilestones, routeExperience, routeSpecialties, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, recordBondMemory, bondMemories, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseAttributes, companionDefinition, attackCountFor, attackCountForSpeed };
 })();

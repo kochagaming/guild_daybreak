@@ -6,9 +6,9 @@
   const attributeDefinitions = Object.freeze({
     vitality: Object.freeze({ id: "vitality", name: "生命", shortName: "生命", description: "最大HPと回復を受ける力の基礎。" }),
     strength: Object.freeze({ id: "strength", name: "筋力", shortName: "筋力", description: "物理攻撃、物理威力、装備可能重量の基礎。" }),
-    fortitude: Object.freeze({ id: "fortitude", name: "頑健", shortName: "頑健", description: "物理防御、最大HP、肉体系の耐性の基礎。" }),
+    fortitude: Object.freeze({ id: "fortitude", name: "頑健", shortName: "頑健", description: "物理防御、最大HP、毒・火傷・凍寒への抵抗の基礎。" }),
     intelligence: Object.freeze({ id: "intelligence", name: "知力", shortName: "知力", description: "魔法攻撃、呪文威力、呪文による状態異常成功の基礎。" }),
-    spirit: Object.freeze({ id: "spirit", name: "精神", shortName: "精神", description: "魔法防御、魔法回復、回復威力、精神系の耐性の基礎。" }),
+    spirit: Object.freeze({ id: "spirit", name: "精神", shortName: "精神", description: "魔法防御、魔法回復、回復威力、麻痺への抵抗の基礎。" }),
     dexterity: Object.freeze({ id: "dexterity", name: "技巧", shortName: "技巧", description: "命中、会心、攻撃回数を支える技量。" }),
     agility: Object.freeze({ id: "agility", name: "敏捷", shortName: "敏捷", description: "行動速度、回避、攻撃回数を支える身軽さ。" }),
     luck: Object.freeze({ id: "luck", name: "幸運", shortName: "幸運", description: "会心、状態異常、宝箱、ドロップ、品質に僅かに影響する巡り合わせ。" })
@@ -40,7 +40,22 @@
       powerMultipliers: Object.freeze({
         physicalPower: Object.freeze({ attribute: "strength", coefficient: .25, minimum: .8, maximum: 1.5 }),
         magicPower: Object.freeze({ attribute: "intelligence", coefficient: .25, minimum: .8, maximum: 1.5 }),
-        healingPower: Object.freeze({ attribute: "spirit", coefficient: .25, minimum: .8, maximum: 1.5 })
+        healingPower: Object.freeze({ attribute: "spirit", coefficient: .25, minimum: .8, maximum: 1.5 }),
+        healingReceived: Object.freeze({ attribute: "vitality", coefficient: .2, minimum: .85, maximum: 1.25 })
+      }),
+      statusResistances: Object.freeze({
+        maximum: .25,
+        perPoint: .02,
+        byStatus: Object.freeze({
+          poison: Object.freeze({ attribute: "fortitude" }),
+          burn: Object.freeze({ attribute: "fortitude" }),
+          chill: Object.freeze({ attribute: "fortitude" }),
+          paralysis: Object.freeze({ attribute: "spirit" })
+        })
+      }),
+      statusInfliction: Object.freeze({
+        intelligencePerChartPoint: .002,
+        maximumBonus: .15
       }),
       luck: Object.freeze({
         statusChancePerPoint: .002,
@@ -60,6 +75,11 @@
       [1, 1], [3, 2], [6, 3], [9, 4], [12, 5], [16, 6], [20, 7], [25, 8], [30, 9],
       [36, 10], [42, 11], [49, 12], [58, 13], [67, 14], [77, 15], [89, 16],
       [102, 17], [118, 18], [134, 19], [150, 20], [166, 21], [183, 22], [200, 23]
+    ]),
+    skillMasteryRanks: Object.freeze([
+      Object.freeze({ id: "familiar", name: "手慣れ", minimumUses: 10 }),
+      Object.freeze({ id: "trusted", name: "得意技", minimumUses: 50 }),
+      Object.freeze({ id: "signature", name: "十八番", minimumUses: 200 })
     ]),
     postMilestoneLevelsPerItem: 17,
     maximumAverageItems: 28

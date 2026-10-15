@@ -50,6 +50,28 @@
     if (requirement.type === "treasureTierEncountered") return (story.facts.treasureTiers?.[requirement.treasureTierId]?.encounters || 0) > 0;
     if (requirement.type === "treasureTierMastered") return (story.facts.treasureTiers?.[requirement.treasureTierId]?.openings || 0) >= requirement.openings;
     if (requirement.type === "sharedSorties") return Math.max(0, ...Object.values(state.adventurerBonds?.pairs || {}).map(count => Number(count) || 0)) >= requirement.minimum;
+    if (requirement.type === "skillMastery") {
+      const rank = (window.GameData.config.characterGrowth?.skillMasteryRanks || []).find(entry => entry.id === requirement.rankId);
+      return Boolean(rank && (state.characters || []).some(character => Object.values(character.expeditionRecord?.skillRecords || {}).some(record => Number(record.uses || 0) >= rank.minimumUses)));
+    }
+    if (requirement.type === "targetedHarvestPractice") {
+      const tier = (window.GameData.config.explorationEvents?.targetedHarvestPractice || []).find(entry => entry.id === requirement.tierId);
+      return Boolean(tier && (state.characters || []).some(character => Object.values(character.expeditionRecord?.targetedHarvestRecords || {}).some(record => Number(record.successes || 0) >= tier.minimumSuccesses)));
+    }
+    if (requirement.type === "targetedHarvestPersistence") {
+      const tier = (window.GameData.config.explorationEvents?.targetedHarvestPersistence || []).find(entry => entry.id === requirement.tierId);
+      return Boolean(tier && (state.characters || []).some(character => Object.values(character.expeditionRecord?.targetedHarvestRecords || {}).some(record => Math.max(0, Number(record.attempts || 0) - Number(record.successes || 0)) >= tier.minimumMisses)));
+    }
+    if (requirement.type === "targetedHarvestConsultation") {
+      const practiceMinimum = Math.min(...(window.GameData.config.explorationEvents?.targetedHarvestPractice || []).map(entry => entry.minimumSuccesses));
+      const persistenceMinimum = Math.min(...(window.GameData.config.explorationEvents?.targetedHarvestPersistence || []).map(entry => entry.minimumMisses));
+      const practices = new Map(), persistences = new Map();
+      (state.characters || []).forEach(character => Object.entries(character.expeditionRecord?.targetedHarvestRecords || {}).forEach(([key, record]) => {
+        if (Number(record.successes || 0) >= practiceMinimum) (practices.get(key) || practices.set(key, []).get(key)).push(character.id);
+        if (Math.max(0, Number(record.attempts || 0) - Number(record.successes || 0)) >= persistenceMinimum) (persistences.get(key) || persistences.set(key, []).get(key)).push(character.id);
+      }));
+      return [...practices].some(([key, practicedIds]) => practicedIds.some(practicedId => (persistences.get(key) || []).some(persistentId => persistentId !== practicedId)));
+    }
     return false;
   }
   function requirementsMet(requirements, state, completedIds = null) { return (requirements || []).every(requirement => requirementSatisfied(requirement, state, completedIds)); }

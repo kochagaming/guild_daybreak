@@ -161,6 +161,13 @@
     };
   }
 
+  function attributeBonuses(instance) {
+    const base = template(instance.templateId);
+    const grade = quality(instance);
+    const ultraMultiplier = window.EquipmentSkills.title(instance) ? window.GameData.config.ultraRare.statMultiplier : 1;
+    return Object.fromEntries(Object.entries(base.attributeBonuses || {}).map(([key, value]) => [key, Math.round((Number(value) || 0) * grade.statMultiplier * ultraMultiplier * 10) / 10]));
+  }
+
   function standardEffects(templateId) {
     return effects({ templateId, qualityId: "standard", modifiers: {}, upgradeLevel: 0 });
   }
@@ -443,7 +450,7 @@
 
   window.Items = {
     count, add, remove, rollInstance, createInstance, getInstance, equipmentList, available,
-    template, quality, qualityDescription, qualityCompact, qualityTable, effects, standardEffects, performanceScore, performanceFloor, performancePerWeight, tierEfficiencyMultiplier, displayName, equippedBy, canEquip, equip, unequip, unequipAll,
+    template, quality, qualityDescription, qualityCompact, qualityTable, effects, attributeBonuses, standardEffects, performanceScore, performanceFloor, performancePerWeight, tierEfficiencyMultiplier, displayName, equippedBy, canEquip, equip, unequip, unequipAll,
     sellValue, sell, salvageYield, dismantle, setLocked, queryEquipment,
     stackKey, groupEquipment
   };

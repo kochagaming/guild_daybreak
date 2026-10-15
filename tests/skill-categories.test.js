@@ -36,6 +36,12 @@ assert.deepStrictEqual(Array.from(uses.filter(entry => entry.text.includes("強�
 assert.deepStrictEqual(Array.from(uses.filter(entry => entry.text.includes("暗黒波")), entry => entry.round), [1, 21]);
 assert(uses.some(entry => entry.text.includes("CT 10")) && uses.some(entry => entry.text.includes("CT 20")), "The log exposes each skill's cooldown");
 assert(cooldown.battleLog.some(entry => entry.kind === "guard"), "A technique-only policy should defend while its technique is on cooldown");
+const mastered = hero("熟練者", ["power_strike"]); mastered.skillMasteryIds = { power_strike: "trusted" };
+const masteredResult = fight([mastered]);
+assert(masteredResult.battleLog.some(entry => entry.text.includes("【技】【得意技】熟練者は「強撃」")), "A snapshotted mastery name appears when the adventurer uses that skill");
+assert.strictEqual(masteredResult.memberReports[0].skillMasteryIds.power_strike, "trusted", "The return report retains the mastery visible during combat");
+const masteryPanel = game.GameUIViews.results.signatureSkillPanel(masteredResult, { escape: value => String(value) });
+assert(masteryPanel.includes("使い込んだ技能が戦場に現れました") && masteryPanel.includes("強撃 · 得意技"), "The return report celebrates each member's most familiar skill used on this expedition");
 const techniqueRotation = fight([hero("使い分け役", ["iaijutsu", "power_strike"])]);
 const rotationUses = techniqueRotation.battleLog.filter(entry => entry.text.includes("再使用はターン"));
 assert(rotationUses.some(entry => entry.round === 1 && entry.text.includes("居合斬り")));
@@ -101,9 +107,12 @@ assert.strictEqual(restart.battleLog.filter(entry => entry.text.includes("再使
 async function run() {
   const id = require("./helpers").createCharacter(game, "分類保存", "warrior", "human", "guard").id;
   game.Characters.get(id).level = 40; game.Party.toggle(id);
+  game.Characters.get(id).expeditionRecord = game.Characters.emptyExpeditionRecord();
+  game.Characters.get(id).expeditionRecord.skillRecords.power_strike = { uses: 55, damage: 500, healing: 0, statuses: 0 };
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow" })).ok);
   assert(!("battleVersion" in game.GameState.data.expeditions[0]));
   assert(game.GameState.data.expeditions[0].partySnapshot[0].skillIds.includes("rear_protection"));
+  assert.strictEqual(game.GameState.data.expeditions[0].partySnapshot[0].skillMasteryIds.power_strike, "trusted", "Skill mastery is snapshotted at departure so an in-progress expedition stays deterministic");
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);
   now += 30000; await game.GameClient.execute("expedition.collect");
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok);

@@ -18,6 +18,8 @@ function moments(seed, members) {
 }
 
 const definitions = new Map(game.GameData.config.explorationEvents.adventurerBondMoments.map(entry => [entry.id, entry]));
+const huntMemoryId = game.GameData.config.explorationEvents.targetedHarvestConsultation.bondMomentId;
+assert.strictEqual(definitions.get(huntMemoryId).trigger, "targetedHarvestConsultation", "The shared hunt ledger is an earned event memory rather than a random travel scene");
 assert.strictEqual(moments(1, party(4)).length, 0, "A pair needs five shared departures before a travel-companion scene can occur");
 for (let seed = 1; seed <= 100; seed += 1) assert.strictEqual(moments(seed, party(4)).length, 0, "An unfamiliar pair never rolls a relationship scene");
 for (let seed = 1; seed <= 100; seed += 1) assert.strictEqual(moments(seed, party(20, true)).length, 0, "Authored companions use their authored scenes instead of generic recruit moments");
@@ -28,6 +30,7 @@ for (let seed = 1; seed <= 300; seed += 1) {
   assert(entries.length <= 1, "A single expedition contains at most one generic relationship scene");
   if (!entries.length) continue;
   const entry = entries[0], definition = definitions.get(entry.adventurerBondMomentId);
+  assert.notStrictEqual(entry.adventurerBondMomentId, huntMemoryId, "Targeted-harvest memories never appear as unrelated random travel scenes");
   assert(definition, "Every relationship scene refers to master data");
   assert.strictEqual(JSON.stringify(entry.adventurerBondMemberNames), JSON.stringify(["アルト", "ベル"]));
   assert.strictEqual(entry.sharedSorties, 20);

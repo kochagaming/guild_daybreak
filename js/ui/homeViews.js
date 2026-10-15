@@ -108,6 +108,47 @@
     return `<section class="story-replay-bookmarks"><header><span><small>BOOKMARKS</small><strong>読みかけの章回想</strong></span><em>${records.length}件</em></header><div>${records.map(record => `<button type="button" data-action="replay-story-chapter" data-chapter="${context.escape(record.chapter.id)}"><span aria-hidden="true">◆</span><span><small>${context.escape(record.chapter.title)} · 場面 ${record.entry.sceneIndex + 1}/${record.total}</small><strong>${context.escape(record.event.scene.name)}から再開</strong></span><i aria-hidden="true">›</i></button>`).join("")}</div></section>`;
   }
 
+  function guildHallWhisper(context) {
+    const named = window.Characters.namedHuntEpithets()[0];
+    const developing = window.Characters.developingHuntLedgers()[0];
+    const hunt = developing && (!named || developing.lastAt > named.lastAt) ? developing : named;
+    if (!hunt) return "";
+    const names = hunt.members.map(member => member.name);
+    const characters = window.GameData.storyCharacters || {};
+    const rina = characters.receptionist_rina?.name || "リナ";
+    const elseName = characters.archivist_else?.name || "エルゼ";
+    const material = hunt.item.type === "material";
+    const witness = material ? characters.merchant_marta : characters.blacksmith_gregor;
+    const witnessName = witness?.name || (material ? "マルタ" : "グレゴール");
+    const archivesOpen = Boolean(window.GuildServices?.unlocked?.("archives"));
+    const witnessOpen = Boolean(window.GuildServices?.unlocked?.(material ? "shop" : "blacksmith"));
+    if (!hunt.epithet) {
+      const nextPage = hunt.progress.nextTier?.label || "次の頁";
+      const remaining = hunt.progress.remaining;
+      const lines = [
+        `<p><b>${context.escape(rina)}</b>「同じ依頼書の余白に、${names.map(context.escape).join("さんと")}さんの筆跡が増えています。${context.escape(hunt.monster.name)}から${context.escape(hunt.item.name)}を持ち帰るたび、前より迷いが少なくなっていますね」</p>`,
+        archivesOpen ? `<p><b>${context.escape(elseName)}</b>「いまは『${context.escape(hunt.tier?.label || "最初の記録")}』。あと${remaining}度、二人で持ち帰れば『${context.escape(nextPage)}』として綴じ直せます。数字より、余白の減り方を見てください」</p>` : "",
+        `<p><b>${context.escape(names[0])}</b>「なら次も同じ二人で行こう。うまくいった道だけでなく、見失った場所も帰ったら書き足す」</p>`
+      ].filter(Boolean).join("");
+      return `<aside class="story-guild-whisper is-developing"><header><span aria-hidden="true">帳</span><span><small>AN UNFINISHED HUNT</small><strong>宿の広間で育つ狩り帳</strong></span></header><div>${lines}</div><button type="button" class="text-button" data-action="open-adventurer-bonds" data-bond="${context.escape(hunt.bondKey)}" data-monster="${context.escape(hunt.monsterId)}" data-item="${context.escape(hunt.itemId)}">二人の書きかけを読む · あと${remaining}回</button></aside>`;
+    }
+    const witnessLine = material
+      ? `「${hunt.item.name}なら、見れば採れた場所が分かるよ。同じ傷、同じ泥――二人は偶然拾ったんじゃない。獲物の通り道を覚えたんだね」`
+      : hunt.item.type === "armor"
+        ? `「${hunt.item.name}の留め具に、毎度よく似た傷がある。二人とも${hunt.monster.name}の一撃を、同じ間合いで受け流しているらしい」`
+        : `「${hunt.item.name}の刃こぼれが、毎度同じ場所に出ている。二人とも${hunt.monster.name}へ踏み込む時の呼吸が揃ってきた証拠だ」`;
+    const hunterReply = material
+      ? `「帰り道まで覚えておくよ。次は空の袋を、もう少し軽くして帰れる」`
+      : `「呼び名より先に、次も二人で帰れる手順を覚えておくよ」`;
+    const lines = [
+      `<p><b>${context.escape(rina)}</b>「今朝から、町の子たちが『${context.escape(hunt.epithet)}』って呼んでいます。${names.map(context.escape).join("さんと")}さんのこと、もう覚えてしまったみたいです」</p>`,
+      archivesOpen ? `<p><b>${context.escape(elseName)}</b>「名が先にあったのではありません。二人で${context.escape(hunt.item.name)}を持ち帰り続けた頁が、そう呼ばせたのでしょう。記録には、持ち帰った数だけでなく町の人が見た二人も残します」</p>` : "",
+      witnessOpen ? `<p><b>${context.escape(witnessName)}</b>${context.escape(witnessLine)}</p>` : "",
+      `<p><b>${context.escape(names[0])}</b>${context.escape(hunterReply)}</p>`
+    ].filter(Boolean).join("");
+    return `<aside class="story-guild-whisper"><header><span aria-hidden="true">聞</span><span><small>OVERHEARD AT THE INN</small><strong>宿の広間で広がった狩り名</strong></span></header><div>${lines}</div><button type="button" class="text-button" data-action="open-adventurer-bonds" data-bond="${context.escape(hunt.bondKey)}" data-monster="${context.escape(hunt.monsterId)}" data-item="${context.escape(hunt.itemId)}">町に広がった二人の頁を読む</button></aside>`;
+  }
+
   function story(context) {
     const state = window.GameState.data, storyState = window.Story.ensure(), focus = window.Story.focus(), chapter = focus.chapter, guide = window.Story.storyGuide(), episode = guide.episode;
     const finalChapter = window.Story.mainChapters().at(-1);
@@ -129,6 +170,7 @@
       ${storyMemoryBrief(context, guide)}
       ${currentScene}
       ${storyMysteryBoard(context)}
+      ${guildHallWhisper(context)}
       ${mainStoryComplete ? `<div class="story-completion-summary"><span aria-hidden="true">✦</span><div><strong>名もなき宿から始まった物語を見届けました</strong><p>全${mainChapterCount}章を達成。クリア後は「${context.escape(postgameRoutes.find(route => !storyState.facts.clears.includes(route.id))?.name || postgameRoutes[0]?.name || "星後の神域")}」など、星後の遠征へ挑めます。</p><small>クリア後探索 ${postgameCleared}/${postgameRoutes.length}攻略</small></div></div>` : ""}
       ${chapter && !storyState.completed.includes(chapter.id) ? `<div class="story-next-step"><span>次の目的</span><strong>${context.escape(objective || "ギルドで次の依頼を待つ")}</strong>${focus.dungeon ? `<small>${context.escape(focus.dungeon.description)}</small>` : chapter.id === "prologue" ? `<small>冒険者雇用：${state.characters.length ? "達成" : "未達成"} ／ 初出発：${storyState.facts.departed ? "達成" : "未達成"}</small>` : ""}</div>${routeProgress(context, chapter, focus)}` : ""}
       <div class="story-primary-action">${episode ? `<button class="button primary story-read-button" data-action="open-story-reader">物語を読む</button><small>タップして開き、最後まで読んでください</small>` : `<button class="button primary" ${nextPage === "characters" ? 'data-nav="characters"' : `data-action="party-view" data-view="${nextView}"`}>${nextPage === "characters" ? "仲間を募集する" : nextView === "formation" ? "パーティを編成する" : mainStoryComplete ? "クリア後の探索へ" : "探索・攻略へ"}</button>`}</div>

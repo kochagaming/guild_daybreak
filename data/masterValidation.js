@@ -13,7 +13,7 @@
     const itemCombatFields = ["hp", "attack", "defense", "magicAttack", "magicDefense", "magicHealing", "hitRate", "evasionRate", "speed", "criticalRate", "attackCount"];
     const itemSpecialEffectKinds = new Set(["critical_followup", "weight_defense", "healing_boost"]);
     const attributeIds = new Set(master.config.characterGrowth?.attributes?.order || []);
-    const powerMultiplierIds = new Set(["physicalPower", "magicPower", "healingPower"]);
+    const powerMultiplierIds = new Set(["physicalPower", "magicPower", "healingPower", "healingReceived"]);
     const powerMultipliers = master.config.characterGrowth?.attributes?.powerMultipliers || {};
     powerMultiplierIds.forEach(id => {
       const rule = powerMultipliers[id];
@@ -23,6 +23,13 @@
         if (!Number.isFinite(Number(rule.coefficient)) || Number(rule.coefficient) <= 0) errors.push(`config.characterGrowth.attributes.powerMultipliers.${id}.coefficient は0より大きい数で指定してください`);
         if (!Number.isFinite(Number(rule.minimum)) || !Number.isFinite(Number(rule.maximum)) || Number(rule.minimum) <= 0 || Number(rule.maximum) < Number(rule.minimum)) errors.push(`config.characterGrowth.attributes.powerMultipliers.${id} の上下限が不正です`);
       }
+    });
+    const attributeResistanceRules = master.config.characterGrowth?.attributes?.statusResistances || {};
+    if (!Number.isFinite(Number(attributeResistanceRules.maximum)) || Number(attributeResistanceRules.maximum) <= 0 || Number(attributeResistanceRules.maximum) > 1) errors.push("config.characterGrowth.attributes.statusResistances.maximum は0より大きく1以下で指定してください");
+    if (!Number.isFinite(Number(attributeResistanceRules.perPoint)) || Number(attributeResistanceRules.perPoint) <= 0) errors.push("config.characterGrowth.attributes.statusResistances.perPoint は0より大きい数で指定してください");
+    Object.entries(attributeResistanceRules.byStatus || {}).forEach(([statusId, rule]) => {
+      requireRef(master.statusEffects, statusId, "config.characterGrowth.attributes.statusResistances.byStatus");
+      if (!attributeIds.has(rule?.attribute)) errors.push(`config.characterGrowth.attributes.statusResistances.byStatus.${statusId}.attribute は未定義の基礎能力です`);
     });
     Object.entries(master.items).forEach(([itemId, item]) => {
       const source = `items.${itemId}`;
@@ -327,7 +334,7 @@
       if (chapter.order > 0 && !requiredRoutes.length) errors.push(`${source} に本編攻略先がありません`);
     });
 
-    const observationUnlockTypes = new Set(["always", "departure", "dungeonClear", "chapterCompleted", "itemDiscovered", "routeEventEncountered", "routeEventMastered", "treasureTierEncountered", "treasureTierMastered", "sharedSorties"]);
+    const observationUnlockTypes = new Set(["always", "departure", "dungeonClear", "chapterCompleted", "itemDiscovered", "routeEventEncountered", "routeEventMastered", "treasureTierEncountered", "treasureTierMastered", "sharedSorties", "skillMastery", "targetedHarvestPractice", "targetedHarvestPersistence", "targetedHarvestConsultation"]);
     master.observationNotes.forEach(note => {
       const source = `observationNotes.${note.id}`;
       ["category", "title", "author", "lead", "unlockHint"].forEach(field => {
@@ -352,6 +359,9 @@
       if (["treasureTierEncountered", "treasureTierMastered"].includes(unlock.type) && !(master.config.explorationEvents?.treasure?.types || []).some(tier => tier.id === unlock.treasureTierId)) errors.push(`${source}.unlock.treasureTierId -> ${unlock.treasureTierId ?? "(未指定)"}`);
       if (unlock.type === "treasureTierMastered" && (!Number.isInteger(unlock.openings) || unlock.openings < 2)) errors.push(`${source}.unlock.openings は2以上の整数で指定してください`);
       if (unlock.type === "sharedSorties" && (!Number.isInteger(unlock.minimum) || unlock.minimum < 2)) errors.push(`${source}.unlock.minimum は2以上の整数で指定してください`);
+      if (unlock.type === "skillMastery" && !(master.config.characterGrowth?.skillMasteryRanks || []).some(rank => rank.id === unlock.rankId)) errors.push(`${source}.unlock.rankId -> ${unlock.rankId ?? "(未指定)"}`);
+      if (unlock.type === "targetedHarvestPractice" && !(master.config.explorationEvents?.targetedHarvestPractice || []).some(tier => tier.id === unlock.tierId)) errors.push(`${source}.unlock.tierId -> ${unlock.tierId ?? "(未指定)"}`);
+      if (unlock.type === "targetedHarvestPersistence" && !(master.config.explorationEvents?.targetedHarvestPersistence || []).some(tier => tier.id === unlock.tierId)) errors.push(`${source}.unlock.tierId -> ${unlock.tierId ?? "(未指定)"}`);
     });
 
     const validReward = (rewards, source) => {
@@ -373,7 +383,7 @@
       validReward(commission.rewards, `${source}.rewards`);
     });
 
-    const achievementConditionTypes = new Set(["characters", "partyMembers", "chapters", "postgameChapters", "specificDungeonClear", "dungeonClears", "optionalClears", "divineClears", "monsterSpecies", "monsterDefeats", "itemTypes", "equipmentSetCompletions", "companionMemories", "companionPairMemories", "companionBonds", "routeEventEncounters", "routeRumorConfirmations", "routeEventMasteries", "teamSurveys", "treasureTierMasteries", "ultraRareOwned", "facilityUpgrades"]);
+    const achievementConditionTypes = new Set(["characters", "partyMembers", "chapters", "postgameChapters", "specificDungeonClear", "dungeonClears", "optionalClears", "divineClears", "monsterSpecies", "monsterDefeats", "itemTypes", "equipmentSetCompletions", "companionMemories", "companionPairMemories", "companionBonds", "routeEventEncounters", "routeRumorConfirmations", "routeEventMasteries", "teamSurveys", "treasureTierMasteries", "namedHunts", "ultraRareOwned", "facilityUpgrades"]);
     master.achievements.forEach(achievement => {
       const source = `achievements.${achievement.id}`;
       ["category", "name", "description", "icon"].forEach(field => {
@@ -386,17 +396,19 @@
       if (achievement.condition?.type === "specificDungeonClear") requireRef(master.dungeons, achievement.condition.dungeonId, `${source}.condition.dungeonId`);
     });
 
-    const adventurerRecordFields = new Set(["sorties", "victories", "retreats", "encounterClears", "routeSuccesses", "treasureOpenings", "teamSurveys", "damageDealt", "healingDone", "damageTaken", "criticalHits", "knockouts", "bestDamage", "bestHealing", "bestEndurance"]);
+    const adventurerRecordFields = new Set(["sorties", "victories", "retreats", "encounterClears", "routeSuccesses", "treasureOpenings", "teamSurveys", "targetedHarvestAttempts", "targetedHarvestSuccesses", "targetedHarvestItems", "damageDealt", "healingDone", "damageTaken", "criticalHits", "statusAttempts", "statusInflicted", "knockouts", "bestDamage", "bestHealing", "bestEndurance"]);
     const adventurerRouteEventIds = new Set((master.config.explorationEvents?.routeEvents || []).map(event => event.id));
+    const adventurerSkillMasteryRankIds = new Set((master.config.characterGrowth?.skillMasteryRanks || []).map(rank => rank.id));
     master.adventurerMilestones.forEach(milestone => {
       const source = `adventurerMilestones.${milestone.id}`;
       ["name", "description", "icon"].forEach(field => {
         if (typeof milestone[field] !== "string" || !milestone[field].trim()) errors.push(`${source}.${field} がありません`);
       });
-      if (!["record", "routeEventRecord", "specialtyCount", "sharedSorties"].includes(milestone.condition?.type)) errors.push(`${source}.condition.type -> ${milestone.condition?.type ?? "(未指定)"}`);
+      if (!["record", "routeEventRecord", "specialtyCount", "sharedSorties", "skillMasteryCount", "itemDiscoveryCount", "monsterFirstDefeatCount"].includes(milestone.condition?.type)) errors.push(`${source}.condition.type -> ${milestone.condition?.type ?? "(未指定)"}`);
       if (milestone.condition?.type === "record" && !adventurerRecordFields.has(milestone.condition?.field)) errors.push(`${source}.condition.field -> ${milestone.condition?.field ?? "(未指定)"}`);
       if (milestone.condition?.type === "routeEventRecord" && !adventurerRouteEventIds.has(milestone.condition?.routeEventId)) errors.push(`${source}.condition.routeEventId -> ${milestone.condition?.routeEventId ?? "(未指定)"}`);
       if (milestone.condition?.type === "specialtyCount" && milestone.condition.minimum > adventurerRouteEventIds.size + 1) errors.push(`${source}.condition.minimum は得意分野の総数以下で指定してください`);
+      if (milestone.condition?.type === "skillMasteryCount" && !adventurerSkillMasteryRankIds.has(milestone.condition?.rankId)) errors.push(`${source}.condition.rankId -> ${milestone.condition?.rankId ?? "(未指定)"}`);
       if (!Number.isFinite(milestone.condition?.minimum) || milestone.condition.minimum <= 0) errors.push(`${source}.condition.minimum は0より大きい数で指定してください`);
     });
 
@@ -411,7 +423,7 @@
       if (!Number.isFinite(rumor.effect?.value) || rumor.effect.value <= 1 || rumor.effect.value > 2) errors.push(`${source}.effect.value は1より大きく2以下で指定してください`);
     });
 
-    const recurringTriggers = new Set(["login", "departure", "clear", "facility_collect", "shop_purchase", "craft"]);
+    const recurringTriggers = new Set(["login", "departure", "clear", "facility_collect", "shop_purchase", "craft", "equipment_upgrade"]);
     const recurringGroupIds = new Set();
     (master.config.recurringMissions.groups || []).forEach(group => {
       const source = `config.recurringMissions.groups.${group.id ?? "(未指定)"}`;
@@ -428,6 +440,10 @@
         const missionSource = `${source}.missions.${mission.id ?? "(未指定)"}`;
         if (!mission.id || missionIds.has(mission.id)) errors.push(`${missionSource}.id が未指定または重複しています`);
         missionIds.add(mission.id);
+        requireRef(master.storyCharacters, mission.issuerCharacterId, `${missionSource}.issuerCharacterId`);
+        if (typeof mission.flavor !== "string" || !mission.flavor.trim()) errors.push(`${missionSource}.flavor がありません`);
+        if (typeof mission.completionFlavor !== "string" || !mission.completionFlavor.trim()) errors.push(`${missionSource}.completionFlavor がありません`);
+        if (mission.variantGroup != null && (typeof mission.variantGroup !== "string" || !mission.variantGroup.trim())) errors.push(`${missionSource}.variantGroup が不正です`);
         if (!recurringTriggers.has(mission.trigger)) errors.push(`${missionSource}.trigger -> ${mission.trigger ?? "(未指定)"}`);
         if (!Number.isInteger(mission.target) || mission.target < 1) errors.push(`${missionSource}.target は1以上の整数で指定してください`);
         ["title", "description"].forEach(field => {
@@ -894,6 +910,22 @@
     const originMultiplierFields = ["hpMultiplier", "attackMultiplier", "defenseMultiplier", "weightMultiplier", "magicAttackMultiplier", "magicDefenseMultiplier", "magicHealingMultiplier", "skillPower", "healingPower"];
     const originBonusFields = ["speedBonus", "criticalBonus", "hitBonus", "evasionBonus"];
     const progressionLevels = { job: [10, 40, 70, 100], race: [1, 30, 60, 100], birth: [1, 20, 60, 100] };
+    const statusInfliction = master.config.characterGrowth?.attributes?.statusInfliction;
+    if (!Number.isFinite(statusInfliction?.intelligencePerChartPoint) || statusInfliction.intelligencePerChartPoint <= 0 || statusInfliction.intelligencePerChartPoint > .01) errors.push("config.characterGrowth.attributes.statusInfliction.intelligencePerChartPoint は0より大きく0.01以下で指定してください");
+    if (!Number.isFinite(statusInfliction?.maximumBonus) || statusInfliction.maximumBonus <= 0 || statusInfliction.maximumBonus > .3) errors.push("config.characterGrowth.attributes.statusInfliction.maximumBonus は0より大きく0.3以下で指定してください");
+    const skillMasteryRanks = master.config.characterGrowth?.skillMasteryRanks;
+    if (!Array.isArray(skillMasteryRanks) || !skillMasteryRanks.length) errors.push("config.characterGrowth.skillMasteryRanks がありません");
+    else {
+      const ids = new Set(); let previousMinimum = 0;
+      skillMasteryRanks.forEach((rank, index) => {
+        const source = `config.characterGrowth.skillMasteryRanks.${index}`;
+        if (!rank || typeof rank.id !== "string" || !rank.id.trim() || ids.has(rank.id)) errors.push(`${source}.id が不正です`);
+        if (typeof rank?.name !== "string" || !rank.name.trim()) errors.push(`${source}.name がありません`);
+        if (!Number.isInteger(rank?.minimumUses) || rank.minimumUses <= previousMinimum) errors.push(`${source}.minimumUses は前段階より大きい整数で指定してください`);
+        if (rank?.id) ids.add(rank.id);
+        if (Number.isInteger(rank?.minimumUses)) previousMinimum = rank.minimumUses;
+      });
+    }
     for (const [ownerType, owners] of Object.entries({ job: master.jobs, race: master.races, birth: master.births })) {
       Object.keys(master.relations.skillGrants[ownerType] || {}).forEach(ownerId => requireRef(owners, ownerId, `relations.skillGrants.${ownerType}.${ownerId}`));
       Object.keys(master.relations.equipmentAffinities[ownerType] || {}).forEach(ownerId => requireRef(owners, ownerId, `relations.equipmentAffinities.${ownerType}.${ownerId}`));
@@ -964,6 +996,9 @@
     requireRef(master.items, rumorConfirmationReward?.itemId, "config.explorationEvents.rumorConfirmationReward.itemId");
     if (master.items[rumorConfirmationReward?.itemId] && master.items[rumorConfirmationReward.itemId].type !== "material") errors.push("config.explorationEvents.rumorConfirmationReward.itemId は素材で指定してください");
     const routeEventIds = new Set();
+    const attributeAptitudeRule = master.config.explorationEvents?.attributeAptitude;
+    if (!Number.isFinite(attributeAptitudeRule?.maximumBonus) || attributeAptitudeRule.maximumBonus <= 0 || attributeAptitudeRule.maximumBonus > .25) errors.push("config.explorationEvents.attributeAptitude.maximumBonus は0より大きく0.25以下で指定してください");
+    if (!Number.isFinite(attributeAptitudeRule?.bonusPerSurplusRatio) || attributeAptitudeRule.bonusPerSurplusRatio <= 0 || attributeAptitudeRule.bonusPerSurplusRatio > .5) errors.push("config.explorationEvents.attributeAptitude.bonusPerSurplusRatio は0より大きく0.5以下で指定してください");
     Object.entries(master.config.explorationEvents?.aptitudes || {}).forEach(([aptitudeId, aptitude]) => {
       const source = `config.explorationEvents.aptitudes.${aptitudeId}`;
       [["jobIds", master.jobs], ["raceIds", master.races], ["birthIds", master.births]].forEach(([field, table]) => {
@@ -971,11 +1006,55 @@
         (aptitude[field] || []).forEach(id => requireRef(table, id, `${source}.${field}`));
       });
       ["job", "race", "birth"].forEach(field => { if (!Number.isFinite(aptitude.bonuses?.[field]) || aptitude.bonuses[field] <= 0 || aptitude.bonuses[field] > 1) errors.push(`${source}.bonuses.${field} は0より大きい値で指定してください`); });
+      const attributeWeights = aptitude.attributeWeights;
+      if (!attributeWeights || typeof attributeWeights !== "object" || Array.isArray(attributeWeights) || !Object.keys(attributeWeights).length) errors.push(`${source}.attributeWeights がありません`);
+      else {
+        Object.entries(attributeWeights).forEach(([attributeId, weight]) => {
+          if (!attributeIds.has(attributeId)) errors.push(`${source}.attributeWeights.${attributeId} は未定義の基礎能力です`);
+          if (!Number.isFinite(weight) || weight <= 0 || weight > 1) errors.push(`${source}.attributeWeights.${attributeId} は0より大きく1以下で指定してください`);
+        });
+        const totalWeight = Object.values(attributeWeights).reduce((sum, weight) => sum + Number(weight || 0), 0);
+        if (Math.abs(totalWeight - 1) > .000001) errors.push(`${source}.attributeWeights の合計は1にしてください`);
+      }
     });
     if (!Number.isInteger(master.config.explorationEvents?.routeMastery?.successes) || master.config.explorationEvents.routeMastery.successes < 1 || master.config.explorationEvents.routeMastery.successes > 20) errors.push("config.explorationEvents.routeMastery.successes が不正です");
     if (!Number.isFinite(master.config.explorationEvents?.routeMastery?.successChanceBonus) || master.config.explorationEvents.routeMastery.successChanceBonus <= 0 || master.config.explorationEvents.routeMastery.successChanceBonus > .25) errors.push("config.explorationEvents.routeMastery.successChanceBonus が不正です");
     if (!Number.isInteger(master.config.explorationEvents?.personalPractice?.successes) || master.config.explorationEvents.personalPractice.successes < 1 || master.config.explorationEvents.personalPractice.successes > 20) errors.push("config.explorationEvents.personalPractice.successes が不正です");
     if (!Number.isFinite(master.config.explorationEvents?.personalPractice?.successChanceBonus) || master.config.explorationEvents.personalPractice.successChanceBonus <= 0 || master.config.explorationEvents.personalPractice.successChanceBonus > .15) errors.push("config.explorationEvents.personalPractice.successChanceBonus が不正です");
+    const harvestPractice = master.config.explorationEvents?.targetedHarvestPractice;
+    if (!Array.isArray(harvestPractice) || !harvestPractice.length || new Set(harvestPractice.map(entry => entry.id)).size !== harvestPractice.length
+      || harvestPractice.some((entry, index) => !entry || typeof entry.id !== "string" || !entry.id || typeof entry.label !== "string" || !entry.label
+        || !Number.isInteger(entry.minimumSuccesses) || entry.minimumSuccesses < 1 || index > 0 && entry.minimumSuccesses <= harvestPractice[index - 1].minimumSuccesses
+        || !Number.isFinite(entry.multiplier) || entry.multiplier <= 1 || entry.multiplier > 1.5)) errors.push("config.explorationEvents.targetedHarvestPractice が不正です");
+    const harvestPersistence = master.config.explorationEvents?.targetedHarvestPersistence;
+    if (!Array.isArray(harvestPersistence) || !harvestPersistence.length || new Set(harvestPersistence.map(entry => entry.id)).size !== harvestPersistence.length
+      || harvestPersistence.some((entry, index) => !entry || typeof entry.id !== "string" || !entry.id || typeof entry.label !== "string" || !entry.label
+        || !Number.isInteger(entry.minimumMisses) || entry.minimumMisses < 1 || index > 0 && entry.minimumMisses <= harvestPersistence[index - 1].minimumMisses
+        || !Number.isFinite(entry.multiplier) || entry.multiplier <= 1 || entry.multiplier > 1.5)) errors.push("config.explorationEvents.targetedHarvestPersistence が不正です");
+    const harvestConsultation = master.config.explorationEvents?.targetedHarvestConsultation;
+    if (!Number.isFinite(harvestConsultation?.multiplier) || harvestConsultation.multiplier <= 1 || harvestConsultation.multiplier > 1.2) errors.push("config.explorationEvents.targetedHarvestConsultation.multiplier が不正です");
+    const rememberedHarvestTiers = harvestConsultation?.rememberedTiers;
+    if (!Array.isArray(rememberedHarvestTiers) || !rememberedHarvestTiers.length || new Set(rememberedHarvestTiers.map(entry => entry.id)).size !== rememberedHarvestTiers.length
+      || rememberedHarvestTiers.some((entry, index) => !entry || typeof entry.id !== "string" || !entry.id || typeof entry.label !== "string" || !entry.label
+        || [entry.description, entry.departure, entry.encounter, entry.growth].some(value => typeof value !== "string" || !value.trim())
+        || entry.epithet != null && (typeof entry.epithet !== "string" || !entry.epithet.includes("{monster}"))
+        || index === rememberedHarvestTiers.length - 1 && !entry.epithet
+        || entry.combatSupport != null && (typeof entry.combatSupport !== "object" || typeof entry.combatSupport.label !== "string" || !entry.combatSupport.label.trim()
+          || typeof entry.combatSupport.description !== "string" || !entry.combatSupport.description.trim()
+          || !Number.isFinite(entry.combatSupport.hitRateMultiplier) || entry.combatSupport.hitRateMultiplier <= 1 || entry.combatSupport.hitRateMultiplier > 1.2
+          || !Number.isFinite(entry.combatSupport.speedMultiplier) || entry.combatSupport.speedMultiplier <= 1 || entry.combatSupport.speedMultiplier > 1.2
+          || !Number.isFinite(entry.combatSupport.criticalRateBonus) || entry.combatSupport.criticalRateBonus <= 0 || entry.combatSupport.criticalRateBonus > .1)
+        || index === rememberedHarvestTiers.length - 1 && !entry.combatSupport
+        || entry.recognitionReward != null && (typeof entry.recognitionReward !== "object" || !Number.isInteger(entry.recognitionReward.quantity) || entry.recognitionReward.quantity < 1)
+        || index === rememberedHarvestTiers.length - 1 && !entry.recognitionReward
+        || !Number.isInteger(entry.minimumSuccesses) || entry.minimumSuccesses < 1 || index > 0 && entry.minimumSuccesses <= rememberedHarvestTiers[index - 1].minimumSuccesses
+        || !Number.isFinite(entry.multiplier) || entry.multiplier <= (index ? rememberedHarvestTiers[index - 1].multiplier : harvestConsultation.multiplier) || entry.multiplier > 1.25)) errors.push("config.explorationEvents.targetedHarvestConsultation.rememberedTiers が不正です");
+    (rememberedHarvestTiers || []).forEach((entry, index) => {
+      if (!entry?.recognitionReward) return;
+      const source = `config.explorationEvents.targetedHarvestConsultation.rememberedTiers.${index}.recognitionReward.itemId`;
+      requireRef(master.items, entry.recognitionReward.itemId, source);
+      if (master.items[entry.recognitionReward.itemId] && master.items[entry.recognitionReward.itemId].type !== "material") errors.push(`${source} は素材で指定してください`);
+    });
     if (!Number.isFinite(master.config.explorationEvents?.rumorWeightMultiplier) || master.config.explorationEvents.rumorWeightMultiplier <= 1 || master.config.explorationEvents.rumorWeightMultiplier > 5) errors.push("config.explorationEvents.rumorWeightMultiplier は1より大きく5以下で指定してください");
     (master.config.explorationEvents?.routeEvents || []).forEach((event, index) => {
       const source = `config.explorationEvents.routeEvents.${index}`;
@@ -1015,8 +1094,10 @@
       adventurerBondMomentIds.add(moment.id);
       if (typeof moment.title !== "string" || !moment.title.trim()) errors.push(`${source}.title がありません`);
       if (!Number.isInteger(moment.minimumSharedSorties) || moment.minimumSharedSorties < 1) errors.push(`${source}.minimumSharedSorties が不正です`);
+      if (moment.trigger != null && moment.trigger !== "targetedHarvestConsultation") errors.push(`${source}.trigger が不正です`);
       if (typeof moment.text !== "string" || !moment.text.trim() || !moment.text.includes("{left}") || !moment.text.includes("{right}")) errors.push(`${source}.text には{left}と{right}が必要です`);
     });
+    if (!adventurerBondMomentIds.has(master.config.explorationEvents?.targetedHarvestConsultation?.bondMomentId)) errors.push("config.explorationEvents.targetedHarvestConsultation.bondMomentId が旅仲間の記憶を参照していません");
     const companionMoments = master.config.explorationEvents?.companionMoments;
     if (!Array.isArray(companionMoments) || !companionMoments.length) errors.push("config.explorationEvents.companionMoments がありません");
     const companionMomentIds = new Set();

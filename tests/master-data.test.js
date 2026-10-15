@@ -11,11 +11,13 @@ const validStoryEffect = effect => effect?.type === "joinCompanion"
     && has(data.companionProfiles, effect.companionId)
     && has(data.relations.companionProgressions?.[effect.companionId]?.stages, effect.stageId);
 const growth = data.config.characterGrowth;
-assert.deepStrictEqual(Object.keys(growth.attributes.powerMultipliers).sort(), ["healingPower", "magicPower", "physicalPower"]);
+assert.deepStrictEqual(Object.keys(growth.attributes.powerMultipliers).sort(), ["healingPower", "healingReceived", "magicPower", "physicalPower"]);
 Object.values(growth.attributes.powerMultipliers).forEach(rule => {
   assert(growth.attributes.order.includes(rule.attribute));
   assert(Number.isFinite(rule.coefficient) && rule.coefficient > 0 && rule.minimum > 0 && rule.maximum >= rule.minimum);
 });
+assert(growth.attributes.statusInfliction.intelligencePerChartPoint > 0 && growth.attributes.statusInfliction.maximumBonus <= .3, "Status-infliction growth must be bounded master data");
+assert.deepStrictEqual(Array.from(growth.skillMasteryRanks, rank => [rank.id, rank.minimumUses]), [["familiar", 10], ["trusted", 50], ["signature", 200]], "Skill-use mastery ranks are explicit, ascending master data");
 const actualAverageWeight = growth.averageEquipmentWeight;
 assert(Number.isFinite(actualAverageWeight) && actualAverageWeight > 0, "Reference equipment weight must remain an explicit, stable balance constant");
 assert.strictEqual(data.config.equipmentBalance.efficiencyGrowthPerTier, .04, "Tier equipment efficiency growth must be an explicit balance constant");
@@ -289,12 +291,14 @@ assert.strictEqual(data.config.explorationEvents.rumorConfirmationReward.itemId,
 assert(Number.isInteger(data.config.explorationEvents.rumorConfirmationReward.quantity) && data.config.explorationEvents.rumorConfirmationReward.quantity > 0, "Rumor confirmation rewards use a positive quantity");
 assert.deepStrictEqual([...new Set(Array.from(data.config.explorationEvents.routeEvents, event => event.kind))].sort(), ["camp", "gather", "hazard", "lore", "secret"], "Exploration keeps five readable non-combat route-event families while allowing multiple scenes per family");
 assert(data.config.explorationEvents.routeEvents.length >= 6, "Exploration includes more scenes than its five broad event families");
+assert(data.config.explorationEvents.attributeAptitude.maximumBonus > 0 && data.config.explorationEvents.attributeAptitude.maximumBonus <= .25, "Primary attributes give exploration a small bounded contribution");
 for (const event of data.config.explorationEvents.routeEvents) {
   assert(typeof event.recordLabel === "string" && event.recordLabel.length > 0, `${event.id} needs a personal-record label`);
   const aptitude = data.config.explorationEvents.aptitudes[event.aptitudeId];
   assert(event.name && typeof event.name === "string", `${event.id} has a player-facing name`);
   assert(event.maximumChance > event.baseChance && aptitude, `${event.id} references a valid aptitude and bounded success range`);
   assert(aptitude.jobIds.every(id => has(data.jobs, id)) && aptitude.raceIds.every(id => has(data.races, id)) && aptitude.birthIds.every(id => has(data.births, id)), `${event.id} aptitude only references known character traits`);
+  assert(Math.abs(Object.values(aptitude.attributeWeights).reduce((sum, weight) => sum + weight, 0) - 1) < .000001 && Object.keys(aptitude.attributeWeights).every(id => data.config.characterGrowth.attributes.order.includes(id)), `${event.id} aptitude has normalized primary-attribute weights`);
 }
 const routeEventIds = new Set(data.config.explorationEvents.routeEvents.map(event => event.id));
 const teamSurvey = data.config.explorationEvents.teamSurvey;

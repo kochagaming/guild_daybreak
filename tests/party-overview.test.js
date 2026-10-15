@@ -105,12 +105,38 @@ async function run() {
   assert.strictEqual(game.GameState.data.expeditions[0], null, "Opening a target source never starts the expedition automatically");
   assert(html().includes("DEPARTURE PARTY") && html().includes(game.GameData.dungeons.cave.name));
   await click("party-back");
+  game.Items.add("sticky_fluid", 1);
+  game.Encyclopedia.recordBattle({ slime: 1 }, { slime: 1 }, { slime: { incomingAttempts: 1, incomingHits: 1, drops: ["sticky_fluid"] } }, "normal", { dungeonId: "meadow" });
+  game.Encyclopedia.recordBattle({ slime: 1 }, {}, { slime: { incomingAttempts: 1, incomingHits: 1 } }, "abyss", { dungeonId: "meadow" });
+  game.Encyclopedia.setTrackedMonster("slime", 10);
+  game.Encyclopedia.recordMonsterTargetProgress("slime", 3);
+  assert(game.Encyclopedia.setTrackedHarvest("sticky_fluid", "slime").ok);
+  game.UI.render();
+  assert(html().includes("fleet-target-strip harvest-target") && html().includes("狙い採りの記録") && html().includes("スライム") && html().includes("ねばねばした液体") && html().includes("品 0/1") && html().includes("討伐 3/10体"), "A confirmed fixed-drop pair becomes one compact collection and hunt strip");
+  assert(html().includes('data-action="open-target-destination" data-dungeon="meadow" data-difficulty="normal"') && !html().includes('data-action="open-target-destination" data-dungeon="meadow" data-difficulty="abyss"'), "A paired target only suggests difficulties where the exact fixed drop was observed");
+  assert(html().includes('data-action="open-item-codex">品の図鑑') && html().includes('data-action="open-monster-codex">魔物図鑑') && !html().includes("現在の探索目標") && !html().includes("現在の討伐目標"), "The combined strip keeps both codex paths without duplicating vertical target cards");
+  game.Encyclopedia.setTrackedItem(null);
+  game.UI.render();
+  assert(html().includes("現在の討伐目標") && html().includes("スライム") && html().includes("追跡中 3/10体") && /生息地 [1-9]\d*か所／確認難度 2種/.test(html()), "The party overview keeps the active monster hunt visible with known habitats and observed difficulties");
+  assert(html().includes('data-action="open-target-destination" data-dungeon="meadow" data-difficulty="normal"') && html().includes('data-action="open-target-destination" data-dungeon="meadow" data-difficulty="abyss"') && html().includes("魔境の風鳴りの草原") && html().includes('data-action="open-monster-codex">図鑑で変更'), "A monster hunt links directly to each observed and unlocked habitat difficulty and back to the monster codex");
+  game.Encyclopedia.recordBattle({ slime: 9 }, { slime: 9 }, { slime: { incomingAttempts: 9, incomingHits: 9 } }, "normal", { dungeonId: "meadow" });
+  game.Encyclopedia.recordMonsterTargetProgress("slime", 7);
+  game.UI.render();
+  assert(html().includes("達成 10/10体") && html().includes("次の節目へ・あと20体") && html().includes('data-target-quantity="30"'), "A completed hunt can be extended to the next milestone without leaving the party overview");
+  await click("track-monster", { monster: "slime", targetQuantity: "30" });
+  assert.strictEqual(game.Encyclopedia.trackedMonsterTarget().progress, 10);
+  assert.strictEqual(game.Encyclopedia.trackedMonsterTarget().quantity, 30, "Extending a hunt preserves completed progress");
+  await click("open-monster-codex");
+  assert(html().includes("モンスター図鑑") && html().includes("現在の討伐目標"), "The hunt strip returns directly to the monster codex");
+  game.UI.navigate("party");
   assert((await game.GameClient.execute("party.setPlan", { dungeonId: "meadow", difficultyId: "normal", timeMultiplier: 1, partyIndex: 0 })).ok);
   game.UI.render();
+  assert(html().includes("出発待ち 1隊") && row(0).includes("次の出撃で討伐地へ") && !row(1).includes("次の出撃で討伐地へ"), "The overview identifies exactly which waiting party is assigned to a hunt habitat");
   assert(html().includes("待機隊を一斉出撃 (2)"));
   await click("depart-ready-parties");
   assert(game.GameState.data.expeditions.slice(0, 2).every(Boolean), "Manual batch departure starts every ready party with a saved plan");
   assert(html().includes("2/2隊が探索中"));
+  assert(html().includes("追跡中 1隊") && row(0).includes("討伐目標を追跡中") && !row(1).includes("討伐目標を追跡中"), "Only the party exploring a known habitat is marked as actively pursuing the hunt");
   const originalFirstEnd = game.GameState.data.expeditions[0].endsAt;
   game.GameState.data.expeditions[0].endsAt = game.GameState.data.expeditions[1].endsAt + 1000;
   game.UI.render();
@@ -164,7 +190,7 @@ async function run() {
   game.GameState.data.partyResults[0].trackedItemGoal = 10;
   game.GameState.data.partyResults[0].trackedItemProgress = 3;
   game.GameState.data.partyResults[0].companionAdvancements = [{ companionId: "mina", stageId: "free_hammer", previousStageId: "base" }];
-  game.GameState.data.partyResults[0].levelUps = [{ name: "鉱石収集隊", levels: 1, level: 10, newSkillIds: ["power_strike"], statChanges: { hp: 8, attack: 2, maxWeight: 1.4 } }];
+  game.GameState.data.partyResults[0].levelUps = [{ name: "鉱石収集隊", levels: 1, level: 10, newSkillIds: ["power_strike"], attributeChanges: { vitality: .1, strength: .2 }, statChanges: { hp: 8, attack: 2, maxWeight: 1.4 } }];
   game.GameState.data.partyResults[0].monsterObservations.slime = Object.assign({}, game.GameState.data.partyResults[0].monsterObservations.slime, {
     incomingAttempts: 7, incomingHits: 5, enemyTurns: 4, maxAttackCount: 2, magicAttack: true, rearTargeting: true, burstRounds: [2, 5],
     attackElements: ["neutral"], statusAttacks: ["poison"], elementWeaknesses: ["fire", "magic"], elementResistances: ["ice"],
@@ -193,11 +219,28 @@ async function run() {
   assert(html().includes("JOURNEY DISCOVERY") && html().includes("道中で起きたこと") && html().includes("RUMOR CONFIRMED") && html().includes("噂だった兆しを、初めて実地で確かめました") && html().includes("噂と一致") && html().includes(routeEventDefinition.name) && html().includes(routeEventEntry.routeEventSuccess ? "成功" : "失敗") && html().includes("本人の経験を活用") && html().includes("観察記録を活用") && html().includes('data-target="result-battle-records"'), "The return report celebrates a first rumor confirmation and links personal and shared experience to the full exploration log");
   assert(html().includes("ADVENTURERS IN ACTION") && html().includes("この遠征で刻まれた働き") && html().includes("敵陣を切り開いた"), "The return report immediately gives individual adventurers factual recognition");
   assert(html().includes("探索目標を発見しました") && html().includes("鉄鉱石 ×3") && html().includes("累計 3 / 10") && html().includes("関連レシピを確認") && html().includes('data-action="open-target-recipes"') && html().includes("初めての品を1種類発見しました") && html().includes("is-new-discovery") && html().includes("過去最高の品質を1種類更新しました") && html().includes("is-quality-best") && html().includes("is-ultra-rare") && html().includes("NEW ULTRA RARE") && html().includes("新しい称号 1種") && html().includes("名を持つ逸品を1点発見しました") && html().includes("全装備性能2倍") && html().includes("称号記録を確認") && html().includes("アイテム図鑑で確認"));
+  Object.assign(game.GameState.data.partyResults[0], {
+    trackedItemId: "sticky_fluid", trackedItemQuantity: 0, trackedItemGoal: 1, trackedItemProgress: 0,
+    trackedItemHarvestId: "sticky_fluid", trackedItemHarvestMonsterId: "slime",
+    trackedMonsterId: "slime", trackedMonsterQuantity: 3, trackedMonsterGoal: 10, trackedMonsterProgress: 3, trackedMonsterTrailId: "slime",
+    trackedHarvestPractice: { characterId: "hunter-a", characterName: "リタ", tierId: "known_quarry", tierName: "獲物の癖を知る", multiplier: 1.1, successes: 3 },
+    trackedHarvestPersistence: { characterId: "hunter-b", characterName: "ヨル", tierId: "trace_reader", tierName: "空振りの痕跡を読む", multiplier: 1.1, misses: 3 }
+  });
+  game.UI.render();
+  assert(html().includes("result-tracked-achievement result-tracked-harvest") && html().includes("狙い採りの記録を試しました") && html().includes("スライム ×3体") && html().includes("ねばねばした液体 ・今回は見つからず") && html().includes("累計 0 / 1") && html().includes("累計 3 / 10"), "A targeted-harvest return combines the monster and item outcome, including an honest no-drop result");
+  assert(html().includes("狩りの相談") && html().includes("リタの手覚えと、ヨルが拾った空振りの痕跡を、一冊の狩り記録として持ち帰った"), "The return report preserves the collaboration between different kinds of hunting experience");
+  assert((html().match(/result-tracked-achievement/g) || []).length === 1 && !html().includes("探索目標を発見しました") && !html().includes("討伐目標と交戦しました"), "A paired return does not duplicate separate collection and hunt result panels");
+  Object.assign(game.GameState.data.partyResults[0], {
+    trackedItemId: "iron_ore", trackedItemQuantity: 3, trackedItemGoal: 10, trackedItemProgress: 3,
+    trackedItemHarvestId: null, trackedItemHarvestMonsterId: null,
+    trackedMonsterId: null, trackedMonsterQuantity: 0, trackedMonsterGoal: null, trackedMonsterProgress: null, trackedMonsterTrailId: null
+  });
+  game.UI.render();
   assert(html().includes("EQUIPMENT COMBINATION") && html().includes("装備の組合せ記録が進みました") && html().includes("風渡りの旅装") && html().includes("1 → 2 / 3") && html().includes("新効果：風渡りの足並み") && html().includes("組合せの記録を見る"), "The return report celebrates newly advanced equipment combinations and crossed bonus thresholds");
   assert(html().includes("MYSTERY NOTE") && html().includes("手掛かり帳に新しい記録が加わりました") && html().includes("街道へ向けられた獣") && html().includes("ホームの手掛かり帳を開く"), "A return report connects newly found story evidence to the long-running mystery ledger");
   assert(html().includes("result-level-ups") && html().includes("新しく習得") && html().includes("強撃") && html().includes("再使用まで10ターン") && html().includes("重量上限") && html().includes("+1.4"), "Level-up results preserve stat gains and explain newly learned skills");
   const report = game.GameState.data.partyResults[0];
-  const discoveryCount = (report.newItemIds?.length || 0) + (report.newSetDiscoveries?.length || 0) + (report.newRecipeIds?.length || 0) + (report.newObservationIds?.length || 0) + (report.newMonsterInsights?.length || 0);
+  const discoveryCount = (report.newItemIds?.length || 0) + (report.newSetDiscoveries?.length || 0) + (report.newRecipeIds?.length || 0) + (report.newObservationIds?.length || 0) + (report.newMonsterInsights?.length || 0) + (report.newMonsterHabitats?.length || 0);
   assert(html().includes('class="result-highlight-strip"') && html().includes('<small>装備</small><strong>3点</strong>') && html().includes('<small>素材</small><strong>9個</strong>') && html().includes(`<small>新発見</small><strong>${discoveryCount}件</strong>`) && html().includes('<small>超レア</small><strong>1点</strong>'), "The return report summarizes important rewards before the full item list");
   assert(html().includes('class="result-analysis"') && html().includes("戦闘分析と探索ログ") && !html().includes('class="result-analysis" data-detail="result-analysis" open'), "Long combat analysis remains available without lengthening the initial mobile report");
   assert(html().includes("今回観測した敵の性質") && html().includes("スライム") && html().includes("弱点") && html().includes("炎") && html().includes("魔法そのもの") && html().includes("抵抗された異常") && html().includes("毒"), "The return report keeps observed affinities factual and collapsed inside combat analysis");
@@ -257,7 +300,8 @@ async function run() {
     { kind: "discovery", dungeonId: "meadow", sceneId: game.Story.dungeonDiscoveryScene(game.GameData.dungeons.meadow).id },
     { kind: "ending", dungeonId: "meadow", sceneId: game.Story.dungeonEndingScene(game.GameData.dungeons.meadow).id }
   ];
-  game.GameState.data.partyHistory[0][0].growth = [{ name: "鉱石収集隊", level: 10, newSkillIds: ["power_strike"], statChanges: { hp: 8, attack: 2, maxWeight: 1.4 } }];
+  game.GameState.data.partyHistory[0][0].growth = [{ name: "鉱石収集隊", level: 10, newSkillIds: ["power_strike"], attributeChanges: { vitality: .1, strength: .2 }, statChanges: { hp: 8, attack: 2, maxWeight: 1.4 } }];
+  game.GameState.data.partyHistory[0][0].targetedHarvest = { itemId: "sticky_fluid", monsterId: "slime", itemQuantity: 0, monsterQuantity: 3, itemGoal: 1, itemProgress: 0, monsterGoal: 10, monsterProgress: 3, practice: { characterId: "hunter-a", characterName: "リタ", tierName: "獲物の癖を知る" }, persistence: { characterId: "hunter-b", characterName: "ヨル", tierName: "空振りの痕跡を読む" } };
   assert((await game.GameClient.execute("expedition.start", { dungeonId: "meadow", partyIndex: 0 })).ok);
   game.UI.navigate("blacksmith"); await click("blacksmith-open", { view: "craft" });
   const mainArea = node(".main-area"); mainArea.scrollTop = 347;
@@ -272,14 +316,35 @@ async function run() {
   await click("party-back");
   assert(row(0).includes("攻略成功") && row(1).includes("攻略成功"));
   assert.strictEqual(game.GameState.data.partyHistory[0].length, 2, "New returns are added without discarding the prior summary");
+  game.GameState.data.partyHistory[0][0].targetedHarvest = { itemId: "sticky_fluid", monsterId: "slime", itemQuantity: 2, monsterQuantity: 4, itemGoal: 3, itemProgress: 2, monsterGoal: 10, monsterProgress: 7, practice: { characterId: "hunter-a", characterName: "リタ", tierName: "獲物の癖を知る" }, persistence: { characterId: "hunter-b", characterName: "ヨル", tierName: "空振りの痕跡を読む" } };
+  game.GameState.data.partyHistory[0][1].battle.skillUses = { power_strike: 2 };
+  game.GameState.data.partyHistory[0][1].battle.skillDamage = { power_strike: 40 };
+  game.GameState.data.partyHistory[0][0].battle.skillUses = { power_strike: 2 };
+  game.GameState.data.partyHistory[0][0].battle.skillDamage = { power_strike: 90 };
   assert(row(0).includes("過去の帰還 1件") && row(0).includes("装備") && row(0).includes("素材") && html().includes('data-party="0" data-view="history"'), "Older rewards and the full expedition history are available from the compact party row");
   game.Characters.setActionRates(a, { healing: 70, spell: 80, technique: 90, attack: 60 });
   await click("party-open", { party: "0", view: "history" });
-  assert(html().includes("EXPEDITION HISTORY") && html().includes("遠征履歴") && (html().match(/class="party-history-record/g) || []).length === 2 && html().includes("到達") && html().includes("戦闘不能") && html().includes("遠征時の編成") && html().includes("重量") && html().includes("回100% → 呪100% → 技100% → 攻100%") && html().includes("同条件の前回との差") && html().includes("前回") && html().includes("→") && html().includes("出撃時と現在の差") && html().includes("行動率 回100→70%・呪100→80%・技100→90%・攻100→60%") && html().includes("直近ログを開く"), "The party history links same-condition battle changes, immutable departure setups and current factual differences");
+  assert(html().includes("EXPEDITION HISTORY") && html().includes("遠征履歴") && (html().match(/class="party-history-record/g) || []).length === 2 && html().includes("到達") && html().includes("戦闘不能") && html().includes("受けた傷の内訳") && html().includes("冒険者ごとの働きの差") && html().includes("遠征時の編成") && html().includes("重量") && html().includes("回100% → 呪100% → 技100% → 攻100%") && html().includes("同条件の前回との差") && html().includes("前回") && html().includes("→") && html().includes("出撃時と現在の差") && html().includes("行動率 回100→70%・呪100→80%・技100→90%・攻100→60%") && html().includes("直近ログを開く"), "The party history links same-condition member results, incoming damage, immutable departure setups and current factual differences");
   assert(html().includes("物語の記録") && html().includes("探索で判明") && html().includes("攻略後") && html().includes("この遠征を歩いた冒険者") && html().includes("鉱石収集隊"), "Story discoveries remain attached to the adventurers who witnessed them in expedition history");
-  assert(html().includes("成長の記録") && html().includes("新スキル1種") && html().includes("技「強撃」") && html().includes("重量上限+1.4"), "Expedition history keeps stat, capacity and learned-skill milestones after newer returns arrive");
+  assert(html().includes("成長の記録") && html().includes("新スキル1種") && html().includes("基礎 生命+0.1・筋力+0.2") && html().includes("技「強撃」") && html().includes("重量上限+1.4"), "Expedition history keeps attribute, stat, capacity and learned-skill milestones after newer returns arrive");
   assert(html().includes("遠征の働き") && html().includes("敵陣を切り開いた") && html().includes("実ダメージ"), "Expedition history preserves compact factual adventurer highlights");
+  assert(html().includes("狙い採りの記録") && html().includes("スライム") && html().includes("ねばねばした液体") && html().includes("討伐 <b>+3体</b>") && html().includes("今回は見つからず") && html().includes("品の記録 <b>0 / 1</b>") && html().includes("討伐記録 <b>3 / 10</b>"), "Expedition history preserves paired hunt outcomes, including no-drop attempts and both progress records");
+  assert(html().includes("狩りの相談") && html().includes("リタの手覚えと、ヨルが拾った空振りの痕跡"), "Expedition history keeps the two-person hunting consultation after newer returns arrive");
+  assert(html().includes("狙い採りの足跡") && html().includes("1組・2遠征") && html().includes("遠征 <b>2回</b>") && html().includes("収穫 <b>1回</b>") && html().includes("品 <b>+2</b>") && html().includes("討伐 <b>7体</b>") && html().includes('class="is-found">収</i><i class="is-missed">空</i>') && html().includes("持ち帰れた遠征と空振りの遠征がある。狙う道筋は確かめられている。") && html().includes("この狩りを続ける") && html().includes("party-history-harvest-reuse"), "The field ledger groups comparable attempts, narrates only observed facts and restores the newest matching hunt without exposing hidden odds");
+  assert(html().includes("状態異常") && html().includes("行動内訳") && html().includes("発動技能") && html().includes("再使用まで") && html().includes("技能の働きの差") && html().includes("発動 2→2回") && html().includes("与 40→90"), "Expedition history compares skill results even when use counts stay unchanged");
   assert(html().includes("道中の記録") && html().includes("知見完成 1種") && html().includes("知見が仲間へ共有された") && html().includes("道中成功"), "Route outcomes, completed knowledge and same-condition route comparisons survive newer returns");
+  const recalled = game.GameState.data.partyHistory[0][1];
+  assert(html().includes("同じ狙い採りを続ける") && html().includes('data-action="reuse-history-harvest"'), "A retained targeted harvest offers one direct continuation action");
+  game.Encyclopedia.setTrackedItem(null);
+  game.Encyclopedia.setTrackedMonster(null);
+  await click("reuse-history-harvest", { party: "0", dungeon: recalled.dungeonId, difficulty: recalled.difficultyId, time: String(recalled.timeMultiplier), item: recalled.targetedHarvest.itemId, monster: recalled.targetedHarvest.monsterId });
+  assert.strictEqual(game.Encyclopedia.trackedTarget().itemId, recalled.targetedHarvest.itemId);
+  assert.strictEqual(game.Encyclopedia.trackedMonsterTarget().monsterId, recalled.targetedHarvest.monsterId);
+  assert(!game.Party.expedition(0) && html().includes("出撃先指定") && JSON.stringify(game.Party.plan(0)) === JSON.stringify({ dungeonId: recalled.dungeonId, difficultyId: recalled.difficultyId, timeMultiplier: recalled.timeMultiplier }), "Continuing a targeted harvest restores both records and the historical route for review without auto-departing");
+  await click("party-view", { view: "history" });
+  assert(html().includes("この探索条件を呼び戻す") && html().includes('data-action="reuse-history-plan"'), "Every retained expedition can restore its departure settings without immediately leaving");
+  await click("reuse-history-plan", { party: "0", dungeon: recalled.dungeonId, difficulty: recalled.difficultyId, time: String(recalled.timeMultiplier) });
+  assert(!game.Party.expedition(0) && html().includes("出撃先指定") && JSON.stringify(game.Party.plan(0)) === JSON.stringify({ dungeonId: recalled.dungeonId, difficultyId: recalled.difficultyId, timeMultiplier: recalled.timeMultiplier }), "A historical route opens as a saved plan for review instead of auto-departing");
   assert.strictEqual(game.Party.unreadResultCount(), 2, "Opening history does not mark the latest report as read");
   await click("party-back");
   assert.strictEqual(game.Party.unreadResultCount(), 2, "Both newly returned parties have unread reports");
@@ -298,7 +363,11 @@ async function run() {
   assert.strictEqual(node(".main-area").scrollTop, 0, "Returning to the report filter moves to the next unread result instead of restoring a lower scroll position");
   assert(html().indexOf('data-party-overview="1"') < html().indexOf('data-party-overview="0"'), "The next unread party is visible first after returning from a report");
   await click("party-open", { party: "0", view: "results" });
-  assert(html().includes("attempt-comparison") && html().includes("同じ探索条件の前回記録") && html().includes("到達戦") && html().includes("物理命中") && html().includes("与ダメージ") && html().includes("戦闘不能"), "A repeated route compares factual combat totals with the previous attempt");
+  game.GameState.data.partyResults[0].memberReports[0].skillUses = { power_strike: 2 };
+  game.GameState.data.partyResults[0].memberReports[0].skillDamage = { power_strike: 123 };
+  game.UI.render();
+  assert(html().includes("result-skill-usage") && html().includes("発動した技・呪文・回復") && html().includes("強撃") && html().includes("×2") && html().includes("直接ダメージ 123"), "The return report summarizes actual skill rotations, contribution and descriptions on tap");
+  assert(html().includes("attempt-comparison") && html().includes("同じ探索条件の前回記録") && html().includes("到達戦") && html().includes("物理命中") && html().includes("<span>状態異常</span>") && html().includes("（抵抗") && html().includes("<span>行動内訳</span>") && html().includes("回") && html().includes("・呪") && html().includes("・技") && html().includes("・攻") && html().includes("・防") && html().includes("与ダメージ") && html().includes("戦闘不能") && html().includes("<span>報酬</span>") && html().includes("<span>戦利品</span>") && html().includes("・経験値") && html().includes("装備") && html().includes("・素材") && html().includes("attempt-setup-changes") && html().includes("受けた傷の変化") && html().includes("冒険者ごとの働き") && html().includes("前回から変えた編成") && html().includes("技能の働きの変化"), "A repeated route compares factual outcomes, incoming-damage causes, member results, party changes and skill results in compact disclosures");
   assert(html().includes("report-party-navigation") && html().includes("1 / 2件") && html().includes("次の未読報告") && game.Party.unreadResultCount() === 1, "Multiple party reports expose the next unread report without returning to the overview");
   await click("switch-party-result", { party: "1" });
   assert.strictEqual(game.Party.selected(), 1);
@@ -320,6 +389,13 @@ async function run() {
   assert(html().includes("monster-expedition-context") && html().includes("is-recent-encounter") && html().includes("今回 遭遇") && html().includes("討伐") && html().includes('data-action="return-to-result-report"'), "Monsters from the exact expedition show encounter and defeat counts, with a route back to the report");
   await click("return-to-result-report", { party: "0" });
   assert(html().includes(`${game.Party.name(0)}の直近の探索結果`) && html().includes("failure-evidence-links"), "The focused codex returns to the originating party report");
+  delete game.GameState.data.partyResults[0].trackedHarvestPractice;
+  delete game.GameState.data.partyResults[0].trackedHarvestPersistence;
+  game.GameState.data.partyHistory[0].forEach(entry => {
+    if (!entry.targetedHarvest) return;
+    delete entry.targetedHarvest.practice;
+    delete entry.targetedHarvest.persistence;
+  });
   await click("party-open", { party: "1", view: "formation" });
   assert.strictEqual(game.Party.selected(), 1); assert(html().includes("メンバー編成") && html().includes("パーティ一覧"));
   await click("party-open", { party: "0", view: "invalid" }); assert.strictEqual(game.Party.selected(), 1);

@@ -46,6 +46,7 @@ const healer = stats => { const member = hero({ hp: 1000, attack: 1, defense: 0,
 const healAmount = result => Number(result.battleLog.find(entry => entry.kind === "heal").text.match(/\+(\d+)/)[1]);
 assert.strictEqual(healAmount(fight(healer({ attack: 1 }))), healAmount(fight(healer({ attack: 99 }))));
 assert(healAmount(fight(healer({ magicHealing: 5 }))) < healAmount(fight(healer({ magicHealing: 30 }))));
+assert(healAmount(fight(healer({ healingReceived: 1.2 }))) > healAmount(fight(healer({ healingReceived: .9 }))), "The recipient's vitality-derived recovery multiplier should affect active healing");
 async function persistence() {
   const id = require("./helpers").createCharacter(game, "魔術師", "mage", "elf", "arcane").id;
   const character = game.Characters.get(id); character.level = 10;
