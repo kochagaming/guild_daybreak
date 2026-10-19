@@ -149,6 +149,120 @@
     return `<aside class="story-guild-whisper"><header><span aria-hidden="true">聞</span><span><small>OVERHEARD AT THE INN</small><strong>宿の広間で広がった狩り名</strong></span></header><div>${lines}</div><button type="button" class="text-button" data-action="open-adventurer-bonds" data-bond="${context.escape(hunt.bondKey)}" data-monster="${context.escape(hunt.monsterId)}" data-item="${context.escape(hunt.itemId)}">町に広がった二人の頁を読む</button></aside>`;
   }
 
+  function routeTraditionHallNotice(context) {
+    const records = Object.values(window.GameState.data.story?.facts?.routeTraditionRecords || {})
+      .filter(record => record && Array.isArray(record.memberNames) && record.memberNames.length === 3)
+      .sort((left, right) => Number(right.establishedAt || 0) - Number(left.establishedAt || 0));
+    const record = records[0];
+    if (!record) return "";
+    const destination = window.DungeonDifficulty.variant(record.dungeonId, record.difficultyId || "normal");
+    if (!destination) return "";
+    const characters = window.GameData.storyCharacters || {};
+    const rina = characters.receptionist_rina?.name || "リナ";
+    const elseName = characters.archivist_else?.name || "エルゼ";
+    const founders = record.memberNames.map(context.escape);
+    const speaker = founders[1];
+    const assistedSorties = Math.max(0, Number(record.assistedSorties) || 0);
+    const traditionTier = window.Exploration.routeTraditionTier(assistedSorties);
+    const date = record.establishedAt ? new Date(record.establishedAt).toLocaleDateString("ja-JP", { month: "short", day: "numeric" }) : "帰還した日";
+    const rinaLine = assistedSorties
+      ? `「入口の地図へ、帰還の印が${assistedSorties}つ増えました。三人が残した目印を頼って、別の隊も同じ道から戻ってきています」`
+      : "「三人が泥だらけで持ち帰った地図、入口の壁へ掛けました。今朝出た冒険者が、もう目印を書き写していましたよ」";
+    return `<details class="story-route-tradition-whisper"><summary><span aria-hidden="true">標</span><span><small>A ROAD REMEMBERED · ${context.escape(date)}</small><strong>${context.escape(destination.name)}の道標が、町で使われ始めました</strong><em>${founders.join(" → ")} · ${context.escape(traditionTier?.label || "帰還簿の道標")} · ${assistedSorties ? `その後${assistedSorties}遠征を案内` : "次の遠征を待つ"}</em></span><i aria-hidden="true">›</i></summary><div><p><b>${context.escape(rina)}</b>${context.escape(rinaLine)}</p><p><b>${context.escape(elseName)}</b>「線だけでは道になりません。最初に見つけた者、教わった道へ自分の判断を足した者、それを初めて信じて歩いた者。三人の名が揃って、ようやく次の誰かへ渡せる記録になります」</p><p><b>${speaker}</b>「教わった道を、そのまま写したんじゃない。迷った場所まで残した。次に向かう人は、私たちより少しだけ遠くを見られるはずだ」</p><button type="button" class="text-button" data-action="open-route-atlas" data-dungeon="${context.escape(record.dungeonId)}" data-difficulty="${context.escape(record.difficultyId || "normal")}">資料室のこの道標を開く · 全${records.length}路</button></div></details>`;
+  }
+
+  function achievementHallNotice(context) {
+    if (!window.GuildServices?.unlocked?.("archives")) return "";
+    const rewards = window.Achievements.ready();
+    if (!rewards.length) return "";
+    const latest = rewards.map(entry => ({ entry, earned: window.Achievements.earnedOn(entry.id) }))
+      .sort((left, right) => Number(right.earned?.completedAt || 0) - Number(left.earned?.completedAt || 0))[0].entry;
+    const seals = rewards.reduce((sum, entry) => sum + (Number(entry.rewards?.materials?.guild_seal) || 0), 0);
+    const characters = window.GameData.storyCharacters || {};
+    const rina = characters.receptionist_rina?.name || "リナ";
+    const elseName = characters.archivist_else?.name || "エルゼ";
+    const remaining = rewards.length > 1 ? `ほか${rewards.length - 1}件と合わせて` : "";
+    return `<aside class="story-guild-whisper is-achievement"><header><span aria-hidden="true">章</span><span><small>A MARK IN THE LEDGER</small><strong>宿の帳面に新しい記章</strong></span></header><div><p><b>${context.escape(rina)}</b>「マスター、書庫から知らせです。『${context.escape(latest.name)}』の頁に、エルゼさんが新しい印を押していました」</p><p><b>${context.escape(elseName)}</b>「これは褒賞というより、歩みを忘れないための目印です。${context.escape(remaining)}ギルド印章${seals}個を預かっています。次の旅へ持っていく前に、誰と何を成した記録なのか確かめてください」</p></div><button type="button" class="text-button" data-action="open-achievements">実績の頁を開く · 未受領${rewards.length}件</button></aside>`;
+  }
+
+  function trackedAchievement(context) {
+    const goal = window.Achievements.tracked();
+    if (!goal) return "";
+    const remaining = Math.max(0, goal.target - goal.current);
+    const destination = window.Achievements.destination(goal);
+    const attributes = {
+      recruitment: 'data-nav="characters"',
+      formation: 'data-action="party-view" data-view="formation"',
+      adventure: 'data-action="party-view" data-view="adventure"',
+      monsters: 'data-action="open-monster-codex"',
+      items: 'data-action="open-item-codex"',
+      companions: 'data-action="open-companion-ledger"',
+      observations: 'data-action="open-observations"',
+      guild: 'data-nav="guild"',
+      achievements: 'data-action="open-achievements"'
+    }[destination.id];
+    return `<aside class="story-achievement-target"><span aria-hidden="true">${context.escape(goal.icon)}</span><div><small>NEXT GUILD MILESTONE · ${context.escape(goal.category)}</small><strong>${context.escape(goal.name)}</strong><p>${context.escape(goal.description)}</p><div aria-label="${Math.min(goal.current, goal.target)} / ${goal.target}"><i style="width:${goal.ratio * 100}%"></i></div><em>${goal.complete ? "達成しました" : `あと${remaining.toLocaleString("ja-JP")} · ${Math.min(goal.current, goal.target)}/${goal.target}`}</em></div><nav><button type="button" ${attributes}>${context.escape(destination.label)} ›</button><button type="button" data-action="open-achievements">実績の頁へ</button></nav></aside>`;
+  }
+
+  function retreatCouncil(context) {
+    const results = (window.GameState.data.partyResults || [])
+      .filter(result => result && ((!result.success && result.retryPreparationGrowth?.failures) || (result.success && result.retryPreparation?.failures)))
+      .sort((left, right) => Number(right.completedAt || 0) - Number(left.completedAt || 0));
+    const result = results[0];
+    if (!result) return "";
+    const partyIndex = Number.isInteger(result.partyIndex) ? result.partyIndex : window.GameState.data.partyResults.indexOf(result);
+    if (partyIndex < 0 || partyIndex >= window.Party.limit()) return "";
+    const destination = window.DungeonDifficulty.variant(result.dungeonId, result.difficultyId || "normal");
+    if (!destination) return "";
+    const cast = window.GameData.storyCharacters || {};
+    const rina = cast.receptionist_rina?.name || "リナ";
+    const gregor = cast.blacksmith_gregor?.name || "グレゴール";
+    const elseName = cast.archivist_else?.name || "エルゼ";
+    const marta = cast.merchant_marta?.name || "マルタ";
+    const reports = Array.isArray(result.memberReports) ? result.memberReports : [];
+    const adventurer = result.partyNames?.[0] || reports[0]?.name || "帰還した冒険者";
+    const partyName = window.Party.name(partyIndex);
+    const preparationRecord = result.success ? result.retryPreparation : result.retryPreparationGrowth;
+    const reduction = Math.round((Number(preparationRecord?.damageReduction) || 0) * 100);
+    if (result.success) {
+      const advisor = window.GuildServices?.unlocked?.("archives") ? elseName : window.GuildServices?.unlocked?.("blacksmith") ? gregor : rina;
+      const advisorLine = advisor === elseName
+        ? `消さずに残した${preparationRecord.failures}度の撤退記録へ、ようやく攻略の印が重なりました。失敗の頁も、ここまで読めば勝利の一部です。`
+        : advisor === gregor
+          ? `${preparationRecord.failures}度持ち帰った傷が、今度は全員を帰す備えになった。直した装具だけじゃない。使い手の方も、前とは違う音をしている。`
+          : `${preparationRecord.failures}度の「おかえりなさい」を帳面から消さなくてよかったです。今日の攻略は、その全部の続きに書いておきます。`;
+      return `<details class="story-retreat-council is-overcome" data-detail="retreat-council" ${result.viewed ? "" : "open"}><summary><span aria-hidden="true">越</span><span><small>THE RETURN AFTER RETRY · ${context.escape(partyName)}</small><strong>撤退記録を越えた夜</strong><em>${context.escape(destination.name)} · ${preparationRecord.failures}度の備えを攻略へ</em></span><i aria-hidden="true">›</i></summary><div><p><b>${context.escape(rina)}</b>「マスター、${context.escape(partyName)}が帰りました。今度は${context.escape(destination.name)}の地図に、退路ではなく攻略の印をつけています」</p><p><b>${context.escape(advisor)}</b>「${context.escape(advisorLine)}」</p><p><b>${context.escape(adventurer)}</b>「受ける傷を${reduction}%抑えたことより、どこで退くことになったか皆で覚えていたのが大きかった。前の自分たちを、置いていかずに済んだよ」</p><nav><button type="button" class="button primary" data-action="party-open" data-party="${partyIndex}" data-view="results">攻略報告を開く</button><button type="button" class="button ghost" data-action="party-open" data-party="${partyIndex}" data-view="history">再挑戦の歩みを見る</button><button type="button" class="button secondary" data-action="open-result-monsters" data-party="${partyIndex}" data-dungeon="${context.escape(result.dungeonId)}">越えた敵の記録</button></nav></div></details>`;
+    }
+    const sourceTotal = source => reports.reduce((sum, member) => sum + Math.max(0, Number(member.damageSources?.[source]) || 0), 0);
+    const physicalDamage = sourceTotal("physical"), magicDamage = sourceTotal("magic");
+    const attempts = reports.reduce((sum, member) => sum + Math.max(0, Number(member.attackAttempts) || 0), 0);
+    const hits = reports.reduce((sum, member) => sum + Math.max(0, Number(member.attackHits) || 0), 0);
+    const timedOut = (result.defeatFacts || []).some(fact => String(fact).includes("ターン終了時"));
+    const exposed = Number(result.mechanicReport?.unguardedHits) || 0;
+    const growth = result.retryPreparationGrowth;
+    let advisor = rina, observation = "持ち帰った記録を一つずつ並べれば、次に変えるべきことが見えてきます。";
+    if (timedOut && window.GuildServices?.unlocked?.("archives")) {
+      advisor = elseName;
+      observation = "最後まで立っていたのに、敵を倒し切る前に刻限が来ています。守りを減らすのではなく、命中した手数と使わなかった技から見直しましょう。";
+    } else if (exposed > 0 && window.GuildServices?.unlocked?.("blacksmith")) {
+      advisor = gregor;
+      observation = `大技の前触れは見えていたが、防御なしの記録が${exposed}人回ある。鎧を重くする前に、技が来る番の守り方を揃えろ。`;
+    } else if (magicDamage > physicalDamage && window.GuildServices?.unlocked?.("archives")) {
+      advisor = elseName;
+      observation = `傷の記録は、物理${physicalDamage}に対して魔法${magicDamage}。敵の名だけでなく、使った属性と魔法防御を照らし合わせるべき頁です。`;
+    } else if (physicalDamage > 0 && window.GuildServices?.unlocked?.("blacksmith")) {
+      advisor = gregor;
+      observation = `受けた物理の傷は合計${physicalDamage}。誰が前で受け、どの防具が耐えたかを見れば、重さを増やさず直せる箇所がある。`;
+    } else if (attempts >= 4 && hits / attempts < .65 && window.GuildServices?.unlocked?.("shop")) {
+      advisor = marta;
+      observation = `振った武器は${attempts}回、届いたのは${hits}回。高い品を買う前に、扱える武器と隊列を合わせた方が旅支度は軽く済むよ。`;
+    }
+    const preparation = growth.atMaximum
+      ? `撤退記録は${growth.failures}度分で整った。次は受ける傷を${reduction}%抑えられる。`
+      : `今回の道筋も残した。次は受ける傷を${reduction}%抑えたところから試せる。`;
+    return `<details class="story-retreat-council" data-detail="retreat-council" ${result.viewed ? "" : "open"}><summary><span aria-hidden="true">策</span><span><small>AFTER THE RETREAT · ${context.escape(partyName)}</small><strong>撤退のあと、宿の作戦卓で</strong><em>${context.escape(destination.name)} · 次回の戦闘被ダメージ-${reduction}%</em></span><i aria-hidden="true">›</i></summary><div><p><b>${context.escape(rina)}</b>「マスター、${context.escape(partyName)}が戻りました。傷の手当てを先に済ませて、${context.escape(destination.name)}の地図を作戦卓へ広げています」</p><p><b>${context.escape(advisor)}</b>「${context.escape(observation)}」</p><p><b>${context.escape(adventurer)}</b>「${context.escape(preparation)}同じ場所へ戻るか、編成から変えるか。報告を見て決めよう」</p><nav><button type="button" class="button primary" data-action="party-open" data-party="${partyIndex}" data-view="results">撤退記録を開く</button><button type="button" class="button ghost" data-action="party-open" data-party="${partyIndex}" data-view="formation">編成を見直す</button><button type="button" class="button secondary" data-action="open-result-monsters" data-party="${partyIndex}" data-dungeon="${context.escape(result.dungeonId)}">敵の記録を見る</button></nav></div></details>`;
+  }
+
   function story(context) {
     const state = window.GameState.data, storyState = window.Story.ensure(), focus = window.Story.focus(), chapter = focus.chapter, guide = window.Story.storyGuide(), episode = guide.episode;
     const finalChapter = window.Story.mainChapters().at(-1);
@@ -170,6 +284,10 @@
       ${storyMemoryBrief(context, guide)}
       ${currentScene}
       ${storyMysteryBoard(context)}
+      ${trackedAchievement(context)}
+      ${achievementHallNotice(context)}
+      ${retreatCouncil(context)}
+      ${routeTraditionHallNotice(context)}
       ${guildHallWhisper(context)}
       ${mainStoryComplete ? `<div class="story-completion-summary"><span aria-hidden="true">✦</span><div><strong>名もなき宿から始まった物語を見届けました</strong><p>全${mainChapterCount}章を達成。クリア後は「${context.escape(postgameRoutes.find(route => !storyState.facts.clears.includes(route.id))?.name || postgameRoutes[0]?.name || "星後の神域")}」など、星後の遠征へ挑めます。</p><small>クリア後探索 ${postgameCleared}/${postgameRoutes.length}攻略</small></div></div>` : ""}
       ${chapter && !storyState.completed.includes(chapter.id) ? `<div class="story-next-step"><span>次の目的</span><strong>${context.escape(objective || "ギルドで次の依頼を待つ")}</strong>${focus.dungeon ? `<small>${context.escape(focus.dungeon.description)}</small>` : chapter.id === "prologue" ? `<small>冒険者雇用：${state.characters.length ? "達成" : "未達成"} ／ 初出発：${storyState.facts.departed ? "達成" : "未達成"}</small>` : ""}</div>${routeProgress(context, chapter, focus)}` : ""}
@@ -205,5 +323,5 @@
 
   function page(context) { return story(context) + archive(context); }
 
-  window.GameUIViews.home = { archive, page, story };
+  window.GameUIViews.home = { archive, page, retreatCouncil, story };
 })();

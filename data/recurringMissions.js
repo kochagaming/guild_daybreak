@@ -4,9 +4,19 @@
   const data = window.GameData = window.GameData || {};
   const recurringMissions = Object.freeze({
     version: 2,
+    destinations: Object.freeze({
+      login: Object.freeze({ page: "home", label: "ホームへ" }),
+      departure: Object.freeze({ page: "party", view: "adventure", label: "出撃先へ" }),
+      clear: Object.freeze({ page: "party", view: "adventure", label: "出撃先へ" }),
+      facility_collect: Object.freeze({ page: "guild", label: "施設へ" }),
+      shop_purchase: Object.freeze({ page: "shop", label: "商店へ" }),
+      craft: Object.freeze({ page: "blacksmith", view: "craft", label: "製作へ" }),
+      equipment_upgrade: Object.freeze({ page: "blacksmith", view: "upgrade", label: "強化へ" })
+    }),
     groups: Object.freeze([
       {
         id: "daily", name: "日課依頼", eyebrow: "DAILY REQUEST",
+        completion: { issuerCharacterId: "receptionist_rina", text: "今日の仕事は、これですべて帳面に収まりました。あとは帰る人を迎えるだけです。" },
         schedule: { type: "daily", resetHour: 0 },
         selection: { strategy: "random", count: 3, pinnedIds: ["login"] },
         missions: [
@@ -20,6 +30,7 @@
       },
       {
         id: "weekly", name: "週間依頼", eyebrow: "WEEKLY REQUEST",
+        completion: { issuerCharacterId: "receptionist_rina", text: "今週の報告を綴じました。皆の働きが、町の次の一週間を少しだけ軽くしてくれます。" },
         schedule: { type: "weekly", resetHour: 0 },
         selection: { strategy: "random", count: 2 },
         missions: [

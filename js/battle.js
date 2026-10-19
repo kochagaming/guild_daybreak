@@ -327,9 +327,26 @@
     if (typeof metadata?.routeEventSuccess === "boolean") entry.routeEventSuccess = metadata.routeEventSuccess;
     if (typeof metadata?.routeEventMasteryApplied === "boolean") entry.routeEventMasteryApplied = metadata.routeEventMasteryApplied;
     if (typeof metadata?.routeEventPersonalPracticeApplied === "boolean") entry.routeEventPersonalPracticeApplied = metadata.routeEventPersonalPracticeApplied;
+    if (typeof metadata?.routeNaturalAptitudeApplied === "boolean") entry.routeNaturalAptitudeApplied = metadata.routeNaturalAptitudeApplied;
     if (typeof metadata?.routeTeamSurveyApplied === "boolean") entry.routeTeamSurveyApplied = metadata.routeTeamSurveyApplied;
     if (Array.isArray(metadata?.routeTeamSurveyMemberIds)) entry.routeTeamSurveyMemberIds = [...metadata.routeTeamSurveyMemberIds];
     if (Array.isArray(metadata?.routeTeamSurveyMemberNames)) entry.routeTeamSurveyMemberNames = [...metadata.routeTeamSurveyMemberNames];
+    if (typeof metadata?.routeDestinationFamiliarityApplied === "boolean") entry.routeDestinationFamiliarityApplied = metadata.routeDestinationFamiliarityApplied;
+    if (Array.isArray(metadata?.routeDestinationFamiliarityMemberIds)) entry.routeDestinationFamiliarityMemberIds = [...metadata.routeDestinationFamiliarityMemberIds];
+    if (Array.isArray(metadata?.routeDestinationFamiliarityMemberNames)) entry.routeDestinationFamiliarityMemberNames = [...metadata.routeDestinationFamiliarityMemberNames];
+    if (typeof metadata?.routeDestinationFamiliarityBonus === "number") entry.routeDestinationFamiliarityBonus = metadata.routeDestinationFamiliarityBonus;
+    if (typeof metadata?.routeMentorshipApplied === "boolean") entry.routeMentorshipApplied = metadata.routeMentorshipApplied;
+    if (typeof metadata?.routeMentorshipInherited === "boolean") entry.routeMentorshipInherited = metadata.routeMentorshipInherited;
+    if (typeof metadata?.routeLineageSupportApplied === "boolean") entry.routeLineageSupportApplied = metadata.routeLineageSupportApplied;
+    if (metadata?.routeLineagePredecessorId) entry.routeLineagePredecessorId = metadata.routeLineagePredecessorId;
+    if (metadata?.routeLineagePredecessorName) entry.routeLineagePredecessorName = metadata.routeLineagePredecessorName;
+    if (metadata?.routeMentorId) entry.routeMentorId = metadata.routeMentorId;
+    if (metadata?.routeMentorName) entry.routeMentorName = metadata.routeMentorName;
+    if (Array.isArray(metadata?.routeApprenticeIds)) entry.routeApprenticeIds = [...metadata.routeApprenticeIds];
+    if (Array.isArray(metadata?.routeApprenticeNames)) entry.routeApprenticeNames = [...metadata.routeApprenticeNames];
+    if (typeof metadata?.routeMentorshipBonus === "number") entry.routeMentorshipBonus = metadata.routeMentorshipBonus;
+    if (typeof metadata?.routeTraditionApplied === "boolean") entry.routeTraditionApplied = metadata.routeTraditionApplied;
+    if (Array.isArray(metadata?.routeTraditionFounderNames)) entry.routeTraditionFounderNames = [...metadata.routeTraditionFounderNames];
     if (typeof metadata?.routeBondSupportApplied === "boolean") entry.routeBondSupportApplied = metadata.routeBondSupportApplied;
     if (Array.isArray(metadata?.routeBondSupportMemberIds)) entry.routeBondSupportMemberIds = [...metadata.routeBondSupportMemberIds];
     if (Array.isArray(metadata?.routeBondSupportMemberNames)) entry.routeBondSupportMemberNames = [...metadata.routeBondSupportMemberNames];
@@ -351,6 +368,11 @@
     if (Number.isInteger(metadata?.sharedSorties)) entry.sharedSorties = metadata.sharedSorties;
     if (metadata?.defeatedMonsterCounts && Object.keys(metadata.defeatedMonsterCounts).length) entry.defeatedMonsterCounts = { ...metadata.defeatedMonsterCounts };
     if (Array.isArray(metadata?.encounteredMonsterIds)) entry.encounteredMonsterIds = [...metadata.encounteredMonsterIds];
+    if (metadata?.chapterMapGuidance === true) entry.chapterMapGuidance = true;
+    if (metadata?.acquiredItemId && Number.isInteger(metadata?.acquiredItemQuantity) && metadata.acquiredItemQuantity > 0) {
+      entry.acquiredItemId = metadata.acquiredItemId;
+      entry.acquiredItemQuantity = metadata.acquiredItemQuantity;
+    }
     log.push(entry);
   }
 
@@ -824,7 +846,10 @@
     const acquisition = acquisitionApi.normalize(expedition.acquisitionBonuses);
     const trackedMonsterTrail = applyTrackedMonsterTrail(dungeon, expedition);
     dungeon = trackedMonsterTrail.dungeon;
-    const journey = window.Exploration.journey(dungeon, timeMultiplier, expedition.seed, acquisition.itemRate, expedition.partySnapshot, expedition.knownCompanionMomentKeys || [], expedition.knownRouteMasteryIds || [], expedition.knownTreasureMasteryIds || []);
+    const journey = window.Exploration.journey(dungeon, timeMultiplier, expedition.seed, acquisition.itemRate, expedition.partySnapshot, expedition.knownCompanionMomentKeys || [], expedition.knownRouteMasteryIds || [], expedition.knownTreasureMasteryIds || [], expedition.guildRouteTradition ? {
+      tierId: expedition.guildRouteTraditionTierId || null,
+      founderNames: expedition.guildRouteTraditionFounderNames || []
+    } : false);
     dungeon = window.Exploration.plan(dungeon, timeMultiplier);
     const combatRules = combatRulesFor(dungeon);
     dungeon.itemRateModifier = acquisition.itemRate;
@@ -854,6 +879,17 @@
       skillUses: {}, skillDamage: {}, skillHealing: {}, skillStatusInflicted: {}
     }; });
     const log = [];
+    if (expedition.chapterMapBenefit) {
+      const mapTargets = [window.GameData.items[expedition.trackedItemId]?.name, window.GameData.monsters[expedition.trackedMonsterId]?.name].filter(Boolean);
+      const targetText = mapTargets.length ? `地図の余白へ「${mapTargets.join("」「")}」の印を重ね、` : "";
+      pushLog(log, "formation", `【${expedition.chapterMapBenefit.label}】${targetText}帰還者が残した分岐と足跡を照合した。迷う時間を省き、探索時間を${expedition.chapterMapBenefit.reductionPercent}%短縮する。`, 0, 0, { chapterMapGuidance: true });
+    }
+    const retryFailures = Math.max(0, Math.floor(Number(expedition.retryPreparationFailures) || 0));
+    const retryDamageReduction = Math.max(0, Math.min(.2, Number(expedition.retryPreparationDamageReduction) || 0));
+    if (retryFailures && retryDamageReduction) {
+      heroes.forEach(hero => { hero.incomingDamageMultiplier = (hero.incomingDamageMultiplier || 1) * (1 - retryDamageReduction); });
+      pushLog(log, "formation", `【再挑戦の備え】${retryFailures}度の撤退記録を読み返し、傷を受けた場所と敵の動きへ備えた。`, 0, 0);
+    }
     const strategyReport = { areaHits: 0, penetrationHits: 0, magicWeaknessHits: 0, magicWeaknessDamage: 0, rearHits: 0, rearDamage: 0, rearKnockouts: 0, elementWeaknessHits: 0, statusInflicted: 0, statusResisted: 0, statusDamage: 0 };
     heroes.forEach(hero => { hero.strategyReport = strategyReport; });
     let encountersCleared = 0;
@@ -1038,14 +1074,14 @@
           materialLoot.set(drop.itemId, (materialLoot.get(drop.itemId) || 0) + quantity);
           remember(monsterObservations[monster.id].drops, drop.itemId);
           const item = (window.GameData.items || {})[drop.itemId];
-          pushLog(log, "system", `【素材ドロップ】${monster.name}から${item ? item.name : drop.itemId}×${quantity}を獲得。`, index + 1, 0);
+          pushLog(log, "system", `【素材ドロップ】${monster.name}から${item ? item.name : drop.itemId}×${quantity}を獲得。`, index + 1, 0, { acquiredItemId: drop.itemId, acquiredItemQuantity: quantity });
         });
         const equipmentDrop = window.MonsterLoot ? window.MonsterLoot.roll(equipmentRandom, dungeon, monster) : null;
         if (equipmentDrop) {
           monsterEquipmentLoot.push(equipmentDrop);
           remember(monsterObservations[monster.id].drops, equipmentDrop.itemId);
           const item = window.GameData.items[equipmentDrop.itemId];
-          pushLog(log, "system", `【装備ドロップ】${monster.name}が「${item ? item.name : equipmentDrop.itemId}」を落とした！`, index + 1, 0);
+          pushLog(log, "system", `【装備ドロップ】${monster.name}が「${item ? item.name : equipmentDrop.itemId}」を落とした！`, index + 1, 0, { acquiredItemId: equipmentDrop.itemId, acquiredItemQuantity: equipmentDrop.quantity || 1 });
         }
         const normalSignature = window.GameData.relations?.monsterSignatureDrops?.[baseMonsterId];
         const signatureTiers = monster.signatureDropTiers || (normalSignature ? [{ difficultyId: "normal", drops: normalSignature }] : []);
@@ -1057,13 +1093,13 @@
             materialLoot.set(drop.itemId, (materialLoot.get(drop.itemId) || 0) + quantity);
             remember(monsterObservations[monster.id].drops, drop.itemId);
             const item = window.GameData.items[drop.itemId];
-            pushLog(log, "system", `【${entry.difficultyId === "normal" ? "固有素材" : window.DungeonDifficulty.tier(entry.difficultyId).name + "固有素材"}】${monster.name}から${item ? item.name : drop.itemId}×${quantity}を獲得。`, index + 1, 0);
+            pushLog(log, "system", `【${entry.difficultyId === "normal" ? "固有素材" : window.DungeonDifficulty.tier(entry.difficultyId).name + "固有素材"}】${monster.name}から${item ? item.name : drop.itemId}×${quantity}を獲得。`, index + 1, 0, { acquiredItemId: drop.itemId, acquiredItemQuantity: quantity });
           });
           if (signature?.equipment && signatureRandom() < itemChance(signature.equipment.chance * (dungeon.equipmentDropRate || 1) * fixedLootMultiplier * trackedHarvestMultiplier(expedition, monster, signature.equipment.itemId))) {
             monsterEquipmentLoot.push({ itemId: signature.equipment.itemId, quantity: integer(signatureRandom, signature.equipment.quantity) });
             remember(monsterObservations[monster.id].drops, signature.equipment.itemId);
             const item = window.GameData.items[signature.equipment.itemId];
-            pushLog(log, "system", `【${entry.difficultyId === "normal" ? "固有装備" : window.DungeonDifficulty.tier(entry.difficultyId).name + "固有装備"}】${monster.name}から「${item ? item.name : signature.equipment.itemId}」を獲得！`, index + 1, 0);
+            pushLog(log, "system", `【${entry.difficultyId === "normal" ? "固有装備" : window.DungeonDifficulty.tier(entry.difficultyId).name + "固有装備"}】${monster.name}から「${item ? item.name : signature.equipment.itemId}」を獲得！`, index + 1, 0, { acquiredItemId: signature.equipment.itemId, acquiredItemQuantity: 1 });
           }
         });
       });
@@ -1107,7 +1143,7 @@
           drops.push({ itemId: drop.itemId, quantity: 1 });
           remember(monsterObservations[id].drops, drop.itemId);
           const item = (window.GameData.items || {})[drop.itemId];
-          pushLog(log, "system", `【ボス固有装備】${item ? item.name : drop.itemId}を発見！`, dungeon.encounters.length, 0);
+          pushLog(log, "system", `【ボス固有装備】${item ? item.name : drop.itemId}を発見！`, dungeon.encounters.length, 0, { acquiredItemId: drop.itemId, acquiredItemQuantity: 1 });
         }
       });
       pushLog(log, "system", `全${dungeon.encounters.length}戦を突破し、探索に成功した！`, dungeon.encounters.length, 0);

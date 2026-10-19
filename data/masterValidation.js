@@ -334,7 +334,7 @@
       if (chapter.order > 0 && !requiredRoutes.length) errors.push(`${source} に本編攻略先がありません`);
     });
 
-    const observationUnlockTypes = new Set(["always", "departure", "dungeonClear", "chapterCompleted", "itemDiscovered", "routeEventEncountered", "routeEventMastered", "treasureTierEncountered", "treasureTierMastered", "sharedSorties", "skillMastery", "targetedHarvestPractice", "targetedHarvestPersistence", "targetedHarvestConsultation"]);
+    const observationUnlockTypes = new Set(["always", "departure", "dungeonClear", "difficultyClear", "difficultyChapterCompleted", "chapterCompleted", "itemDiscovered", "routeEventEncountered", "routeEventMastered", "treasureTierEncountered", "treasureTierMastered", "sharedSorties", "routeMentorship", "routeMentorshipLineage", "retryPreparation", "retryPreparationOvercome", "skillMastery", "targetedHarvestPractice", "targetedHarvestPersistence", "targetedHarvestConsultation"]);
     master.observationNotes.forEach(note => {
       const source = `observationNotes.${note.id}`;
       ["category", "title", "author", "lead", "unlockHint"].forEach(field => {
@@ -352,6 +352,14 @@
         return;
       }
       if (unlock.type === "dungeonClear") requireRef(master.dungeons, unlock.dungeonId, `${source}.unlock.dungeonId`);
+      if (unlock.type === "difficultyClear") {
+        requireRef(master.dungeonDifficulties, unlock.difficultyId, `${source}.unlock.difficultyId`);
+        if (unlock.dungeonId != null) requireRef(master.dungeons, unlock.dungeonId, `${source}.unlock.dungeonId`);
+      }
+      if (unlock.type === "difficultyChapterCompleted") {
+        requireRef(master.dungeonDifficulties, unlock.difficultyId, `${source}.unlock.difficultyId`);
+        if (!Number.isInteger(unlock.target) || unlock.target < 1) errors.push(`${source}.unlock.target は1以上の整数で指定してください`);
+      }
       if (unlock.type === "chapterCompleted") requireRef(chapters, unlock.chapterId, `${source}.unlock.chapterId`);
       if (unlock.type === "itemDiscovered") requireRef(master.items, unlock.itemId, `${source}.unlock.itemId`);
       if (["routeEventEncountered", "routeEventMastered"].includes(unlock.type) && !(master.config.explorationEvents?.routeEvents || []).some(event => event.id === unlock.routeEventId)) errors.push(`${source}.unlock.routeEventId -> ${unlock.routeEventId ?? "(未指定)"}`);
@@ -383,7 +391,8 @@
       validReward(commission.rewards, `${source}.rewards`);
     });
 
-    const achievementConditionTypes = new Set(["characters", "partyMembers", "chapters", "postgameChapters", "specificDungeonClear", "dungeonClears", "optionalClears", "divineClears", "monsterSpecies", "monsterDefeats", "itemTypes", "equipmentSetCompletions", "companionMemories", "companionPairMemories", "companionBonds", "routeEventEncounters", "routeRumorConfirmations", "routeEventMasteries", "teamSurveys", "treasureTierMasteries", "namedHunts", "ultraRareOwned", "facilityUpgrades"]);
+    const achievementConditionTypes = new Set(["characters", "partyMembers", "chapters", "postgameChapters", "specificDungeonClear", "dungeonClears", "optionalClears", "abyssClears", "divineClears", "difficultyChapters", "retryPreparationObserved", "retryPreparationOvercome", "monsterSpecies", "monsterDefeats", "itemTypes", "equipmentSetCompletions", "companionMemories", "companionPairMemories", "companionBonds", "routeEventEncounters", "routeRumorConfirmations", "routeEventMasteries", "teamSurveys", "treasureTierMasteries", "namedHunts", "routeMentorshipLineages", "routeLineageSorties", "routeTraditions", "ultraRareOwned", "facilityUpgrades"]);
+    const achievementIds = new Set(master.achievements.map(achievement => achievement.id));
     master.achievements.forEach(achievement => {
       const source = `achievements.${achievement.id}`;
       ["category", "name", "description", "icon"].forEach(field => {
@@ -394,6 +403,18 @@
       const dynamicAchievementTypes = new Set(["routeEventEncounters", "routeRumorConfirmations", "routeEventMasteries", "treasureTierMasteries"]);
       if ((!Number.isInteger(achievement.condition?.target) || achievement.condition.target < 1) && !(achievement.condition?.target === "all" && dynamicAchievementTypes.has(achievement.condition?.type))) errors.push(`${source}.condition.target は1以上の整数または対応するallで指定してください`);
       if (achievement.condition?.type === "specificDungeonClear") requireRef(master.dungeons, achievement.condition.dungeonId, `${source}.condition.dungeonId`);
+      if (achievement.condition?.type === "difficultyChapters") requireRef(master.dungeonDifficulties, achievement.condition.difficultyId, `${source}.condition.difficultyId`);
+      if (achievement.nextAchievementId != null && (!achievementIds.has(achievement.nextAchievementId) || achievement.nextAchievementId === achievement.id)) errors.push(`${source}.nextAchievementId -> ${achievement.nextAchievementId}`);
+      validReward(achievement.rewards, `${source}.rewards`);
+    });
+    master.achievements.forEach(achievement => {
+      const visited = new Set([achievement.id]);
+      let nextId = achievement.nextAchievementId;
+      while (nextId && achievementIds.has(nextId)) {
+        if (visited.has(nextId)) { errors.push(`achievements.${achievement.id}.nextAchievementId が循環しています`); break; }
+        visited.add(nextId);
+        nextId = master.achievements.find(candidate => candidate.id === nextId)?.nextAchievementId;
+      }
     });
 
     const adventurerRecordFields = new Set(["sorties", "victories", "retreats", "encounterClears", "routeSuccesses", "treasureOpenings", "teamSurveys", "targetedHarvestAttempts", "targetedHarvestSuccesses", "targetedHarvestItems", "damageDealt", "healingDone", "damageTaken", "criticalHits", "statusAttempts", "statusInflicted", "knockouts", "bestDamage", "bestHealing", "bestEndurance"]);
@@ -404,7 +425,7 @@
       ["name", "description", "icon"].forEach(field => {
         if (typeof milestone[field] !== "string" || !milestone[field].trim()) errors.push(`${source}.${field} がありません`);
       });
-      if (!["record", "routeEventRecord", "specialtyCount", "sharedSorties", "skillMasteryCount", "itemDiscoveryCount", "monsterFirstDefeatCount"].includes(milestone.condition?.type)) errors.push(`${source}.condition.type -> ${milestone.condition?.type ?? "(未指定)"}`);
+      if (!["record", "routeEventRecord", "specialtyCount", "sharedSorties", "skillMasteryCount", "itemDiscoveryCount", "monsterFirstDefeatCount", "routeMentorshipLineageCount", "routeTraditionCount"].includes(milestone.condition?.type)) errors.push(`${source}.condition.type -> ${milestone.condition?.type ?? "(未指定)"}`);
       if (milestone.condition?.type === "record" && !adventurerRecordFields.has(milestone.condition?.field)) errors.push(`${source}.condition.field -> ${milestone.condition?.field ?? "(未指定)"}`);
       if (milestone.condition?.type === "routeEventRecord" && !adventurerRouteEventIds.has(milestone.condition?.routeEventId)) errors.push(`${source}.condition.routeEventId -> ${milestone.condition?.routeEventId ?? "(未指定)"}`);
       if (milestone.condition?.type === "specialtyCount" && milestone.condition.minimum > adventurerRouteEventIds.size + 1) errors.push(`${source}.condition.minimum は得意分野の総数以下で指定してください`);
@@ -424,11 +445,20 @@
     });
 
     const recurringTriggers = new Set(["login", "departure", "clear", "facility_collect", "shop_purchase", "craft", "equipment_upgrade"]);
+    const recurringDestinations = master.config.recurringMissions.destinations || {};
+    recurringTriggers.forEach(trigger => {
+      const destination = recurringDestinations[trigger], source = `config.recurringMissions.destinations.${trigger}`;
+      if (!master.config.guildServices?.pages?.[destination?.page]) errors.push(`${source}.page -> ${destination?.page ?? "(未指定)"}`);
+      if (typeof destination?.label !== "string" || !destination.label.trim()) errors.push(`${source}.label がありません`);
+      if (destination?.view != null && !["adventure", "craft", "upgrade"].includes(destination.view)) errors.push(`${source}.view -> ${destination.view}`);
+    });
     const recurringGroupIds = new Set();
     (master.config.recurringMissions.groups || []).forEach(group => {
       const source = `config.recurringMissions.groups.${group.id ?? "(未指定)"}`;
       if (!group.id || recurringGroupIds.has(group.id)) errors.push(`${source}.id が未指定または重複しています`);
       recurringGroupIds.add(group.id);
+      requireRef(master.storyCharacters, group.completion?.issuerCharacterId, `${source}.completion.issuerCharacterId`);
+      if (typeof group.completion?.text !== "string" || !group.completion.text.trim()) errors.push(`${source}.completion.text がありません`);
       if (!["daily", "weekly"].includes(group.schedule?.type)) errors.push(`${source}.schedule.type -> ${group.schedule?.type ?? "(未指定)"}`);
       if (!Number.isInteger(group.schedule?.resetHour) || group.schedule.resetHour < 0 || group.schedule.resetHour > 23) errors.push(`${source}.schedule.resetHour は0〜23の整数で指定してください`);
       if (!["all", "random"].includes(group.selection?.strategy)) errors.push(`${source}.selection.strategy -> ${group.selection?.strategy ?? "(未指定)"}`);
@@ -520,6 +550,16 @@
       if (difficulty.id === "normal") {
         if (difficulty.unlockAfter != null || difficulty.firstClearReward != null) errors.push(`${source} は解放条件と初回報酬を持てません`);
       } else validReward(difficulty.firstClearReward, `${source}.firstClearReward`);
+      if (difficulty.chapterMapDialogue != null) {
+        ["title", "receptionist", "adventurer", "archivist"].forEach(field => {
+          if (typeof difficulty.chapterMapDialogue[field] !== "string" || !difficulty.chapterMapDialogue[field].trim()) errors.push(`${source}.chapterMapDialogue.${field} がありません`);
+        });
+      }
+      if (difficulty.chapterMapBenefit != null) {
+        if (typeof difficulty.chapterMapBenefit.label !== "string" || !difficulty.chapterMapBenefit.label.trim()) errors.push(`${source}.chapterMapBenefit.label がありません`);
+        const multiplier = Number(difficulty.chapterMapBenefit.explorationTimeMultiplier);
+        if (!Number.isFinite(multiplier) || multiplier <= 0 || multiplier >= 1) errors.push(`${source}.chapterMapBenefit.explorationTimeMultiplier は0より大きく1未満で指定してください`);
+      }
     });
 
     const recruitment = master.config.recruitment;
@@ -1019,6 +1059,39 @@
     });
     if (!Number.isInteger(master.config.explorationEvents?.routeMastery?.successes) || master.config.explorationEvents.routeMastery.successes < 1 || master.config.explorationEvents.routeMastery.successes > 20) errors.push("config.explorationEvents.routeMastery.successes が不正です");
     if (!Number.isFinite(master.config.explorationEvents?.routeMastery?.successChanceBonus) || master.config.explorationEvents.routeMastery.successChanceBonus <= 0 || master.config.explorationEvents.routeMastery.successChanceBonus > .25) errors.push("config.explorationEvents.routeMastery.successChanceBonus が不正です");
+    const routeFamiliarity = master.config.explorationEvents?.routeFamiliarity;
+    if (!Number.isFinite(routeFamiliarity?.maximumBonus) || routeFamiliarity.maximumBonus <= 0 || routeFamiliarity.maximumBonus > .15
+      || !Array.isArray(routeFamiliarity?.tiers) || !routeFamiliarity.tiers.length || new Set(routeFamiliarity.tiers.map(tier => tier?.id)).size !== routeFamiliarity.tiers.length || routeFamiliarity.tiers.some((tier, index) => !tier || typeof tier.id !== "string" || !tier.id || !Number.isInteger(tier.minimumClears) || tier.minimumClears < 1
+        || index > 0 && tier.minimumClears <= routeFamiliarity.tiers[index - 1].minimumClears || !Number.isFinite(tier.successChanceBonus) || tier.successChanceBonus <= 0 || tier.successChanceBonus > .05
+        || index > 0 && tier.successChanceBonus <= routeFamiliarity.tiers[index - 1].successChanceBonus || typeof tier.label !== "string" || !tier.label || typeof tier.growthText !== "string" || !tier.growthText)
+      || routeFamiliarity.maximumBonus < routeFamiliarity.tiers[0].successChanceBonus) errors.push("config.explorationEvents.routeFamiliarity が不正です");
+    const routeMentorship = master.config.explorationEvents?.routeMentorship;
+    if (!routeMentorship || !routeFamiliarity?.tiers?.some(tier => tier.id === routeMentorship.guideTierId)
+      || !Number.isInteger(routeMentorship.apprenticeMaximumClears) || routeMentorship.apprenticeMaximumClears < 0
+      || !Number.isInteger(routeMentorship.maximumApprentices) || routeMentorship.maximumApprentices < 1 || routeMentorship.maximumApprentices > 5
+      || !Number.isFinite(routeMentorship.successChanceBonus) || routeMentorship.successChanceBonus <= 0 || routeMentorship.successChanceBonus > .05
+      || !Number.isInteger(routeMentorship.inheritedAdditionalApprentices) || routeMentorship.inheritedAdditionalApprentices < 0 || routeMentorship.maximumApprentices + routeMentorship.inheritedAdditionalApprentices > 5
+      || !Number.isFinite(routeMentorship.inheritedSuccessChanceBonus) || routeMentorship.inheritedSuccessChanceBonus < 0
+      || !Number.isFinite(routeMentorship.lineageSuccessChanceBonus) || routeMentorship.lineageSuccessChanceBonus < 0
+      || routeMentorship.successChanceBonus + routeMentorship.inheritedSuccessChanceBonus + routeMentorship.lineageSuccessChanceBonus > .05) errors.push("config.explorationEvents.routeMentorship が不正です");
+    const routeTradition = master.config.explorationEvents?.routeTradition;
+    if (!routeTradition || !Array.isArray(routeTradition.tiers) || !routeTradition.tiers.length
+      || new Set(routeTradition.tiers.map(tier => tier?.id)).size !== routeTradition.tiers.length
+      || routeTradition.tiers.some((tier, index) => !tier || typeof tier.id !== "string" || !tier.id
+        || !Number.isInteger(tier.minimumAssists) || tier.minimumAssists < 0
+        || index === 0 && tier.minimumAssists !== 0
+        || index > 0 && tier.minimumAssists <= routeTradition.tiers[index - 1].minimumAssists
+        || !Number.isFinite(tier.successChanceBonus) || tier.successChanceBonus <= 0 || tier.successChanceBonus > .03
+        || index > 0 && tier.successChanceBonus <= routeTradition.tiers[index - 1].successChanceBonus
+        || typeof tier.label !== "string" || !tier.label || typeof tier.description !== "string" || !tier.description)) errors.push("config.explorationEvents.routeTradition が不正です");
+    const retryPreparation = master.config.explorationEvents?.retryPreparation;
+    if (!Number.isInteger(retryPreparation?.maximumFailures)
+      || retryPreparation.maximumFailures < 1 || retryPreparation.maximumFailures > 5
+      || !Number.isFinite(retryPreparation.damageReductionPerFailure)
+      || retryPreparation.damageReductionPerFailure <= 0
+      || retryPreparation.damageReductionPerFailure * retryPreparation.maximumFailures > .2
+      || typeof retryPreparation.label !== "string" || !retryPreparation.label
+      || typeof retryPreparation.description !== "string" || !retryPreparation.description) errors.push("config.explorationEvents.retryPreparation が不正です");
     if (!Number.isInteger(master.config.explorationEvents?.personalPractice?.successes) || master.config.explorationEvents.personalPractice.successes < 1 || master.config.explorationEvents.personalPractice.successes > 20) errors.push("config.explorationEvents.personalPractice.successes が不正です");
     if (!Number.isFinite(master.config.explorationEvents?.personalPractice?.successChanceBonus) || master.config.explorationEvents.personalPractice.successChanceBonus <= 0 || master.config.explorationEvents.personalPractice.successChanceBonus > .15) errors.push("config.explorationEvents.personalPractice.successChanceBonus が不正です");
     const harvestPractice = master.config.explorationEvents?.targetedHarvestPractice;
@@ -1094,7 +1167,7 @@
       adventurerBondMomentIds.add(moment.id);
       if (typeof moment.title !== "string" || !moment.title.trim()) errors.push(`${source}.title がありません`);
       if (!Number.isInteger(moment.minimumSharedSorties) || moment.minimumSharedSorties < 1) errors.push(`${source}.minimumSharedSorties が不正です`);
-      if (moment.trigger != null && moment.trigger !== "targetedHarvestConsultation") errors.push(`${source}.trigger が不正です`);
+      if (moment.trigger != null && !["targetedHarvestConsultation", "routeMentorshipReunion"].includes(moment.trigger)) errors.push(`${source}.trigger が不正です`);
       if (typeof moment.text !== "string" || !moment.text.trim() || !moment.text.includes("{left}") || !moment.text.includes("{right}")) errors.push(`${source}.text には{left}と{right}が必要です`);
     });
     if (!adventurerBondMomentIds.has(master.config.explorationEvents?.targetedHarvestConsultation?.bondMomentId)) errors.push("config.explorationEvents.targetedHarvestConsultation.bondMomentId が旅仲間の記憶を参照していません");

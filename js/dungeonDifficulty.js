@@ -32,6 +32,73 @@
   function available(dungeonId, state = window.GameState.data) {
     return ids().filter(id => unlocked(dungeonId, id, state));
   }
+  function nextAfterResult(result, state = window.GameState.data) {
+    if (!result?.success || !result.dungeonId) return null;
+    const ordered = ids();
+    const currentIndex = ordered.indexOf(result.difficultyId || "normal");
+    const nextId = currentIndex >= 0 ? ordered[currentIndex + 1] : null;
+    if (!nextId || !unlocked(result.dungeonId, nextId, state) || cleared(result.dungeonId, nextId, state)) return null;
+    return variant(result.dungeonId, nextId);
+  }
+  function nextChapterRouteAfterResult(result, state = window.GameState.data) {
+    const difficultyId = result?.difficultyId || "normal";
+    const current = result?.dungeonId ? window.GameData.dungeons[result.dungeonId] : null;
+    if (!result?.success || difficultyId === "normal" || !current?.requiredForStory) return null;
+    const routes = Object.values(window.GameData.dungeons)
+      .filter(dungeon => dungeon.chapterId === current.chapterId && dungeon.requiredForStory)
+      .sort((left, right) => (left.orderInChapter || 0) - (right.orderInChapter || 0));
+    const currentIndex = routes.findIndex(dungeon => dungeon.id === current.id);
+    const orderedIds = [...routes.slice(currentIndex + 1), ...routes.slice(0, currentIndex)].map(dungeon => dungeon.id);
+    const unlockAfter = tier(difficultyId).unlockAfter;
+    const nextId = orderedIds.find(id => (!unlockAfter || cleared(id, unlockAfter, state)) && !cleared(id, difficultyId, state));
+    const next = nextId ? variant(nextId, difficultyId) : null;
+    if (!next) return null;
+    const chapterProgress = progress(routes.map(dungeon => dungeon.id), state).find(entry => entry.difficultyId === difficultyId);
+    return Object.freeze({ ...next, chapterId: current.chapterId, completed: chapterProgress.completed, total: chapterProgress.total, remaining: Math.max(0, chapterProgress.total - chapterProgress.completed) });
+  }
+  function progress(dungeonIds, state = window.GameState.data) {
+    const routeIds = [...new Set((dungeonIds || []).filter(id => window.GameData.dungeons[id]))];
+    return ids().map(difficultyId => {
+      const definition = tier(difficultyId);
+      const eligibleIds = definition.unlockAfter
+        ? routeIds.filter(dungeonId => cleared(dungeonId, definition.unlockAfter, state))
+        : routeIds;
+      const completed = eligibleIds.filter(dungeonId => cleared(dungeonId, difficultyId, state)).length;
+      return Object.freeze({ difficultyId, name: definition.name, completed, total: eligibleIds.length, complete: eligibleIds.length > 0 && completed === eligibleIds.length });
+    });
+  }
+  function nextUncleared(dungeonIds, difficultyId, state = window.GameState.data) {
+    const routeIds = [...new Set((dungeonIds || []).filter(id => window.GameData.dungeons[id]))];
+    const dungeonId = routeIds.find(id => unlocked(id, difficultyId, state) && !cleared(id, difficultyId, state));
+    return dungeonId ? variant(dungeonId, difficultyId) : null;
+  }
+  function chapterMapBenefit(dungeonOrId, difficultyId = "normal", state = window.GameState.data) {
+    const dungeon = typeof dungeonOrId === "string" ? window.GameData.dungeons[dungeonOrId] : dungeonOrId;
+    const definition = tier(difficultyId), benefit = definition.chapterMapBenefit;
+    if (!dungeon?.chapterId || !benefit || difficultyId === "normal") return null;
+    const routes = Object.values(window.GameData.dungeons).filter(route => route.chapterId === dungeon.chapterId && route.requiredForStory);
+    if (!routes.length || routes.some(route => !cleared(route.id, difficultyId, state))) return null;
+    return Object.freeze({
+      difficultyId,
+      difficultyName: definition.name,
+      chapterId: dungeon.chapterId,
+      label: benefit.label,
+      explorationTimeMultiplier: benefit.explorationTimeMultiplier,
+      reductionPercent: Math.round((1 - benefit.explorationTimeMultiplier) * 100)
+    });
+  }
+  function applyChapterMapBenefit(bonuses, dungeonOrId, difficultyId = "normal", state = window.GameState.data) {
+    const benefit = chapterMapBenefit(dungeonOrId, difficultyId, state);
+    if (!benefit) return bonuses;
+    const source = bonuses || {}, explorationTime = source.explorationTime || { multiplier: 1, flat: 0 };
+    return {
+      ...source,
+      explorationTime: {
+        ...explorationTime,
+        multiplier: (Number(explorationTime.multiplier) || 1) * benefit.explorationTimeMultiplier
+      }
+    };
+  }
   function displayName(dungeon, difficultyId = "normal") {
     return `${tier(difficultyId).namePrefix}${dungeon.name}`;
   }
@@ -88,5 +155,5 @@
     return result;
   }
 
-  window.DungeonDifficulty = { available, cleared, clearKey, displayName, ensureClears, firstClearReward, ids, monster, recordClear, tier, unlocked, variant };
+  window.DungeonDifficulty = { applyChapterMapBenefit, available, chapterMapBenefit, cleared, clearKey, displayName, ensureClears, firstClearReward, ids, monster, nextAfterResult, nextChapterRouteAfterResult, nextUncleared, progress, recordClear, tier, unlocked, variant };
 })();

@@ -14,11 +14,14 @@ assert.strictEqual(game.GameData.config.recurringMissions.groups[1].missions.len
 assert.strictEqual(new Set(game.GameData.config.recurringMissions.groups.map(group => group.id)).size, game.GameData.config.recurringMissions.groups.length);
 game.GameData.config.recurringMissions.groups.forEach(group => {
   assert(["daily", "weekly"].includes(group.schedule.type));
+  assert(game.GameData.storyCharacters[group.completion.issuerCharacterId] && group.completion.text, "Each recurring request group has an in-world closing acknowledgement");
   assert(Number.isInteger(group.selection.count) && group.selection.count > 0 && group.selection.count <= group.missions.length);
   assert.strictEqual(new Set(group.missions.map(mission => mission.id)).size, group.missions.length);
   group.missions.forEach(mission => {
     assert(typeof mission.trigger === "string" && Number.isInteger(mission.target) && mission.target > 0);
     assert(game.GameData.storyCharacters[mission.issuerCharacterId] && typeof mission.flavor === "string" && mission.flavor.length > 0 && typeof mission.completionFlavor === "string" && mission.completionFlavor.length > 0, "Every recurring request has a known issuer and distinct request/completion lines");
+    const route = game.RecurringMissions.destination(mission.trigger);
+    assert(route && game.GameData.config.guildServices.pages[route.page] && route.label, "Every recurring request leads directly to the screen where it can be completed");
     Object.keys(mission.rewards.materials || {}).forEach(itemId => assert.strictEqual(game.GameData.items[itemId].type, "material"));
   });
 });
@@ -30,6 +33,8 @@ assert.strictEqual(weekly().claimed.length, 0);
 const weeklyVariants = game.RecurringMissions.active("weekly").map(entry => entry.variantGroup).filter(Boolean);
 assert.strictEqual(new Set(weeklyVariants).size, weeklyVariants.length, "Two weekly requests never select easy and hard variants of the same activity together");
 assert.strictEqual(game.RecurringMissions.readyCount(), 1, "The login reward is initially claimable");
+assert(game.RecurringMissions.active("daily").every(entry => game.RecurringMissions.missionAvailable(entry)), "A new guild never receives requests for facilities that have not opened yet");
+assert(game.RecurringMissions.active("daily").every(entry => ["login", "departure", "clear"].includes(entry.trigger)), "The first daily cycle only contains immediately usable activities");
 
 async function run() {
   assert(!(await game.GameClient.execute("recurringMission.claim", { groupId: "daily", missionId: "unknown" })).ok);

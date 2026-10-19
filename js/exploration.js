@@ -174,17 +174,32 @@
     return { eventId: event.id, state: "unfamiliar", text: "記録を照らしたが、この一行に似た経験はまだ見つからない。" };
   }
 
-  function journey(dungeon, multiplier, seed, itemRateModifier, partySnapshot = [], knownCompanionMomentKeys = [], knownRouteMasteryIds = [], knownTreasureMasteryIds = []) {
+  function routeTraditionTier(assistedSorties = 0) {
+    const tiers = window.GameData.config.explorationEvents?.routeTradition?.tiers || [];
+    const count = Math.max(0, Number(assistedSorties) || 0);
+    return [...tiers].reverse().find(tier => count >= tier.minimumAssists) || null;
+  }
+
+  function journey(dungeon, multiplier, seed, itemRateModifier, partySnapshot = [], knownCompanionMomentKeys = [], knownRouteMasteryIds = [], knownTreasureMasteryIds = [], guildRouteTradition = false) {
     const planned = plan(dungeon, multiplier);
     const definitions = window.GameData.config.explorationEvents || {
       treasure: { extraChance: .2, equipmentChance: .06, goldMinimumRate: .08, goldMaximumRate: .16 },
       environments: { default: { levelName: number => `第${number}区画`, arrivals: ["周囲を警戒しながら、新しい区画へ進んだ。"], discoveries: ["慎重に周囲を調べながら先へ進む。"] } }
     };
     const environment = definitions.environments[dungeon.color] || definitions.environments.default;
+    const traditionTiers = definitions.routeTradition?.tiers || [];
+    const traditionTierId = guildRouteTradition && typeof guildRouteTradition === "object" ? guildRouteTradition.tierId : guildRouteTradition;
+    const traditionFounderNames = guildRouteTradition && typeof guildRouteTradition === "object" && Array.isArray(guildRouteTradition.founderNames)
+      ? guildRouteTradition.founderNames.filter(name => typeof name === "string" && name).slice(0, 3)
+      : [];
+    const activeRouteTraditionTier = guildRouteTradition
+      ? traditionTiers.find(tier => tier.id === traditionTierId) || traditionTiers[0] || null
+      : null;
     const random = window.GameRuntime.seededRandom(seed + 900007);
     const companionRandom = window.GameRuntime.seededRandom(seed + 1300013);
     const routeRandom = window.GameRuntime.seededRandom(seed + 1900019);
     const bondRandom = window.GameRuntime.seededRandom(seed + 2300023);
+    const reunionRandom = window.GameRuntime.seededRandom(seed + 2900017);
     const companionIds = new Set(partySnapshot.map(member => member.companionId).filter(Boolean));
     const companionStages = new Map(partySnapshot.filter(member => member.companionId).map(member => [member.companionId, member.companionStageId || "base"]));
     const stageReached = (companionId, requiredStageId) => {
@@ -207,6 +222,23 @@
     const unseenCompanionScenes = companionScenes.filter(scene => !knownMemories.has(scene.key));
     const companionScene = companionScenes.length ? choose(companionRandom, unseenCompanionScenes.length ? unseenCompanionScenes : companionScenes) : null;
     const companionFloor = companionScene ? Math.floor(companionRandom() * planned.encounters.length) : -1;
+    const routeReunionDefinition = (definitions.adventurerBondMoments || []).find(moment => moment.trigger === "routeMentorshipReunion") || null;
+    const routeReunionCandidates = routeReunionDefinition ? partySnapshot.flatMap(apprentice => (apprentice.routeMentorIds || []).map(mentorId => {
+      const mentor = partySnapshot.find(member => member.id === mentorId);
+      if (!mentor) return null;
+      const knownMomentIds = new Set([
+        ...(mentor.bondMomentIds?.[apprentice.id] || []),
+        ...(apprentice.bondMomentIds?.[mentor.id] || [])
+      ]);
+      if (knownMomentIds.has(routeReunionDefinition.id)) return null;
+      return {
+        left: mentor,
+        right: apprentice,
+        sharedSorties: Math.max(1, Math.min(Number(mentor.sharedSorties?.[apprentice.id]) || 0, Number(apprentice.sharedSorties?.[mentor.id]) || 0))
+      };
+    }).filter(Boolean)) : [];
+    const routeReunionPair = routeReunionCandidates.length ? choose(reunionRandom, routeReunionCandidates) : null;
+    const routeReunionFloor = routeReunionPair ? Math.floor(reunionRandom() * planned.encounters.length) : -1;
     const genericMembers = partySnapshot.filter(member => !member.companionId);
     const adventurerPairs = [];
     for (let leftIndex = 0; leftIndex < genericMembers.length; leftIndex += 1) {
@@ -216,7 +248,7 @@
         if (sharedSorties >= 5) adventurerPairs.push({ left, right, sharedSorties });
       }
     }
-    const adventurerPair = adventurerPairs.length && bondRandom() < (definitions.adventurerBondMomentChance || 0)
+    const adventurerPair = !routeReunionPair && adventurerPairs.length && bondRandom() < (definitions.adventurerBondMomentChance || 0)
       ? choose(bondRandom, adventurerPairs)
       : null;
     const adventurerBondDefinitions = adventurerPair
@@ -234,6 +266,20 @@
     const routeMaterials = routeMaterialCandidates(dungeon);
     const masteredRouteEvents = new Set(knownRouteMasteryIds);
     const masteredTreasureTiers = new Set(knownTreasureMasteryIds);
+    const routeFamiliarity = definitions.routeFamiliarity || {};
+    const familiarityTierFor = count => [...(routeFamiliarity.tiers || [])].reverse().find(tier => count >= tier.minimumClears) || null;
+    const familiarRouteMembers = partySnapshot.map(member => {
+      const clears = Math.max(Number(member.destinationClearCount) || 0, member.destinationClearExperience ? 1 : 0);
+      return { member, clears, tier: familiarityTierFor(clears) };
+    }).filter(entry => entry.tier);
+    const routeFamiliarityBonus = Math.min(Number(routeFamiliarity.maximumBonus) || 0, familiarRouteMembers.reduce((sum, entry) => sum + (Number(entry.tier.successChanceBonus) || 0), 0));
+    const routeMentorship = definitions.routeMentorship || {};
+    const mentor = familiarRouteMembers.filter(entry => entry.tier.id === routeMentorship.guideTierId)
+      .sort((left, right) => Number(Boolean(right.member.inheritedRouteGuide)) - Number(Boolean(left.member.inheritedRouteGuide)) || right.clears - left.clears)[0] || null;
+    const mentorshipLimit = (routeMentorship.maximumApprentices || 1) + (mentor?.member.inheritedRouteGuide ? Number(routeMentorship.inheritedAdditionalApprentices) || 0 : 0);
+    const apprentices = mentor ? partySnapshot.filter(member => member.id !== mentor.member.id && Math.max(0, Number(member.destinationClearCount) || 0) <= (Number(routeMentorship.apprenticeMaximumClears) || 0)).slice(0, mentorshipLimit) : [];
+    const lineagePredecessor = mentor ? partySnapshot.find(member => member.id !== mentor.member.id && (mentor.member.routeMentorIds || []).includes(member.id)) || null : null;
+    const mentorshipBonus = mentor && apprentices.length ? (Number(routeMentorship.successChanceBonus) || 0) + (mentor.member.inheritedRouteGuide ? Number(routeMentorship.inheritedSuccessChanceBonus) || 0 : 0) + (lineagePredecessor ? Number(routeMentorship.lineageSuccessChanceBonus) || 0 : 0) : 0;
     const aptitudeBonus = (aptitudeId, member) => {
       const aptitude = definitions.aptitudes?.[aptitudeId];
       return aptitudeBonuses(aptitude, member, definitions);
@@ -283,7 +329,8 @@
     const routeEvents = selectedRouteDefinitions.map((routeDefinition, routeIndex) => {
       const guide = routeGuide(routeDefinition);
       const masteryApplied = masteredRouteEvents.has(routeDefinition.id);
-      const chance = Math.min(routeDefinition.maximumChance, routeDefinition.baseChance + (guide?.bonus || 0) + (masteryApplied ? definitions.routeMastery?.successChanceBonus || 0 : 0));
+      const traditionBonus = Number(activeRouteTraditionTier?.successChanceBonus) || 0;
+      const chance = Math.min(routeDefinition.maximumChance, routeDefinition.baseChance + (guide?.bonus || 0) + (masteryApplied ? definitions.routeMastery?.successChanceBonus || 0 : 0) + routeFamiliarityBonus + mentorshipBonus + traditionBonus);
       const success = routeRandom() < chance;
       const applies = routeDefinition.effect.on === (success ? "success" : "failure"), values = { name: guide?.bonus > 0 ? guide.member.name : "一行" };
       let gold = 0, exp = 0, drop = null, effect = null;
@@ -309,14 +356,26 @@
       const bondSupportApplied = Boolean(guide?.support);
       const eventText = formatEventText(success ? routeDefinition.successText : routeDefinition.failureText, values);
       const supportText = bondSupportApplied ? `${guide.support.member.name}も慣れた合図で${guide.member.name}を支えた。` : "";
+      const familiarityLead = familiarRouteMembers.length > 2 ? `${familiarRouteMembers.slice(0, 2).map(entry => entry.member.name).join("と")}たち` : familiarRouteMembers.map(entry => entry.member.name).join("と");
+      const familiarityText = routeFamiliarityBonus > 0 ? `${familiarityLead}が以前の道筋を思い出した。` : "";
+      const mentorshipText = mentorshipBonus > 0 ? lineagePredecessor
+        ? `${lineagePredecessor.name}が最初の目印を確かめ、${mentor.member.name}は自分の工夫を加えて、${apprentices.map(member => member.name).join("と")}へ三人目の帰り道を伝えた。`
+        : mentor.member.inheritedRouteGuide
+          ? `${mentor.member.name}はかつて教わった目印へ自分の工夫を加え、${apprentices.map(member => member.name).join("と")}へ帰り道を伝えた。`
+        : `${mentor.member.name}は分かれ道で足を止め、${apprentices.map(member => member.name).join("と")}へ帰り道の目印を教えた。` : "";
+      const traditionFounders = traditionFounderNames.length === 3 ? `${traditionFounderNames.join("、")}が残した` : "三代の案内役から育った";
+      const traditionText = activeRouteTraditionTier ? `${traditionFounders}「${activeRouteTraditionTier.label}」をたどり、一行は迷いを一つ減らした。` : "";
       return {
-        id: routeDefinition.id, kind: routeDefinition.kind, success, masteryApplied, personalPracticeApplied: Boolean(guide?.practiced), naturalAptitudeApplied: Number(guide?.attributeBonus) > 0, teamSurveyApplied, bondSupportApplied, rumorMatched: routeDefinition.id === rumoredEventId, gold, exp, drop, effect,
+        id: routeDefinition.id, kind: routeDefinition.kind, success, masteryApplied, personalPracticeApplied: Boolean(guide?.practiced), naturalAptitudeApplied: Number(guide?.attributeBonus) > 0, teamSurveyApplied, bondSupportApplied, traditionApplied: Boolean(activeRouteTraditionTier), rumorMatched: routeDefinition.id === rumoredEventId, gold, exp, drop, effect,
+        ...(activeRouteTraditionTier && traditionFounderNames.length === 3 ? { traditionFounderNames: [...traditionFounderNames] } : {}),
         attributeIds: Number(guide?.attributeBonus) > 0 ? attributeClueIds(definitions.aptitudes?.[routeDefinition.aptitudeId], guide.member) : [],
         ...(teamSurveyApplied ? { teamSurveyMemberIds: teamSurveyMembers.map(member => member.id), teamSurveyMemberNames: teamSurveyMembers.map(member => member.name) } : {}),
+        ...(routeFamiliarityBonus > 0 ? { destinationFamiliarityApplied: true, destinationFamiliarityMemberIds: familiarRouteMembers.map(entry => entry.member.id).filter(Boolean), destinationFamiliarityMemberNames: familiarRouteMembers.map(entry => entry.member.name).filter(Boolean), destinationFamiliarityBonus: routeFamiliarityBonus } : {}),
+        ...(mentorshipBonus > 0 ? { routeMentorshipApplied: true, routeMentorshipInherited: Boolean(mentor.member.inheritedRouteGuide), routeLineageSupportApplied: Boolean(lineagePredecessor), routeLineagePredecessorId: lineagePredecessor?.id || null, routeLineagePredecessorName: lineagePredecessor?.name || null, routeMentorId: mentor.member.id, routeMentorName: mentor.member.name, routeApprenticeIds: apprentices.map(member => member.id), routeApprenticeNames: apprentices.map(member => member.name), routeMentorshipBonus: mentorshipBonus } : {}),
         ...(bondSupportApplied ? { bondSupportMemberIds: [guide.member.id, guide.support.member.id], bondSupportMemberNames: [guide.member.name, guide.support.member.name], bondSupportLabel: guide.support.label } : {}),
         actorId: guide?.bonus > 0 ? guide.member.id : null,
         actorName: guide?.bonus > 0 ? guide.member.name : null,
-        text: `${eventText}${supportText ? ` ${supportText}` : ""}`
+        text: `${eventText}${supportText ? ` ${supportText}` : ""}${familiarityText ? ` ${familiarityText}` : ""}${mentorshipText ? ` ${mentorshipText}` : ""}${traditionText ? ` ${traditionText}` : ""}`
       };
     });
     const routeFloors = planned.encounters.length > 2
@@ -337,9 +396,19 @@
         { kind: "explore", text: choose(random, environment.discoveries) }
       ];
       const routeEvent = routeEventsByFloor.get(index);
-      if (routeEvent) entries.push({ kind: routeEvent.kind, routeEventId: routeEvent.id, routeEventSuccess: routeEvent.success, routeEventMasteryApplied: routeEvent.masteryApplied, routeEventPersonalPracticeApplied: routeEvent.personalPracticeApplied, routeNaturalAptitudeApplied: routeEvent.naturalAptitudeApplied, explorationAttributeIds: routeEvent.attributeIds, routeTeamSurveyApplied: routeEvent.teamSurveyApplied, routeTeamSurveyMemberIds: routeEvent.teamSurveyMemberIds, routeTeamSurveyMemberNames: routeEvent.teamSurveyMemberNames, routeBondSupportApplied: routeEvent.bondSupportApplied, routeBondSupportMemberIds: routeEvent.bondSupportMemberIds, routeBondSupportMemberNames: routeEvent.bondSupportMemberNames, routeBondSupportLabel: routeEvent.bondSupportLabel, routeRumorMatched: routeEvent.rumorMatched, explorationActorId: routeEvent.actorId, explorationActorName: routeEvent.actorName, text: routeEvent.text });
+      if (routeEvent) entries.push({ kind: routeEvent.kind, routeEventId: routeEvent.id, routeEventSuccess: routeEvent.success, routeEventMasteryApplied: routeEvent.masteryApplied, routeEventPersonalPracticeApplied: routeEvent.personalPracticeApplied, routeNaturalAptitudeApplied: routeEvent.naturalAptitudeApplied, explorationAttributeIds: routeEvent.attributeIds, routeTeamSurveyApplied: routeEvent.teamSurveyApplied, routeTeamSurveyMemberIds: routeEvent.teamSurveyMemberIds, routeTeamSurveyMemberNames: routeEvent.teamSurveyMemberNames, routeDestinationFamiliarityApplied: routeEvent.destinationFamiliarityApplied, routeDestinationFamiliarityMemberIds: routeEvent.destinationFamiliarityMemberIds, routeDestinationFamiliarityMemberNames: routeEvent.destinationFamiliarityMemberNames, routeDestinationFamiliarityBonus: routeEvent.destinationFamiliarityBonus, routeMentorshipApplied: routeEvent.routeMentorshipApplied, routeMentorshipInherited: routeEvent.routeMentorshipInherited, routeLineageSupportApplied: routeEvent.routeLineageSupportApplied, routeLineagePredecessorId: routeEvent.routeLineagePredecessorId, routeLineagePredecessorName: routeEvent.routeLineagePredecessorName, routeMentorId: routeEvent.routeMentorId, routeMentorName: routeEvent.routeMentorName, routeApprenticeIds: routeEvent.routeApprenticeIds, routeApprenticeNames: routeEvent.routeApprenticeNames, routeMentorshipBonus: routeEvent.routeMentorshipBonus, routeTraditionApplied: routeEvent.traditionApplied, routeTraditionFounderNames: routeEvent.traditionFounderNames, routeBondSupportApplied: routeEvent.bondSupportApplied, routeBondSupportMemberIds: routeEvent.bondSupportMemberIds, routeBondSupportMemberNames: routeEvent.bondSupportMemberNames, routeBondSupportLabel: routeEvent.bondSupportLabel, routeRumorMatched: routeEvent.rumorMatched, explorationActorId: routeEvent.actorId, explorationActorName: routeEvent.actorName, ...(routeEvent.drop ? { acquiredItemId: routeEvent.drop.itemId, acquiredItemQuantity: routeEvent.drop.quantity } : {}), text: routeEvent.text });
       if (index === companionFloor) {
         entries.push({ kind: "companion", companionIds: [...companionScene.moment.companionIds], momentId: companionScene.moment.id, companionLineIndex: companionScene.lineIndex, text: companionScene.text });
+      }
+      if (index === routeReunionFloor) {
+        entries.push({
+          kind: "bond",
+          adventurerBondMomentId: routeReunionDefinition.id,
+          adventurerBondMemberIds: [routeReunionPair.left.id, routeReunionPair.right.id],
+          adventurerBondMemberNames: [routeReunionPair.left.name, routeReunionPair.right.name],
+          sharedSorties: routeReunionPair.sharedSorties,
+          text: formatEventText(routeReunionDefinition.text, { left: routeReunionPair.left.name, right: routeReunionPair.right.name })
+        });
       }
       if (index === adventurerBondFloor) {
         entries.push({
@@ -390,7 +459,7 @@
           if (selected) {
             treasureDrop = { itemId: selected.itemId, quantity: 1 };
             drops.push(treasureDrop);
-            entries.push({ kind: "treasureItem", ...chestMeta, text: `${chest.name}から「${window.GameData.items[selected.itemId].name}」を手に入れた！` });
+            entries.push({ kind: "treasureItem", ...chestMeta, acquiredItemId: selected.itemId, acquiredItemQuantity: 1, text: `${chest.name}から「${window.GameData.items[selected.itemId].name}」を手に入れた！` });
           }
         }
         if (!treasureDrop) {
@@ -405,5 +474,5 @@
       return { level, entries, gold, exp, drop: drops[0] || null, drops, routeEffect: routeEvent?.effect || null, encounterName: encounter.name };
     });
   }
-  window.Exploration = { maximum, valid, plan, journey, routeRumor, routeRumorEntry, routeReadiness };
+  window.Exploration = { maximum, valid, plan, journey, routeRumor, routeRumorEntry, routeReadiness, routeTraditionTier };
 })();

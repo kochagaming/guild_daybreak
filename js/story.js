@@ -13,6 +13,8 @@
     Object.values(story.facts.routeEvents).forEach(record => { if (record.rumorMatches == null) record.rumorMatches = 0; });
     if (!story.facts.treasureTiers || typeof story.facts.treasureTiers !== "object" || Array.isArray(story.facts.treasureTiers)) story.facts.treasureTiers = {};
     if (!Number.isInteger(story.facts.teamSurveys) || story.facts.teamSurveys < 0) story.facts.teamSurveys = 0;
+    if (typeof story.facts.retryPreparationObserved !== "boolean") story.facts.retryPreparationObserved = false;
+    if (typeof story.facts.retryPreparationOvercome !== "boolean") story.facts.retryPreparationOvercome = false;
     if (!Array.isArray(story.joinedCompanionIds)) story.joinedCompanionIds = [];
     if (!Array.isArray(story.readSceneIds)) story.readSceneIds = [];
     return story;
@@ -38,6 +40,18 @@
     if (requirement.type === "characters") return state.characters.length >= requirement.minimum;
     if (requirement.type === "departure") return story.facts.departed;
     if (requirement.type === "dungeonClear") return story.facts.clears.includes(requirement.dungeonId);
+    if (requirement.type === "difficultyClear") return (story.facts.difficultyClears || []).some(key => {
+      const [dungeonId, difficultyId] = String(key).split(":");
+      return difficultyId === requirement.difficultyId && (!requirement.dungeonId || dungeonId === requirement.dungeonId);
+    });
+    if (requirement.type === "difficultyChapterCompleted") {
+      const cleared = new Set(story.facts.difficultyClears || []);
+      const completedChapterCount = mainChapters().filter(chapter => {
+        const requiredRoutes = chapterDungeons(chapter.id).filter(dungeon => dungeon.requiredForStory);
+        return requiredRoutes.length && requiredRoutes.every(dungeon => cleared.has(`${dungeon.id}:${requirement.difficultyId}`));
+      }).length;
+      return completedChapterCount >= (requirement.target || 1);
+    }
     if (requirement.type === "chapterCompleted") return (completedIds || story.completed).includes(requirement.chapterId);
     if (requirement.type === "itemOwned") {
       const materialCount = state.inventory?.materials?.[requirement.itemId] || 0;
@@ -49,7 +63,11 @@
     if (requirement.type === "routeEventMastered") return (story.facts.routeEvents?.[requirement.routeEventId]?.successes || 0) >= requirement.successes;
     if (requirement.type === "treasureTierEncountered") return (story.facts.treasureTiers?.[requirement.treasureTierId]?.encounters || 0) > 0;
     if (requirement.type === "treasureTierMastered") return (story.facts.treasureTiers?.[requirement.treasureTierId]?.openings || 0) >= requirement.openings;
+    if (requirement.type === "retryPreparation") return story.facts.retryPreparationObserved;
+    if (requirement.type === "retryPreparationOvercome") return story.facts.retryPreparationOvercome;
     if (requirement.type === "sharedSorties") return Math.max(0, ...Object.values(state.adventurerBonds?.pairs || {}).map(count => Number(count) || 0)) >= requirement.minimum;
+    if (requirement.type === "routeMentorship") return (state.characters || []).some(character => (character.expeditionRecord?.routeMentorships || []).some(entry => entry?.role === "mentor"));
+    if (requirement.type === "routeMentorshipLineage") return window.Characters.routeMentorshipLineageCount(state) > 0;
     if (requirement.type === "skillMastery") {
       const rank = (window.GameData.config.characterGrowth?.skillMasteryRanks || []).find(entry => entry.id === requirement.rankId);
       return Boolean(rank && (state.characters || []).some(character => Object.values(character.expeditionRecord?.skillRecords || {}).some(record => Number(record.uses || 0) >= rank.minimumUses)));
@@ -118,6 +136,11 @@
   function recordDeparture(dungeonId) { if (dungeonId === "meadow") ensure().facts.departed = true; return sync(); }
   function recordResult(result) {
     const story = ensure();
+    if (!result.success && result.retryPreparationGrowth) story.facts.retryPreparationObserved = true;
+    if (result.success && result.retryPreparation) {
+      story.facts.retryPreparationObserved = true;
+      story.facts.retryPreparationOvercome = true;
+    }
     const companionsBefore = new Set(story.joinedCompanionIds);
     const companionStagesBefore = Object.assign({}, story.companionStages || {});
     const recipeUnlocksBefore = new Set(window.GameData.recipes.filter(canCraft).map(recipe => recipe.id));
@@ -303,6 +326,28 @@
       subtitle: destination ? `読み終えると「${destination.name}」が解放されます` : "物語の続きを記録します"
     };
   }
+  function pendingEpisodeForResult(result, state = window.GameState.data) {
+    if (!result) return null;
+    const resultMoments = Array.isArray(result.storyMoments) ? result.storyMoments : [];
+    const completedChapterIds = new Set(Array.isArray(result.storyCompleted) ? result.storyCompleted : []);
+    if (!resultMoments.length && !completedChapterIds.size) return null;
+    const episode = pendingEpisode(state);
+    if (!episode) return null;
+    const resultSceneIds = new Set(resultMoments.map(moment => moment.sceneId).filter(Boolean));
+    return episode.entries.some(entry => resultSceneIds.has(entry.scene.id) || completedChapterIds.has(entry.chapter?.id)) ? episode : null;
+  }
+  function nextRouteAfterResult(result, state = window.GameState.data) {
+    if (!result?.success || (result.difficultyId || "normal") !== "normal") return null;
+    if (pendingEpisodeForResult(result, state)) return null;
+    const progressed = (Array.isArray(result.storyMoments) && result.storyMoments.some(moment => moment.kind === "ending" || moment.kind === "opening"))
+      || (Array.isArray(result.storyCompleted) && result.storyCompleted.length > 0);
+    if (!progressed) return null;
+    const orderedRoutes = [...chapters()].sort((left, right) => left.order - right.order)
+      .flatMap(chapter => chapterDungeons(chapter.id).filter(dungeon => dungeon.requiredForStory));
+    const currentIndex = orderedRoutes.findIndex(dungeon => dungeon.id === result.dungeonId);
+    if (currentIndex < 0) return null;
+    return orderedRoutes.slice(currentIndex + 1).find(dungeon => canEnter(dungeon.id, state) && !state.story.facts.clears.includes(dungeon.id)) || null;
+  }
   function readPending(expectedEpisodeId = null) {
     const episode = pendingEpisode();
     if (!episode) return { ok: false, message: "今読むべき新しい物語はありません。" };
@@ -466,5 +511,5 @@
       return !chapters().some(chapter => chapter.id === dungeon.chapterId && chapter.clearStoryId === dungeon.clearStoryId);
     }).map(dungeon => ({ dungeon, scene: scene(dungeon.clearStoryId) }));
   }
-  window.Story = { ensure, sync, recordDeparture, recordResult, rawCanEnter, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterUnlockText, chapterDungeons, chapterTimeline, sceneCharacterIds, sceneCharacters, readTimeline, searchReadScenes, episodeCharacters, characterChronicles, storyGuide, mysteries, mysteryUpdates, dungeonStoryLinks, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, pendingEpisode, readPending, hasReadScene, optionalStories, routeStories, mainChapters, postgameChapters, mainComplete, triggerSatisfied, applyStoryTriggers };
+  window.Story = { ensure, sync, recordDeparture, recordResult, rawCanEnter, canEnter, canCraft, current, focus, satisfied, requirementsMet, requirementSatisfied, dungeonCondition, recipeCondition, scene, chapterUnlockText, chapterDungeons, chapterTimeline, sceneCharacterIds, sceneCharacters, readTimeline, searchReadScenes, episodeCharacters, characterChronicles, storyGuide, mysteries, mysteryUpdates, dungeonStoryLinks, dungeonOpeningScene, dungeonDiscoveryScene, dungeonEndingScene, pendingEpisode, pendingEpisodeForResult, nextRouteAfterResult, readPending, hasReadScene, optionalStories, routeStories, mainChapters, postgameChapters, mainComplete, triggerSatisfied, applyStoryTriggers };
 })();

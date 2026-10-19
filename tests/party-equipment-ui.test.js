@@ -45,6 +45,19 @@ async function run() {
     battle: { members: [{ id: ids[1], name: "冒険者02" }, { id: ids[2], name: "冒険者03" }] },
     memberHighlights: [{ memberId: ids[1], kind: "healing" }, { memberId: ids[2], kind: "damage" }]
   }));
+  [10, 3, 1].forEach((clears, characterIndex) => {
+    for (let index = 0; index < clears; index += 1) game.GameState.data.partyHistory[0].push({
+      id: `destination-clue-${characterIndex}-${index}`, dungeonId: "meadow", difficultyId: "normal", success: true,
+      completedAt: Date.now() - 100000 - characterIndex * 1000 - index,
+      partySetup: [{ id: ids[characterIndex], name: `冒険者${String(characterIndex + 1).padStart(2, "0")}` }],
+      battle: { members: [{ id: ids[characterIndex], name: `冒険者${String(characterIndex + 1).padStart(2, "0")}` }] }
+    });
+  });
+  game.Characters.recordRouteMentorship(fieldGuide, { role: "apprentice", partnerCharacterId: ids[3], dungeonId: "meadow", difficultyId: "normal", completedAt: Date.now() - 5000 });
+  game.Characters.recordRouteMentorship(game.Characters.get(ids[3]), { role: "mentor", partnerCharacterId: fieldGuide.id, dungeonId: "meadow", difficultyId: "normal", completedAt: Date.now() - 5000 });
+  game.Characters.recordRouteMentorship(fieldGuide, { role: "mentor", partnerCharacterId: ids[1], dungeonId: "meadow", difficultyId: "normal", completedAt: Date.now() - 4000 });
+  game.Characters.recordRouteMentorship(game.Characters.get(ids[1]), { role: "apprentice", partnerCharacterId: fieldGuide.id, dungeonId: "meadow", difficultyId: "normal", completedAt: Date.now() - 4000 });
+  game.GameState.data.partyPlans[0] = { dungeonId: "meadow", difficultyId: "normal", timeMultiplier: 1 };
   assert.strictEqual(game.Characters.recentExpeditionRole(game.Characters.get(ids[1])).title, "癒し手", "Repeatedly filling the same observed role should produce a narrative reputation without saved duplicate state");
   const reputationPanel = game.GameUIViews.results.adventurerReputationPanel({ newAdventurerReputations: [{ characterId: ids[1], name: "冒険者02", kind: "healing", label: "仲間の命をつないだ", title: "癒し手", icon: "灯", previousTitle: null }] }, { escape: value => String(value) });
   assert(reputationPanel.includes("NEW REPUTATION") && reputationPanel.includes("癒し手") && reputationPanel.includes('data-action="open-adventurer-record"'), "A newly established reputation should be celebrated in the return report and link back to the adventurer's history");
@@ -90,15 +103,26 @@ async function run() {
   assert(html.includes('placeholder="名前・職業・種族・探索経験・狙い採り・近頃の働き・旅仲間・得意技能"') && html.includes('class="roster-route-specialty"') && html.includes("探索 <strong>隠し道・ほか1種</strong>") && html.includes('class="roster-recent-role"') && html.includes("近頃 <strong>癒し手</strong>"), "Roster rows turn repeated observed roles into compact narrative reputations without adding another vertical row");
   assert(html.includes('data-roster-filter="route"') && html.includes('value="hidden_passage"') && html.includes('value="treasure_opening"') && html.includes('value="targeted_harvest"') && html.includes('value="route"') && html.includes('value="harvest"'), "Large rosters can filter and sort by earned route, opening and targeted-harvest experience");
   assert(html.includes('class="roster-current-harvest"') && html.includes("現在の狙い採り") && html.includes("組み合わせ経験 1人・手覚え 1人・痕跡 1人"), "The roster should summarize how many adventurers know the exact currently tracked quarry and fixed-drop pair");
+  assert(html.includes('class="roster-current-harvest roster-current-destination"') && html.includes("現在の攻略先") && html.includes("土地勘 3人・編成中 0人・案内役 1人・継承途中 1人・継承案内役 1人"), "Formation shows destination familiarity and exact-route inheritance progress across the guild");
+  assert(html.includes('class="roster-mentorship-specialty is-inherited-guide"') && html.includes("継承案内役 <strong>師 冒険者04・教え子 冒険者02</strong>"), "A former apprentice who became a guide should be recognizable in the roster for the saved exact route");
+  assert(html.includes("教わった道 <strong>師 冒険者01・案内役まであと7回</strong>"), "An apprentice should show the number of exact-route clears still needed to become a guide");
+  assert(html.includes('value="current_destination"') && html.includes("現在の攻略先") && html.includes('value="destination"') && html.includes("攻略先経験順"), "A saved destination adds exact-route roster filter and sort controls");
   assert(html.includes('value="current_harvest"') && html.includes("現在の狩り経験順"), "An active combined field target should add exact-pair filter and sort controls");
+  await click("toggle-party", { character: ids[0] });
+  await click("toggle-party", { character: ids[1] });
+  html = node("app").innerHTML;
+  assert(html.includes('class="current-destination-party-state is-reunion"') && html.includes("道を結んだ二人が再訪") && html.includes("冒険者01 ↔ 冒険者02"), "Putting an exact-route mentor and apprentice together should surface their reunion before departure");
+  assert(html.includes('class="slot-route-mentorship is-inherited-guide"') && html.includes("継承案内役 · 師 冒険者04・教え子 冒険者02"), "Formation slots should retain the route lineage cue after adding the guide");
+  await click("toggle-party", { character: ids[0] });
+  await click("toggle-party", { character: ids[1] });
   await listeners.change({ target: { value: "hidden_passage", dataset: { rosterFilter: "route" }, hasAttribute: key => key === "data-roster-filter" } });
   html = node("app").innerHTML;
   assert.strictEqual(count(html, 'class="roster-row'), 1, "A route specialty filter isolates adventurers with matching field practice");
-  assert(html.includes("冒険者01") && !html.includes("冒険者02"));
+  assert(html.includes('<span class="roster-name"><strong>冒険者01</strong>'));
   await listeners.change({ target: { value: "treasure_opening", dataset: { rosterFilter: "route" }, hasAttribute: key => key === "data-roster-filter" } });
   html = node("app").innerHTML;
   assert.strictEqual(count(html, 'class="roster-row'), 1, "The opening specialty filter isolates veteran chest openers");
-  assert(html.includes("冒険者01") && !html.includes("冒険者02"));
+  assert(html.includes('<span class="roster-name"><strong>冒険者01</strong>'));
   await listeners.change({ target: { value: "targeted_harvest", dataset: { rosterFilter: "route" }, hasAttribute: key => key === "data-roster-filter" } });
   html = node("app").innerHTML;
   assert.strictEqual(count(html, 'class="roster-row'), 1, "The targeted-harvest filter isolates adventurers who have joined an observed hunt");
@@ -113,6 +137,22 @@ async function run() {
   await listeners.change({ target: { value: "current_harvest", dataset: { rosterFilter: "sort" }, hasAttribute: key => key === "data-roster-filter" } });
   html = node("app").innerHTML;
   assert(html.includes('<option value="current_harvest" selected>現在の狩り経験順</option>'), "The exact paired record can order candidates without revealing its internal loot multiplier");
+  await listeners.change({ target: { value: "all", dataset: { rosterFilter: "route" }, hasAttribute: key => key === "data-roster-filter" } });
+  await listeners.change({ target: { value: "destination", dataset: { rosterFilter: "sort" }, hasAttribute: key => key === "data-roster-filter" } });
+  html = node("app").innerHTML;
+  const destinationRosterHtml = html.slice(html.indexOf('<div class="roster-list">'), html.indexOf('<nav class="pagination"'));
+  assert(html.includes('<option value="destination" selected>攻略先経験順</option>') && html.includes('class="roster-destination-specialty"') && html.includes("土地 <strong>案内役・攻略10回</strong>"), "Destination sorting surfaces the adventurer's route rank without exposing its hidden probability bonus");
+  assert.strictEqual(destinationRosterHtml.match(/<span class="roster-name"><strong>([^<]+)/)?.[1], "冒険者01", "The most experienced guide for the saved destination is suggested first");
+  await listeners.change({ target: { value: "current_destination", dataset: { rosterFilter: "route" }, hasAttribute: key => key === "data-roster-filter" } });
+  html = node("app").innerHTML;
+  assert.strictEqual(count(html, 'class="roster-row'), 3, "The destination filter isolates adventurers who have actually cleared that exact route and difficulty");
+  await listeners.change({ target: { value: "current_lineage", dataset: { rosterFilter: "route" }, hasAttribute: key => key === "data-roster-filter" } });
+  await listeners.change({ target: { value: "lineage", dataset: { rosterFilter: "sort" }, hasAttribute: key => key === "data-roster-filter" } });
+  html = node("app").innerHTML;
+  const lineageRosterHtml = html.slice(html.indexOf('<div class="roster-list">'), html.indexOf('<nav class="pagination"'));
+  assert.strictEqual(count(html, 'class="roster-row'), 2, "The route-lineage filter should isolate adventurers who learned this exact route from someone else");
+  assert(html.includes('<option value="current_lineage" selected>帰り道の継承</option>') && html.includes('<option value="lineage" selected>継承進捗順</option>'), "Exact-route inheritance should have dedicated filter and progress sort controls");
+  assert.strictEqual(lineageRosterHtml.match(/<span class="roster-name"><strong>([^<]+)/)?.[1], "冒険者01", "A completed inherited guide should appear before apprentices still training on the route");
   await listeners.change({ target: { value: "all", dataset: { rosterFilter: "route" }, hasAttribute: key => key === "data-roster-filter" } });
   await listeners.change({ target: { value: "level", dataset: { rosterFilter: "sort" }, hasAttribute: key => key === "data-roster-filter" } });
   node(".main-area").scrollTop = 780;

@@ -112,6 +112,7 @@
 
   function blacksmith(context) {
     const { escape, forgeEquipmentStats, formatGold, itemName, blacksmithView: view } = context;
+    const craftingTargetId = window.Encyclopedia.craftingTarget();
     const craftedInstance = view.lastCraftedInstanceId ? window.Items.getInstance(view.lastCraftedInstanceId) : null;
     const craftedBase = craftedInstance ? window.Items.template(craftedInstance.templateId) : null;
     const craftedEffects = craftedInstance ? window.Items.effects(craftedInstance) : null;
@@ -156,6 +157,7 @@
     const controls = `<details class="compact-filter-panel blacksmith-filter-panel" data-detail="blacksmith-craft-filters"><summary><strong>絞り込み・並べ替え</strong><small>${escape(filterSummary)}</small><i aria-hidden="true">›</i></summary><form id="blacksmith-search-form" class="blacksmith-controls"><label class="blacksmith-search">検索<input id="blacksmith-query" value="${escape(view.query)}" placeholder="レシピ・完成品・素材名"></label>${field("category", "分類", categoryOptions)}${field("material", "使用素材", materialOptions)}${field("status", "製作状態", statusOptions)}${field("sort", "並べ替え", sortOptions)}<button class="button secondary" type="submit">検索</button><button class="button ghost" type="button" data-action="reset-blacksmith-filters">解除</button></form></details>`;
     function recipeCard(recipe) {
       const item = window.Blacksmith.result(recipe), state = window.Blacksmith.status(recipe), ready = state === "ready";
+      const craftingTarget = recipe.id === craftingTargetId;
       const typeId = item.weaponType || item.armorType, typeName = window.GameData.equipmentTypes[typeId]?.name || "装備";
       const range = item.type === "weapon" ? ` · ${item.range === "ranged" ? "遠距離" : "近接"}` : "";
       const materials = Object.entries(recipe.materials).map(([id, quantity]) => {
@@ -185,8 +187,11 @@
       const setMark = setDefinitions.length ? '<em class="recipe-set-mark">組合せ</em>' : "";
       const locked = state === "locked";
       const label = ready ? "製作可能" : state === "missing" ? "素材不足" : "未解放";
-      const focusedBadge = focusIds.has(recipe.id) && view.focusContext === "new" ? "新解放" : label;
-      return `<details class="item-card compact-item shop-item-card forge-shop-card ${state} ${focusIds.has(recipe.id) ? "newly-unlocked" : ""}" data-detail="forge-recipe-${recipe.id}"><summary><span class="item-icon" aria-hidden="true">${item.icon}</span><span class="item-info"><span class="type-label">${escape(typeName)}${range} · Tier ${item.tier || 1}${setMark}</span><h3>${escape(item.name)}</h3>${forgeEquipmentStats(item)}</span><span class="item-action"><strong>${formatGold(recipe.gold)}</strong><span class="badge ${ready ? "good" : state === "missing" ? "bad" : ""}">${focusedBadge}</span><i class="record-chevron" aria-hidden="true">›</i></span></summary><div class="forge-shop-detail"><p class="recipe-source">${escape(window.Blacksmith.recipeName(recipe))}</p>${setPreview}${skillPreview}<div class="recipe-needs">${materials}<span class="material-need ${window.GameState.data.gold >= recipe.gold ? "met" : "missing"}"><span>工賃</span><strong>${formatGold(recipe.gold)}</strong></span></div>${locked ? `<p class="story-lock-condition">${escape(window.Story.recipeCondition(recipe))}</p><button class="button ghost full" data-nav="home">物語の依頼を確認</button>` : `<button class="button primary full" data-action="craft" data-recipe="${recipe.id}" ${ready ? "" : "disabled"}>${ready ? "この装備を製作する" : "素材または所持金が不足"}</button>`}</div></details>`;
+      const focusedBadge = craftingTarget ? "製作目標" : focusIds.has(recipe.id) && view.focusContext === "new" ? "新解放" : label;
+      const projectButton = craftingTarget
+        ? `<button class="button ghost" data-action="clear-crafting-recipe">製作目標を解除</button>`
+        : `<button class="button secondary" data-action="track-crafting-recipe" data-recipe="${recipe.id}">製作目標にする</button>`;
+      return `<details class="item-card compact-item shop-item-card forge-shop-card ${state} ${craftingTarget ? "is-crafting-target" : ""} ${focusIds.has(recipe.id) ? "newly-unlocked" : ""}" data-detail="forge-recipe-${recipe.id}"><summary><span class="item-icon" aria-hidden="true">${item.icon}</span><span class="item-info"><span class="type-label">${escape(typeName)}${range} · Tier ${item.tier || 1}${setMark}</span><h3>${escape(item.name)}</h3>${forgeEquipmentStats(item)}</span><span class="item-action"><strong>${formatGold(recipe.gold)}</strong><span class="badge ${craftingTarget || ready ? "good" : state === "missing" ? "bad" : ""}">${focusedBadge}</span><i class="record-chevron" aria-hidden="true">›</i></span></summary><div class="forge-shop-detail"><p class="recipe-source">${escape(window.Blacksmith.recipeName(recipe))}</p>${setPreview}${skillPreview}<div class="recipe-needs">${materials}<span class="material-need ${window.GameState.data.gold >= recipe.gold ? "met" : "missing"}"><span>工賃</span><strong>${formatGold(recipe.gold)}</strong></span></div>${locked ? `<p class="story-lock-condition">${escape(window.Story.recipeCondition(recipe))}</p><button class="button ghost full" data-nav="home">物語の依頼を確認</button>` : `<div class="recipe-craft-actions">${projectButton}<button class="button primary" data-action="craft" data-recipe="${recipe.id}" ${ready ? "" : "disabled"}>${ready ? "この装備を製作する" : "素材または所持金が不足"}</button></div>`}</div></details>`;
     }
     const catalogEntries = visible.map(recipe => ({ recipe, item: window.Blacksmith.result(recipe) }));
     const futureRecipes = type => {

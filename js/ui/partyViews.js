@@ -69,7 +69,7 @@
       && window.MonsterLoot.fixedDropIds(monsterId, difficultyId).includes(itemId);
   }
 
-  function compactResultLoot(result, escape, formatGold) {
+  function compactResultLoot(result, partyIndex, escape, formatGold) {
     if (!result) return "";
     const drops = Array.isArray(result.drops) ? result.drops : [];
     const equipment = drops.filter(drop => ["weapon", "armor"].includes(window.GameData.items[drop.itemId]?.type));
@@ -126,6 +126,22 @@
     const trackedProgress = Number.isInteger(result.trackedItemProgress) && result.trackedItemGoal ? `・累計 ${result.trackedItemProgress}/${result.trackedItemGoal}` : "";
     const trackedHarvest = result.trackedItemHarvestId ? "・採取記録活用" : "";
     const tracked = trackedItem && result.trackedItemQuantity > 0 ? `<span class="tracked">目標 +${result.trackedItemQuantity} ${escape(trackedItem.name)}${trackedHarvest}${trackedProgress}</span>` : "";
+    const targetRecord = trackedItem && result.trackedItemQuantity > 0 ? (() => {
+      const quantity = record => [...(record.equipment || []), ...(record.materials || [])]
+        .filter(entry => entry.itemId === trackedItem.id)
+        .reduce((total, entry) => total + (Number(entry.quantity) || 0), 0);
+      const difficultyId = result.difficultyId || "normal", timeMultiplier = result.timeMultiplier || 1;
+      const previousBest = (window.GameState.data.partyHistory || []).flatMap(entries => entries || [])
+        .filter(entry => entry.id !== result.id && entry.dungeonId === result.dungeonId
+          && (entry.difficultyId || "normal") === difficultyId && (entry.timeMultiplier || 1) === timeMultiplier)
+        .reduce((best, entry) => Math.max(best, quantity(entry)), 0);
+      const current = Math.max(0, Number(result.trackedItemQuantity) || 0);
+      if (current < previousBest) return "";
+      const label = current > previousBest ? `最高収穫を${current}個へ更新` : `最高収穫${current}個に並ぶ`;
+      const nextTarget = Math.min(999, current + 1), reachedLimit = current >= 999;
+      const challenge = `<button type="button" class="target-record-next" data-action="retrace-history-item" data-party="${partyIndex}" data-dungeon="${escape(result.dungeonId)}" data-difficulty="${escape(difficultyId)}" data-time="${timeMultiplier}" data-item="${escape(trackedItem.id)}" data-target="${nextTarget}" ${reachedLimit ? "disabled" : ""}>${reachedLimit ? "記録上限" : `次は${nextTarget}個へ`}</button>`;
+      return `<button type="button" class="target-record" data-action="open-item-codex" data-item="${escape(trackedItem.id)}" aria-label="${escape(trackedItem.name)}の最高収穫記録を確認">${escape(label)} · ${escape(trackedItem.name)}</button>${challenge}`;
+    })() : "";
     const trackedMonster = result.trackedMonsterId ? window.GameData.monsters[result.trackedMonsterId] : null;
     const trackedMonsterProgress = Number.isInteger(result.trackedMonsterProgress) && result.trackedMonsterGoal ? `・累計 ${result.trackedMonsterProgress}/${result.trackedMonsterGoal}` : "";
     const trackedTrail = result.trackedMonsterTrailId ? "・痕跡追跡" : "";
@@ -140,11 +156,51 @@
     const learnedSkillCount = (result.levelUps || []).reduce((sum, entry) => sum + (entry.newSkillIds?.length || 0), 0);
     const skillGrowth = learnedSkillCount ? `<span class="skill-growth">新スキル ${learnedSkillCount}種</span>` : "";
     const fieldKnowledge = result.newRouteMasteryIds?.length ? `<span class="field-knowledge">新しい道中知見 ${result.newRouteMasteryIds.length}種</span>` : "";
+    const routeTradition = result.newRouteTradition ? `<span class="field-knowledge">ギルドの道標 ${result.newRouteTradition.memberNames.map(escape).join(" → ")}</span>` : "";
+    const familiarityGrowth = result.newDestinationFamiliarities?.length
+      ? `<span class="field-knowledge">土地勘 ${result.newDestinationFamiliarities.map(entry => {
+        const guideTierId = window.GameData.config.explorationEvents?.routeMentorship?.guideTierId || "route_guide";
+        const inheritedGuide = entry.tierId === guideTierId && window.Characters.routeMentorships(window.Characters.get(entry.characterId))
+          .some(record => record.role === "apprentice" && record.dungeonId === entry.dungeonId && record.difficultyId === entry.difficultyId);
+        return `${escape(entry.name)}・${inheritedGuide ? "継承案内役" : escape(entry.tierLabel)}`;
+      }).join("／")}</span>` : "";
     const rumorConfirmations = result.newRumorConfirmationIds?.length ? `<span class="field-knowledge">初めて確かめた噂 ${result.newRumorConfirmationIds.length}種${result.rumorConfirmationReward ? `・印章+${result.rumorConfirmationReward.quantity}` : ""}</span>` : "";
+    const retryRule = window.GameData.config.explorationEvents?.retryPreparation || {};
+    const retryMemory = result.retryPreparationGrowth?.failures
+      ? `<span class="retry-preparation">次回の備え ${result.retryPreparationGrowth.failures}/${Number(retryRule.maximumFailures) || result.retryPreparationGrowth.failures}・被ダメージ-${Math.round(result.retryPreparationGrowth.damageReduction * 100)}%</span>`
+      : result.success && result.retryPreparation?.failures
+        ? `<span class="retry-preparation is-overcome">雪辱 ${result.retryPreparation.failures}度の撤退記録を活用</span>`
+        : "";
+    const newAchievementNames = (result.newAchievementIds || []).map(id => window.GameData.achievements.find(entry => entry.id === id)?.name).filter(Boolean);
+    const newAchievements = newAchievementNames.length
+      ? `<button type="button" class="achievement" data-action="open-achievements" data-achievement="${escape(result.newAchievementIds[0])}" aria-label="新しく達成した実績を確認">新しい実績 ${escape(newAchievementNames.slice(0, 2).join("・"))}${newAchievementNames.length > 2 ? `・ほか${newAchievementNames.length - 2}件` : ""}</button>`
+      : "";
+    const difficultyChapterMap = result.difficultyChapterCompletion
+      ? `<button type="button" class="difficulty-chapter-map" data-action="open-achievements" aria-label="完成した高難度の踏破図を確認">踏破図完成 ${escape(result.difficultyChapterCompletion.chapterTitle)}・${escape(result.difficultyChapterCompletion.difficultyName)}</button>`
+      : "";
+    const chapterMapGuidance = result.chapterMapBenefit
+      ? `<span class="difficulty-chapter-map is-guidance">${escape(result.chapterMapBenefit.label)}・${result.chapterMapBenefit.secondsSaved}秒短縮</span>`
+      : "";
+    const newObservationCount = (result.newObservationIds || []).length;
+    const newObservations = newObservationCount
+      ? `<button type="button" class="observation" data-action="open-observations" data-note="${escape(result.newObservationIds[0])}" aria-label="新しく開いた観察日記を確認">観察日記 +${newObservationCount}頁</button>`
+      : "";
+    const pendingStory = window.Story.pendingEpisodeForResult(result);
+    const storyContinuation = pendingStory
+      ? `<button type="button" class="story-continuation" data-action="open-story-reader" aria-label="帰還後に続く物語を読む">物語の続き ${pendingStory.entries.length}場面</button>`
+      : "";
+    const nextStoryRoute = pendingStory ? null : window.Story.nextRouteAfterResult(result);
+    const routeContinuation = nextStoryRoute
+      ? `<button type="button" class="story-next-route" data-action="continue-story-route" data-party="${partyIndex}" data-dungeon="${escape(nextStoryRoute.id)}" aria-label="${escape(nextStoryRoute.name)}を次の攻略先に指定">次の探索地 ${escape(nextStoryRoute.name)}</button>`
+      : "";
+    const nextDifficulty = pendingStory || nextStoryRoute ? null : window.DungeonDifficulty.nextAfterResult(result);
+    const difficultyContinuation = nextDifficulty
+      ? `<button type="button" class="difficulty-next-route" data-action="continue-difficulty-route" data-party="${partyIndex}" data-dungeon="${escape(result.dungeonId)}" data-difficulty="${escape(nextDifficulty.difficultyId)}" aria-label="${escape(nextDifficulty.name)}を次の攻略先に指定">次の難度 ${escape(nextDifficulty.difficultyTier.name)}</button>`
+      : "";
     const routeEvents = window.GameUIViews.results?.routeEvents(result) || [];
     const routeEvent = routeEvents[0];
-    const routeEventChip = routeEvent ? `<span class="route-event ${routeEvent.success ? "success" : "failure"}">道中 ${routeEvent.rumorMatched ? "噂と一致・" : ""}${escape(routeEvent.name)}・${routeEvent.success ? "成功" : "失敗"}${routeEvent.naturalAptitudeApplied ? "・能力活用" : ""}${routeEvent.personalPracticeApplied ? "・経験活用" : ""}${routeEvent.masteryApplied ? "・記録活用" : ""}${routeEvents.length > 1 ? `・ほか${routeEvents.length - 1}件` : ""}</span>` : "";
-    return `<div class="fleet-result-loot" aria-label="直近の獲得報酬">${routeEventChip}${rumorConfirmations}${fieldKnowledge}${habitatDiscovery}${habitatSurvey}${companionGrowth}${skillGrowth}${huntMark}${tracked}${hunted}${ultraRare}${newUltraRare}${discovery}${setDiscovery}${qualityRecord}<span class="gold">${formatGold(result.gold)}</span><span class="experience">${escape(experienceText)}</span>${breakdown("equipment", equipmentText, equipmentEntries, "獲得装備")}${breakdown("materials", materialText, materialEntries, "獲得素材")}</div>`;
+    const routeEventChip = routeEvent ? `<span class="route-event ${routeEvent.success ? "success" : "failure"}">道中 ${routeEvent.traditionApplied ? "道標・" : ""}${routeEvent.rumorMatched ? "噂と一致・" : ""}${escape(routeEvent.name)}・${routeEvent.success ? "成功" : "失敗"}${routeEvent.lineageSupportApplied ? "・三代の道継ぎ" : routeEvent.mentorshipApplied ? "・案内役" : ""}${routeEvent.destinationFamiliarityApplied ? "・土地勘" : ""}${routeEvent.naturalAptitudeApplied ? "・能力活用" : ""}${routeEvent.personalPracticeApplied ? "・経験活用" : ""}${routeEvent.masteryApplied ? "・記録活用" : ""}${routeEvents.length > 1 ? `・ほか${routeEvents.length - 1}件` : ""}</span>` : "";
+    return `<div class="fleet-result-loot" aria-label="直近の獲得報酬">${retryMemory}${storyContinuation}${routeContinuation}${difficultyContinuation}${chapterMapGuidance}${difficultyChapterMap}${newAchievements}${newObservations}${routeEventChip}${routeTradition}${rumorConfirmations}${fieldKnowledge}${familiarityGrowth}${habitatDiscovery}${habitatSurvey}${companionGrowth}${skillGrowth}${huntMark}${targetRecord}${tracked}${hunted}${ultraRare}${newUltraRare}${discovery}${setDiscovery}${qualityRecord}<span class="gold">${formatGold(result.gold)}</span><span class="experience">${escape(experienceText)}</span>${breakdown("equipment", equipmentText, equipmentEntries, "獲得装備")}${breakdown("materials", materialText, materialEntries, "獲得素材")}</div>`;
   }
 
   function compactHistory(history, partyIndex, escape, formatGold) {
@@ -295,9 +351,12 @@
       const completed = new Date(entry.completedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
       const battle = entry.battle;
       const focusedMember = historyFocus?.entryId === entry.id ? battle?.members?.find(member => member.id === historyFocus.characterId) : null;
+      const focusedItem = historyFocus?.entryId === entry.id && historyFocus?.source === "item" ? window.GameData.items[historyFocus.itemId] : null;
+      const focusedItemDrop = focusedItem ? [...(entry.equipment || []), ...(entry.materials || [])].find(item => item.itemId === focusedItem.id) : null;
       const focusedRole = focusedMember ? window.Characters.expeditionRoleLabel((entry.memberHighlights || []).find(highlight => highlight.memberId === focusedMember.id)?.kind) : null;
       const focusedCompanions = focusedMember ? (battle?.members || []).filter(member => member.id !== focusedMember.id).map(member => member.name) : [];
       const focusedMemberRecord = focusedMember ? `<section class="party-history-character-focus"><span aria-hidden="true">◇</span><div><small>この人物の足跡から開きました</small><strong>${escape(focusedMember.name)}の記録をたどっています</strong><small>${focusedRole ? `今回の働き：${escape(focusedRole)} · ` : ""}${focusedCompanions.length ? `同行：${focusedCompanions.map(escape).join("、")}` : "同行者なし"}</small><p><b>与 ${focusedMember.damageDealt.toLocaleString("ja-JP")}</b><b>被 ${focusedMember.damageTaken.toLocaleString("ja-JP")}</b><b>回復 ${focusedMember.healingDone.toLocaleString("ja-JP")}</b><b>異常成功 ${focusedMember.statusInflicted.toLocaleString("ja-JP")}回</b><em>${focusedMember.knockedOut ? "戦闘不能帰還" : `残HP ${focusedMember.remainingHp.toLocaleString("ja-JP")}/${focusedMember.maxHp.toLocaleString("ja-JP")}`}</em></p><button type="button" class="text-button" data-action="open-adventurer-record" data-character="${escape(focusedMember.id)}">この冒険者の足跡へ戻る</button></div></section>` : "";
+      const focusedItemRecord = focusedItem && focusedItemDrop ? `<section class="party-history-item-focus"><span aria-hidden="true">${escape(focusedItem.icon || "◇")}</span><div><small>品の図鑑から、この持ち帰りを開きました</small><strong>${escape(focusedItem.name)}を${focusedItemDrop.quantity}個持ち帰った遠征</strong><p>${focusedItemDrop.autoSold ? "帰還時に自動売却された品も、入手の記録は帰還簿に残っています。" : "この品を見つけた旅の仲間と、同じ日に得た戦利品を確かめられます。"}</p><nav><button type="button" class="button secondary" data-action="retrace-history-item" data-party="${partyIndex}" data-dungeon="${escape(entry.dungeonId)}" data-difficulty="${escape(entry.difficultyId || "normal")}" data-time="${entry.timeMultiplier || 1}" data-item="${escape(focusedItem.id)}" ${window.Party.expedition(partyIndex) ? "disabled" : ""}>この品を同じ道で探す</button><button type="button" class="text-button" data-action="open-item-codex" data-item="${escape(focusedItem.id)}">この品の図鑑へ戻る</button></nav></div></section>` : "";
       const equipmentCount = entry.equipment.reduce((sum, item) => sum + item.quantity, 0);
       const materialCount = entry.materials.reduce((sum, item) => sum + item.quantity, 0);
       const battleSummary = battle
@@ -444,6 +503,26 @@
       const story = storyMoments
         ? `<details class="party-history-story"><summary>物語の記録 <span>${entry.storyMoments.length}場面</span></summary><div>${storyMoments}${witnesses.length ? `<p class="party-history-witnesses">この遠征を歩いた冒険者：${escape(witnesses.join("、"))}</p>` : ""}</div></details>`
         : "";
+      const achievementEntries = (entry.newAchievementIds || []).map(id => window.GameData.achievements.find(achievement => achievement.id === id)).filter(Boolean);
+      const achievementWitnesses = (entry.partySetup || []).map(member => member.name).filter(Boolean);
+      const achievements = achievementEntries.length
+        ? `<details class="party-history-story party-history-achievements"><summary>遠征で刻まれた実績 <span>${achievementEntries.length}件</span></summary><div>${achievementEntries.map(achievement => `<article><span aria-hidden="true">${escape(achievement.icon)}</span><div><small>${escape(achievement.category)}・達成${achievementWitnesses.length ? ` · ${achievementWitnesses.map(escape).join("、")}` : ""}</small><strong>${escape(achievement.name)}</strong><p>${escape(achievement.description)}</p></div></article>`).join("")}</div></details>`
+        : "";
+      const trackedMilestone = entry.trackedAchievementProgress
+        ? (() => {
+            const progress = entry.trackedAchievementProgress;
+            const achievement = window.GameData.achievements.find(candidate => candidate.id === progress.achievementId);
+            if (!achievement) return "";
+            const gained = Math.max(0, progress.after - progress.before);
+            return `<details class="party-history-story party-history-tracked-achievement" open><summary>追っていた実績 <span>${progress.complete ? "達成" : gained ? `+${gained}` : "変化なし"}</span></summary><div><article><small>${escape(achievement.category)} · この遠征での進み</small><strong>${escape(achievement.icon)} ${escape(achievement.name)}</strong><p>${Math.min(progress.before, progress.target)} → ${Math.min(progress.after, progress.target)} / ${progress.target}${gained ? ` · +${gained}` : " · 今回は変化なし"}</p></article></div></details>`;
+          })()
+        : "";
+      const difficultyChapterMap = entry.difficultyChapterCompletion
+        ? `<details class="party-history-story party-history-difficulty-map" open><summary>高難度の踏破図 <span>完成</span></summary><div><article><small>${escape(entry.difficultyChapterCompletion.difficultyName)} · ${entry.difficultyChapterCompletion.totalRoutes}つの本編攻略地</small><strong>${escape(entry.difficultyChapterCompletion.chapterTitle)}</strong><p>この難度で完成した章は${entry.difficultyChapterCompletion.completedChapters}章。帰還簿に一枚の踏破図として綴じられました。</p></article></div></details>`
+        : "";
+      const chapterMapGuidance = entry.chapterMapBenefit
+        ? `<section class="party-history-map-guidance"><span aria-hidden="true">図</span><div><small>CHAPTER MAP GUIDANCE · 踏破図の道案内</small><strong>${escape(entry.chapterMapBenefit.label)} · ${entry.chapterMapBenefit.secondsSaved}秒短縮</strong><p>完成した章の地図を使い、この遠征の行き帰りから迷う時間を減らした。</p></div></section>`
+        : "";
       const adventurerBondMoments = (entry.adventurerBondMoments || []).map(moment => { const definition = window.GameData.config.explorationEvents.adventurerBondMoments.find(candidate => candidate.id === moment.id); return `<article><small>${moment.memberNames.map(escape).join("と")} · 同行${moment.sharedSorties}回</small><strong>${escape(definition?.title || "旅仲間のひと幕")}</strong><p>${escape(moment.text)}</p></article>`; }).join("");
       const adventurerBonds = adventurerBondMoments
         ? `<details class="party-history-story party-history-bonds"><summary>旅仲間の記録 <span>${entry.adventurerBondMoments.length}場面</span></summary><div>${adventurerBondMoments}</div></details>`
@@ -451,6 +530,36 @@
       const bondTierEntries = (entry.newAdventurerBondTiers || []).map(tier => `<article><small>${tier.memberNames.map(escape).join("と")} · 同行${tier.sharedSorties}回</small><strong>旅仲間の呼吸が深まった</strong><p>${[tier.routeLabel ? `道中「${escape(tier.routeLabel)}」` : "", tier.battleLabel ? `戦列「${escape(tier.battleLabel)}」` : ""].filter(Boolean).join("・")}</p></article>`).join("");
       const bondTierGrowth = bondTierEntries
         ? `<details class="party-history-story party-history-bonds"><summary>旅仲間の成長 <span>${entry.newAdventurerBondTiers.length}組</span></summary><div>${bondTierEntries}</div></details>`
+        : "";
+      const destinationFamiliarityEntries = (entry.newDestinationFamiliarities || []).map(growth => {
+        const tier = (window.GameData.config.explorationEvents?.routeFamiliarity?.tiers || []).find(candidate => candidate.id === growth.tierId);
+        const guideTierId = window.GameData.config.explorationEvents?.routeMentorship?.guideTierId || "route_guide";
+        const inheritedTeachers = growth.tierId === guideTierId ? window.Characters.routeMentorships(window.Characters.get(growth.characterId))
+          .filter(record => record.role === "apprentice" && record.dungeonId === growth.dungeonId && record.difficultyId === growth.difficultyId)
+          .map(record => record.partnerName) : [];
+        const next = growth.nextTierLabel ? `次の「${escape(growth.nextTierLabel)}」まであと${growth.clearsUntilNext}回` : "この地の案内役になった";
+        const inherited = inheritedTeachers.length ? ` · ${inheritedTeachers.map(escape).join("・")}から受け継いだ帰り道` : "";
+        return `<article class="${inheritedTeachers.length ? "is-inherited-guide" : ""}"><small>攻略${growth.clears}回 · ${next}${growth.mentorName ? ` · ${escape(growth.mentorName)}から道を教わった` : ""}${inherited}</small><strong>${escape(growth.name)} · ${inheritedTeachers.length ? "継承案内役" : escape(growth.tierLabel)}</strong><p>${inheritedTeachers.length ? "教わった目印を自分の言葉で語り直し、次の仲間へ渡せる知恵にした。" : escape(tier?.growthText || "歩いた道が、次の遠征を助ける記憶になった。")}</p></article>`;
+      }).join("");
+      const destinationFamiliarityGrowth = destinationFamiliarityEntries
+        ? `<details class="party-history-story party-history-bonds"><summary>土地勘の成長 <span>${entry.newDestinationFamiliarities.length}人</span></summary><div>${destinationFamiliarityEntries}</div></details>`
+        : "";
+      const routeLineageEntries = window.GameUIViews.results.routeLineages(entry);
+      const routeLineageMemory = routeLineageEntries.length
+        ? `<details class="party-history-story party-history-route-lineage"><summary>帰り道の系譜 <span>${routeLineageEntries.length}件</span></summary><div>${routeLineageEntries.map(lineage => { const destination = window.DungeonDifficulty.variant(lineage.dungeonId, lineage.difficultyId); return `<article class="is-inherited-guide"><small>${escape(destination?.name || "探索地")} · この遠征で継承</small><strong>${[lineage.predecessor.name, lineage.mentor.name, lineage.apprentice.name].map(escape).join(" → ")}</strong><p>${escape(lineage.mentor.name)}が、教わった目印へ自分の経験を加えて${escape(lineage.apprentice.name)}へ渡した。</p><button type="button" class="text-button" data-action="open-adventurer-record" data-character="${escape(lineage.mentor.id)}">道を継いだ足跡を見る</button></article>`; }).join("")}</div></details>`
+        : "";
+      const routeTraditionMemory = entry.newRouteTradition
+        ? `<details class="party-history-story party-history-route-lineage" open><summary>ギルドの道標 <span>新設</span></summary><div><article class="is-inherited-guide"><small>${escape(window.DungeonDifficulty.variant(entry.newRouteTradition.dungeonId, entry.newRouteTradition.difficultyId)?.name || dungeon.name)} · 帰還簿へ記録</small><strong>${entry.newRouteTradition.memberNames.map(escape).join(" → ")}</strong><p>三人が受け継いだ目印が、これから同じ地へ向かう全てのパーティを支える道標になった。</p></article></div></details>`
+        : entry.routeTraditionGrowth
+          ? `<details class="party-history-story party-history-route-lineage" open><summary>ギルドの道標 <span>成長</span></summary><div><article class="is-inherited-guide"><small>${escape(window.DungeonDifficulty.variant(entry.routeTraditionGrowth.dungeonId, entry.routeTraditionGrowth.difficultyId)?.name || dungeon.name)} · 後続${entry.routeTraditionGrowth.assistedSorties}遠征</small><strong>${escape(entry.routeTraditionGrowth.tierLabel)} · 道中判定+${Math.round(entry.routeTraditionGrowth.successChanceBonus * 100)}%</strong><p>${escape(entry.routeTraditionGrowth.description)}</p></article></div></details>`
+          : "";
+      const retryPreparationMemory = entry.retryPreparation?.failures || entry.retryPreparationGrowth?.failures
+        ? (() => {
+          const used = entry.retryPreparation?.failures ? `${entry.retryPreparation.failures}度の撤退記録を活用し、被ダメージを${Math.round(entry.retryPreparation.damageReduction * 100)}%抑えた。` : "この遠征では、まだ撤退記録による支援はなかった。";
+          const growth = entry.retryPreparationGrowth;
+          const next = growth ? `この撤退を記録し、次回の備えは${growth.failures}度・被ダメージ-${Math.round(growth.damageReduction * 100)}%になった。` : "攻略できたため、この道の備えは一区切りになった。";
+          return `<section class="party-history-retry-preparation"><span aria-hidden="true">${growth ? "備" : "越"}</span><div><small>RETRY PREPARATION · 撤退と再挑戦の記録</small><strong>${growth ? "次の挑戦へ備えを残した" : "備えを攻略へつなげた"}</strong><p>${used}${next}</p></div></section>`;
+        })()
         : "";
       const battleBondEntries = (entry.bondFormations || []).map(formation => `<article><small>${(formation.positions || []).map(position => `${Number(position) + 1}列`).join("・")} · 同行${formation.sharedSorties || 0}回</small><strong>${(formation.memberNames || []).map(escape).join("と")} · ${escape(formation.label || "旅仲間の布陣")}</strong><p>隣り合った二人が、戦列で互いの合図を拾いました。</p></article>`).join("");
       const battleBonds = battleBondEntries
@@ -460,7 +569,7 @@
         const definition = window.GameData.config.explorationEvents.routeEvents.find(candidate => candidate.id === event.id);
         const attributeDefinitions = window.GameData.config.characterGrowth?.attributes?.definitions || {};
         const aptitude = event.naturalAptitudeApplied && event.actorName && event.attributeIds?.length ? `<small>導いた者：${escape(event.actorName)}（${event.attributeIds.map(id => escape(attributeDefinitions[id]?.shortName || attributeDefinitions[id]?.name || id)).join("・")}）</small>` : "";
-        return `<article class="${event.success ? "success" : "failure"} ${event.rumorMatched ? "is-rumor-match" : ""}"><span>${event.rumorMatched ? "噂" : event.success ? "成" : "否"}</span><div><strong>${event.teamSurveyApplied ? "連携探索 · " : ""}${event.rumorMatched ? "噂と一致 · " : ""}${escape(definition?.name || "道中の出来事")}${event.naturalAptitudeApplied ? " · 基礎能力を活用" : ""}${event.personalPracticeApplied ? " · 本人の経験" : ""}${event.masteryApplied ? " · 記録活用" : ""}${event.bondSupportApplied ? ` · ${escape(event.bondSupportLabel || "旅仲間の連携")}` : ""}</strong>${aptitude}${event.teamSurveyMemberNames?.length ? `<small>地図を重ねた者：${event.teamSurveyMemberNames.map(escape).join("、")}</small>` : ""}${event.bondSupportMemberNames?.length ? `<small>息を合わせた者：${event.bondSupportMemberNames.map(escape).join("、")}</small>` : ""}<p>${escape(event.text)}</p></div></article>`;
+        return `<article class="${event.success ? "success" : "failure"} ${event.rumorMatched ? "is-rumor-match" : ""} ${event.mentorshipInherited ? "is-inherited-guide" : ""} ${event.lineageSupportApplied ? "is-route-lineage" : ""} ${event.traditionApplied ? "is-route-tradition" : ""}"><span>${event.rumorMatched ? "噂" : event.success ? "成" : "否"}</span><div><strong>${event.traditionApplied ? "ギルドの道標 · " : ""}${event.mentorshipApplied ? event.lineageSupportApplied ? "三代の道継ぎ · " : event.mentorshipInherited ? "継承案内役の教え · " : "案内役の教え · " : ""}${event.destinationFamiliarityApplied ? "土地勘 · " : ""}${event.teamSurveyApplied ? "連携探索 · " : ""}${event.rumorMatched ? "噂と一致 · " : ""}${escape(definition?.name || "道中の出来事")}${event.naturalAptitudeApplied ? " · 基礎能力を活用" : ""}${event.personalPracticeApplied ? " · 本人の経験" : ""}${event.masteryApplied ? " · 記録活用" : ""}${event.bondSupportApplied ? ` · ${escape(event.bondSupportLabel || "旅仲間の連携")}` : ""}</strong>${aptitude}${event.traditionFounderNames?.length === 3 ? `<small>道を残した三人：${event.traditionFounderNames.map(escape).join("、")}</small>` : ""}${event.lineageSupportApplied ? `<small>最初の案内役：${escape(event.lineagePredecessorName)}／道を継いだ者：${escape(event.mentorName)}／教わった者：${event.apprenticeNames.map(escape).join("、")}</small>` : event.mentorshipApplied ? `<small>道を教えた者：${escape(event.mentorName)}／教わった者：${event.apprenticeNames.map(escape).join("、")}</small>` : ""}${event.destinationFamiliarityMemberNames?.length ? `<small>道を覚えていた者：${event.destinationFamiliarityMemberNames.map(escape).join("、")}</small>` : ""}${event.teamSurveyMemberNames?.length ? `<small>地図を重ねた者：${event.teamSurveyMemberNames.map(escape).join("、")}</small>` : ""}${event.bondSupportMemberNames?.length ? `<small>息を合わせた者：${event.bondSupportMemberNames.map(escape).join("、")}</small>` : ""}<p>${escape(event.text)}</p></div></article>`;
       }).join("");
       const routeMasteries = (entry.routeMasteryIds || []).map(id => window.GameData.config.explorationEvents.routeEvents.find(event => event.id === id)?.name).filter(Boolean);
       const journey = routeEvents
@@ -479,11 +588,12 @@
           return `<article><span><strong>${escape(member.name)}</strong><small>Lv.${member.level}へ成長</small></span><p>${attributes ? `<b>基礎 ${escape(attributes)}</b>${detail ? "<br>" : ""}` : ""}${escape(detail || (attributes ? "" : "能力と装備可能重量が上昇"))}</p></article>`;
         }).join("")}</div></details>`
         : "";
-      const equipment = entry.equipment.length ? entry.equipment.map(item => `<li><span>${escape(item.name)}</span><strong>×${item.quantity}${item.autoSold ? "・売却済" : ""}</strong></li>`).join("") : "<li>装備なし</li>";
-      const materials = entry.materials.length ? entry.materials.map(item => `<li><span>${escape(window.GameData.items[item.itemId]?.name || item.itemId)}</span><strong>×${item.quantity}</strong></li>`).join("") : "<li>素材なし</li>";
+      const equipment = entry.equipment.length ? entry.equipment.map(item => `<li class="${focusedItem?.id === item.itemId ? "is-focused-loot" : ""}"><button type="button" data-action="open-item-codex" data-item="${escape(item.itemId)}"><span>${escape(item.name)}</span><strong>×${item.quantity}${item.autoSold ? "・売却済" : ""}</strong><i aria-hidden="true">›</i></button></li>`).join("") : "<li>装備なし</li>";
+      const materials = entry.materials.length ? entry.materials.map(item => `<li class="${focusedItem?.id === item.itemId ? "is-focused-loot" : ""}"><button type="button" data-action="open-item-codex" data-item="${escape(item.itemId)}"><span>${escape(window.GameData.items[item.itemId]?.name || item.itemId)}</span><strong>×${item.quantity}</strong><i aria-hidden="true">›</i></button></li>`).join("") : "<li>素材なし</li>";
       const reuse = `<div class="party-history-reuse"><span><strong>この探索条件を呼び戻す</strong><small>${escape(dungeon.name)} · ${entry.timeMultiplier || 1}倍探索</small></span><button class="button secondary" data-action="reuse-history-plan" data-party="${partyIndex}" data-dungeon="${entry.dungeonId}" data-difficulty="${entry.difficultyId || "normal"}" data-time="${entry.timeMultiplier || 1}" ${window.Party.expedition(partyIndex) ? "disabled" : ""}>出撃先に指定</button></div>`;
       const focused = historyFocus?.entryId === entry.id;
-      return `<details class="party-history-record ${entry.success ? "success" : "failure"} ${focused ? "is-character-focus" : ""}" data-history-id="${escape(entry.id)}" ${focused || (!historyFocus && index === 0) ? "open" : ""}><summary><span class="party-history-mark">${entry.success ? "勝" : "退"}</span><span class="party-history-name"><small>${focused ? "人物の足跡から選択" : index === 0 ? "最新の帰還" : completed} · ${entry.timeMultiplier || 1}倍探索</small><strong>${escape(dungeon.name)}</strong></span><span class="party-history-reward"><strong>${formatGold(entry.gold)}</strong><small>EXP +${entry.exp}</small></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="party-history-detail">${focusedMemberRecord}${battleSummary}${damageHistory}${skillHistory}${memberHighlights}${newPartyReputationMoment}${partyReturnMoment}${lootReaction}${namedHuntSupport}${sharedHuntLedgerTier}${sharedHuntLedgerProgress}${targetedHarvest}${battleBonds}${journey}${adventurerBonds}${bondTierGrowth}${growth}${story}${previousComparison}${setup}${comparison}<div class="party-history-loot"><section><strong>装備 ${equipmentCount}点</strong><ul>${equipment}</ul></section><section><strong>素材 ${materialCount}個</strong><ul>${materials}</ul></section></div>${reuse}</div></details>`;
+      const focusLabel = historyFocus?.characterId ? "人物の足跡から選択" : historyFocus?.source === "item" ? "品の図鑑から選択" : "実績の記録から選択";
+      return `<details class="party-history-record ${entry.success ? "success" : "failure"} ${focused ? "is-character-focus" : ""}" data-history-id="${escape(entry.id)}" ${focused || (!historyFocus && index === 0) ? "open" : ""}><summary><span class="party-history-mark">${entry.success ? "勝" : "退"}</span><span class="party-history-name"><small>${focused ? focusLabel : index === 0 ? "最新の帰還" : completed} · ${entry.timeMultiplier || 1}倍探索</small><strong>${escape(dungeon.name)}</strong></span><span class="party-history-reward"><strong>${formatGold(entry.gold)}</strong><small>EXP +${entry.exp}</small></span><span class="record-chevron" aria-hidden="true">›</span></summary><div class="party-history-detail">${focusedMemberRecord}${focusedItemRecord}${battleSummary}${damageHistory}${skillHistory}${memberHighlights}${newPartyReputationMoment}${partyReturnMoment}${lootReaction}${retryPreparationMemory}${chapterMapGuidance}${namedHuntSupport}${sharedHuntLedgerTier}${sharedHuntLedgerProgress}${targetedHarvest}${battleBonds}${journey}${destinationFamiliarityGrowth}${routeLineageMemory}${routeTraditionMemory}${adventurerBonds}${bondTierGrowth}${growth}${difficultyChapterMap}${trackedMilestone}${achievements}${story}${previousComparison}${setup}${comparison}<div class="party-history-loot"><section><strong>装備 ${equipmentCount}点</strong><ul>${equipment}</ul></section><section><strong>素材 ${materialCount}個</strong><ul>${materials}</ul></section></div>${reuse}</div></details>`;
     }).join("");
     return `<section class="panel party-history-page"><div class="section-heading"><div><span class="label">EXPEDITION HISTORY</span><h3>遠征履歴</h3><p>新しい順に最大10件。詳細戦績は実際の戦闘記録を集計しています。</p></div><button class="button primary" data-action="party-view" data-view="results" ${window.Party.result(partyIndex) ? "" : "disabled"}>直近ログを開く</button></div>${harvestLedger}<div class="party-history-list">${records}</div></section>`;
   }
@@ -495,6 +605,63 @@
     const trackedItem = trackedTarget ? window.GameData.items[trackedTarget.itemId] : null;
     const trackedSources = trackedItem ? window.Encyclopedia.itemAcquisitionSources(trackedItem.id) : null;
     const targetPartyIndexes = Array.from({ length: window.Party.limit() }, (_, index) => index).filter(index => !window.Party.expedition(index) && window.Party.members(index).length);
+    const trackedAchievement = window.Achievements?.tracked?.() || null;
+    const achievementDestination = trackedAchievement ? window.Achievements.destination(trackedAchievement) : null;
+    const achievementDestinationAttributes = achievementDestination ? {
+      recruitment: 'data-nav="characters"',
+      formation: 'data-action="party-view" data-view="formation"',
+      adventure: 'data-action="party-view" data-view="adventure"',
+      monsters: 'data-action="open-monster-codex"',
+      items: 'data-action="open-item-codex"',
+      companions: 'data-action="open-companion-ledger"',
+      observations: 'data-action="open-observations"',
+      guild: 'data-nav="guild"',
+      achievements: 'data-action="open-achievements"'
+    }[achievementDestination.id] : "";
+    const achievementRoutes = trackedAchievement ? window.Achievements.expeditionCandidates(trackedAchievement) : [];
+    const achievementPartyStates = trackedAchievement ? Array.from({ length: window.Party.limit() }, (_, index) => {
+      const expedition = window.Party.expedition(index), plan = window.Party.plan(index);
+      if (expedition && expedition.trackedAchievement?.id === trackedAchievement.id
+        && window.Achievements.expeditionPotential(trackedAchievement, expedition.dungeonId, expedition.difficultyId || "normal").relevant) return "active";
+      if (!expedition && window.Party.members(index).length && plan
+        && window.Achievements.expeditionPotential(trackedAchievement, plan.dungeonId, plan.difficultyId || "normal").relevant) return "planned";
+      return null;
+    }) : [];
+    const activeAchievementParties = achievementPartyStates.filter(value => value === "active").length;
+    const plannedAchievementParties = achievementPartyStates.filter(value => value === "planned").length;
+    const achievementPartySummary = [activeAchievementParties ? `挑戦中 ${activeAchievementParties}隊` : "", plannedAchievementParties ? `出発待ち ${plannedAchievementParties}隊` : ""].filter(Boolean).join("・");
+    const achievementRouteButtons = achievementRoutes.slice(0, 4).map(route => {
+      const variant = window.DungeonDifficulty.variant(route.dungeonId, route.difficultyId);
+      return `<button class="fleet-target-route" data-action="open-target-destination" data-dungeon="${route.dungeonId}" data-difficulty="${route.difficultyId}" title="${escape(route.note)}" ${targetPartyIndexes.length ? "" : "disabled"}>${escape(variant.name)}${route.possibleGain > 1 ? `<small>手掛かり ${route.possibleGain}</small>` : ""}</button>`;
+    }).join("");
+    const achievementRouteList = achievementRoutes.length
+      ? `<nav class="fleet-target-routes" aria-label="追跡実績を進められる探索地">${achievementRouteButtons}${achievementRoutes.length > 4 ? `<span>ほか${achievementRoutes.length - 4}か所</span>` : ""}</nav>`
+      : `<span class="fleet-target-no-route">${trackedAchievement?.complete ? "達成済み・記念の印章を受け取れます" : `現在選べる探索候補はありません。「${escape(achievementDestination?.label || "実績の頁を見る")}」から次の行動を確認できます。`}</span>`;
+    const achievementDestinationButton = trackedAchievement && !trackedAchievement.complete && achievementDestination?.id !== "achievements"
+      ? `<button class="button primary" ${achievementDestinationAttributes}>${escape(achievementDestination.label)}</button>`
+      : "";
+    const achievementStrip = trackedAchievement
+      ? `<section class="fleet-target-strip achievement-target ${trackedAchievement.complete ? "is-complete" : ""}"><span class="fleet-target-icon" aria-hidden="true">${escape(trackedAchievement.icon)}</span><div><small>現在の実績目標</small><strong>${escape(trackedAchievement.name)}</strong><span>${trackedAchievement.complete ? "達成" : `あと${Math.max(0, trackedAchievement.target - trackedAchievement.current).toLocaleString("ja-JP")}`}・${Math.min(trackedAchievement.current, trackedAchievement.target)}/${trackedAchievement.target}${achievementRoutes.length ? `・挑戦可能な候補 ${achievementRoutes.length}か所` : ""}${achievementPartySummary ? `・${achievementPartySummary}` : ""}</span><i><b style="width:${trackedAchievement.ratio * 100}%"></b></i>${achievementRouteList}</div><div>${achievementDestinationButton}<button class="button ghost" data-action="open-achievements">実績の頁</button></div></section>`
+      : "";
+    const craftingTargetId = window.Encyclopedia.craftingTarget();
+    const craftingPlan = craftingTargetId ? window.Blacksmith.craftingPlan(craftingTargetId) : null;
+    const craftingResult = craftingPlan ? window.GameData.items[craftingPlan.resultId] : null;
+    const craftingNextItem = craftingPlan?.nextNeed ? window.GameData.items[craftingPlan.nextNeed.itemId] : null;
+    const craftingMaterialList = craftingPlan ? craftingPlan.needs.map(need => {
+      const item = window.GameData.items[need.itemId];
+      return `<span class="${need.missing ? "is-missing" : "is-met"}" title="${escape(item.name)} ${need.owned}/${need.required}">${escape(item.icon || "◇")} ${escape(item.name)} <b>${need.owned}/${need.required}</b></span>`;
+    }).join("") : "";
+    const craftingSummary = craftingPlan
+      ? craftingPlan.ready
+        ? "素材と工賃が揃っています"
+        : `素材 ${craftingPlan.materialMet}/${craftingPlan.totalMaterials}種・工賃 ${formatGold(Math.min(state.gold, craftingPlan.gold))}/${formatGold(craftingPlan.gold)}${craftingNextItem ? `・次は${escape(craftingNextItem.name)}をあと${craftingPlan.nextNeed.missing}個` : craftingPlan.goldMissing ? `・あと${formatGold(craftingPlan.goldMissing)}` : ""}`
+      : "";
+    const craftingNextButton = craftingNextItem
+      ? `<button class="button secondary" data-action="track-recipe-material" data-item="${escape(craftingNextItem.id)}" data-target-quantity="${craftingPlan.nextNeed.missing}">次は${escape(craftingNextItem.name)}</button>`
+      : "";
+    const craftingTargetStrip = craftingPlan && craftingResult
+      ? `<section class="fleet-target-strip crafting-target ${craftingPlan.ready ? "is-complete" : ""}"><span class="fleet-target-icon" aria-hidden="true">⚒</span><div><small>現在の製作目標</small><strong>${escape(craftingResult.name)} · Tier ${craftingResult.tier || 1}</strong><span>${craftingSummary}</span><div class="fleet-crafting-materials">${craftingMaterialList}</div></div><div>${craftingNextButton}<button class="button ${craftingPlan.ready ? "primary" : "ghost"}" data-action="open-target-recipes" data-recipes="${escape(craftingPlan.recipeId)}">${craftingPlan.ready ? "鍛冶屋で製作" : "製作記録"}</button><button class="button ghost" data-action="clear-crafting-recipe">解除</button></div></section>`
+      : "";
     const targetRouteMap = new Map();
     function addTargetRoute(dungeonId, difficultyId) {
       if (!window.Story.canEnter(dungeonId) || !window.DungeonDifficulty.unlocked(dungeonId, difficultyId)) return;
@@ -514,8 +681,22 @@
     }).join("");
     const targetRouteList = targetRoutes.length ? `<nav class="fleet-target-routes" aria-label="探索目標の入手記録がある探索地">${targetRouteButtons}${targetRoutes.length > 4 ? `<span>ほか${targetRoutes.length - 4}か所</span>` : ""}</nav>` : `<span class="fleet-target-no-route">挑戦可能な探索地の記録はまだありません</span>`;
     const targetComplete = trackedTarget && trackedTarget.progress >= trackedTarget.quantity;
+    const nextItemTarget = targetComplete ? Math.min(999, trackedTarget.progress + trackedTarget.quantity) : 0;
+    const nextItemBatch = Math.max(0, nextItemTarget - (trackedTarget?.progress || 0));
+    const continueItemTarget = targetComplete && nextItemBatch
+      ? `<button class="button primary" data-action="track-item" data-item="${escape(trackedItem.id)}" data-target-quantity="${nextItemTarget}">さらに${nextItemBatch}個集める</button>`
+      : "";
     const targetRecipeButton = targetRecipeIds.length ? `<button class="button ${targetComplete ? "primary" : "ghost"}" data-action="open-target-recipes" data-recipes="${escape(targetRecipeIds.join(","))}">${targetComplete ? "製作へ" : "関連レシピ"}</button>` : "";
-    const targetStrip = trackedItem ? `<section class="fleet-target-strip ${targetComplete ? "is-complete" : ""}"><span class="fleet-target-icon" aria-hidden="true">${escape(trackedItem.icon || "◇")}</span><div><small>現在の探索目標</small><strong>${escape(trackedItem.name)}</strong><span>${targetComplete ? "達成" : "収集中"} ${trackedTarget.progress}/${trackedTarget.quantity}・入手記録のある探索地 ${targetRoutes.length}か所</span><i><b style="width:${Math.min(100, trackedTarget.progress / trackedTarget.quantity * 100)}%"></b></i>${targetRouteList}</div><div>${targetRecipeButton}<button class="button ghost" data-action="open-item-codex">図鑑で変更</button></div></section>` : "";
+    const targetCraftPlan = targetComplete && !craftingTargetId ? window.Blacksmith.relatedMaterialPlan(trackedItem.id) : null;
+    const targetCraftResult = targetCraftPlan ? window.GameData.items[targetCraftPlan.resultId] : null;
+    const targetCraftNextItem = targetCraftPlan?.nextNeed ? window.GameData.items[targetCraftPlan.nextNeed.itemId] : null;
+    const targetCraftGuide = targetCraftPlan && targetCraftResult
+      ? `<p class="fleet-target-craft-guide"><span>製作への次の一手</span><strong>⚒ ${escape(targetCraftResult.name)}</strong><small>${targetCraftPlan.ready ? "素材と工賃が揃っています" : targetCraftNextItem ? `次は${escape(targetCraftNextItem.name)}をあと${targetCraftPlan.nextNeed.missing}個` : targetCraftPlan.goldMissing ? `素材は揃いました・工賃あと${formatGold(targetCraftPlan.goldMissing)}` : "鍛冶屋で記録を確認できます"}</small></p>`
+      : "";
+    const targetCraftNextButton = targetCraftNextItem
+      ? `<button class="button secondary" data-action="track-recipe-material" data-item="${escape(targetCraftNextItem.id)}" data-target-quantity="${targetCraftPlan.nextNeed.missing}">次の素材へ</button>`
+      : "";
+    const targetStrip = trackedItem ? `<section class="fleet-target-strip ${targetComplete ? "is-complete" : ""}"><span class="fleet-target-icon" aria-hidden="true">${escape(trackedItem.icon || "◇")}</span><div><small>現在の探索目標</small><strong>${escape(trackedItem.name)}</strong><span>${targetComplete ? "達成" : "収集中"} ${trackedTarget.progress}/${trackedTarget.quantity}・入手記録のある探索地 ${targetRoutes.length}か所</span><i><b style="width:${Math.min(100, trackedTarget.progress / trackedTarget.quantity * 100)}%"></b></i>${targetRouteList}${targetCraftGuide}</div><div>${targetCraftNextButton}${continueItemTarget}${targetRecipeButton}<button class="button ghost" data-action="open-item-codex">図鑑で変更</button></div></section>` : "";
     const trackedMonsterTarget = window.Encyclopedia.trackedMonsterTarget();
     const trackedMonster = trackedMonsterTarget ? window.GameData.monsters[trackedMonsterTarget.monsterId] : null;
     const trackedMonsterHabitats = trackedMonster ? window.Encyclopedia.monsterHabitats(trackedMonster.id) : [];
@@ -577,8 +758,8 @@
         : "狩り名が定着した最終頁";
       return `<button type="button" data-action="open-adventurer-bonds" data-bond="${escape(pair.key)}" data-monster="${escape(trackedMonster.id)}" data-item="${escape(trackedItem.id)}"><strong>${pair.memberNames.map(escape).join(" × ")}</strong><span>${epithet ? `${escape(epithet)} · ` : ""}${escape(pair.tier?.label || "書き始めの頁")} · ${partyState}</span><em>${nextPage}<i><b style="width:${Math.round(pair.progress.ratio * 100)}%"></b></i></em></button>`;
     }).join("")}${harvestLedgerPairs.length > 3 ? `<small>ほか${harvestLedgerPairs.length - 3}組</small>` : ""}</div></div>` : "";
-    const harvestTargetStrip = harvestTargetRoutes.length ? `<section class="fleet-target-strip harvest-target ${targetComplete && monsterTargetComplete ? "is-complete" : ""}"><span class="fleet-target-icon" aria-hidden="true">⌖</span><div><small>狙い採りの記録</small><strong>${escape(trackedMonster.icon || "♟")} ${escape(trackedMonster.name)} → ${escape(trackedItem.icon || "◇")} ${escape(trackedItem.name)}</strong><span>${monsterHuntPartySummary}・確認済みの探索地 ${harvestTargetRoutes.length}件</span><div class="harvest-target-progress"><span>品 ${trackedTarget.progress}/${trackedTarget.quantity}<i><b style="width:${Math.min(100, trackedTarget.progress / trackedTarget.quantity * 100)}%"></b></i></span><span>討伐 ${trackedMonsterTarget.progress}/${trackedMonsterTarget.quantity}体<i><b style="width:${Math.min(100, trackedMonsterTarget.progress / trackedMonsterTarget.quantity * 100)}%"></b></i></span></div>${harvestLedgerPairList}${harvestTargetRouteList}</div><div>${targetRecipeButton}${continueMonsterTarget}<button class="button ghost" data-action="open-item-codex">品の図鑑</button><button class="button ghost" data-action="open-monster-codex">魔物図鑑</button></div></section>` : "";
-    const trackingStrips = harvestTargetStrip || `${targetStrip}${monsterTargetStrip}`;
+    const harvestTargetStrip = harvestTargetRoutes.length ? `<section class="fleet-target-strip harvest-target ${targetComplete && monsterTargetComplete ? "is-complete" : ""}"><span class="fleet-target-icon" aria-hidden="true">⌖</span><div><small>狙い採りの記録</small><strong>${escape(trackedMonster.icon || "♟")} ${escape(trackedMonster.name)} → ${escape(trackedItem.icon || "◇")} ${escape(trackedItem.name)}</strong><span>${monsterHuntPartySummary}・確認済みの探索地 ${harvestTargetRoutes.length}件</span><div class="harvest-target-progress"><span>品 ${trackedTarget.progress}/${trackedTarget.quantity}<i><b style="width:${Math.min(100, trackedTarget.progress / trackedTarget.quantity * 100)}%"></b></i></span><span>討伐 ${trackedMonsterTarget.progress}/${trackedMonsterTarget.quantity}体<i><b style="width:${Math.min(100, trackedMonsterTarget.progress / trackedMonsterTarget.quantity * 100)}%"></b></i></span></div>${harvestLedgerPairList}${harvestTargetRouteList}${targetCraftGuide}</div><div>${targetCraftNextButton}${continueItemTarget}${targetRecipeButton}${continueMonsterTarget}<button class="button ghost" data-action="open-item-codex">品の図鑑</button><button class="button ghost" data-action="open-monster-codex">魔物図鑑</button></div></section>` : "";
+    const trackingStrips = `${achievementStrip}${craftingTargetStrip}${harvestTargetStrip || `${targetStrip}${monsterTargetStrip}`}`;
     const partyPlanReady = index => {
       const members = window.Party.members(index), plan = window.Party.plan(index);
       return Boolean(!window.Party.expedition(index) && members.length && plan && window.DungeonPartyRules.check(plan.dungeonId, members).ok);
@@ -631,7 +812,16 @@
       const resultState = !expedition && result ? (result.success ? "success" : "failure") : "";
       const unreadResult = Boolean(result && result.viewed !== true);
       const percent = expedition ? Math.min(100, Math.max(0, (window.GameRuntime.now() - expedition.startedAt) / (expedition.endsAt - expedition.startedAt) * 100)) : 0;
-      const destination = selectedVariant(context, index), multiplier = destination ? (explorationChoices[index][destination.baseDungeonId] || 1) : 1;
+      const savedPlan = window.Party.plan(index);
+      const destination = savedPlan ? window.DungeonDifficulty.variant(savedPlan.dungeonId, savedPlan.difficultyId || "normal") : null;
+      const multiplier = savedPlan?.timeMultiplier || 1;
+      const repeatsLastRoute = Boolean(result && savedPlan && result.dungeonId === savedPlan.dungeonId && (result.difficultyId || "normal") === (savedPlan.difficultyId || "normal"));
+      const retryPreparation = repeatsLastRoute && !result.success
+        ? window.Party.retryPreparation(savedPlan.dungeonId, savedPlan.difficultyId || "normal", index)
+        : null;
+      const retryFailures = Math.max(Number(retryPreparation?.failures) || 0, Number(result?.retryPreparationGrowth?.failures) || 0);
+      const departureKind = retryFailures ? "retry" : repeatsLastRoute && result?.success ? "revisit" : "departure";
+      const departureLabel = departureKind === "retry" ? "備えを活かして再挑戦" : departureKind === "revisit" ? "同じ道へ再探索" : "出撃";
       const partyRuleCheck = destination ? window.DungeonPartyRules.check(destination, members) : { ok: true, restricted: false, message: "" };
       const activeDungeon = expedition ? window.DungeonDifficulty.variant(expedition.dungeonId, expedition.difficultyId || "normal") : null;
       const restrictionWarning = !partyRuleCheck.ok ? `<small class="fleet-restriction-warning">編成条件未達：${escape(partyRuleCheck.message)}</small>` : "";
@@ -640,7 +830,12 @@
         : monsterHuntPartyStates[index] === "planned"
           ? `<small class="fleet-hunt-assignment">${escape(trackedMonster.icon || "♟")} 次の出撃で討伐地へ</small>`
           : "";
-      const journey = expedition ? `<div class="fleet-journey" data-expedition="${index}"><strong>${escape(activeDungeon.name)} · ${expedition.timeMultiplier}倍探索</strong>${huntAssignment}<span>残り <strong class="fleet-timer" data-countdown="${index}">${time(window.Dungeon.remaining(index))}</strong></span><div class="progress"><i style="width:${percent}%"></i></div><small>時間経過 <span data-overview-percent>${Math.floor(percent)}</span>%</small></div>` : `<div class="fleet-journey"><strong>${members.length && destination ? `攻略先：${escape(destination.name)} · ${multiplier}倍探索` : members.length ? "攻略先を設定してください" : "仲間を加えてパーティを編成"}</strong>${huntAssignment}${restrictionWarning}${result ? `<small><span class="fleet-result-mark ${resultState}">${result.success ? "攻略成功" : "撤退"}</span>${escape(result.dungeonName || window.GameData.dungeons[result.dungeonId].name)}</small>${compactResultLoot(result, escape, formatGold)}${compactHistory(state.partyHistory[index], index, escape, formatGold)}` : "<small>探索記録なし</small>"}</div>`;
+      const achievementAssignment = achievementPartyStates[index] === "active"
+        ? `<small class="fleet-achievement-assignment is-active">${escape(trackedAchievement.icon)} 実績目標へ挑戦中</small>`
+        : achievementPartyStates[index] === "planned"
+          ? `<small class="fleet-achievement-assignment">${escape(trackedAchievement.icon)} 次の出撃で実績候補へ</small>`
+          : "";
+      const journey = expedition ? `<div class="fleet-journey" data-expedition="${index}"><strong>${escape(activeDungeon.name)} · ${expedition.timeMultiplier}倍探索</strong>${achievementAssignment}${huntAssignment}<span>残り <strong class="fleet-timer" data-countdown="${index}">${time(window.Dungeon.remaining(index))}</strong></span><div class="progress"><i style="width:${percent}%"></i></div><small>時間経過 <span data-overview-percent>${Math.floor(percent)}</span>%</small></div>` : `<div class="fleet-journey"><strong>${members.length && destination ? `攻略先：${escape(destination.name)} · ${multiplier}倍探索` : members.length ? "攻略先を設定してください" : "仲間を加えてパーティを編成"}</strong>${achievementAssignment}${huntAssignment}${restrictionWarning}${result ? `<small><span class="fleet-result-mark ${resultState}">${result.success ? "攻略成功" : "撤退"}</span>${escape(result.dungeonName || window.GameData.dungeons[result.dungeonId].name)}</small>${compactResultLoot(result, index, escape, formatGold)}${compactHistory(state.partyHistory[index], index, escape, formatGold)}` : "<small>探索記録なし</small>"}</div>`;
       const memberStrip = members.length ? members.map((member, position) => {
         const stat = window.Characters.stats(member);
         const recordTitle = window.Characters.recordTitle(member);
@@ -659,6 +854,19 @@
       const bondPairs = window.Battle.bondFormationPairs(bondMembers);
       const bondTitle = bondPairs.map(pair => `${pair.left.name}・${pair.right.name}：${pair.tier.label}`).join("／");
       const bondStatus = bondPairs.length ? `<span class="fleet-bond-status" title="${escape(bondTitle)}">旅仲間 ${bondPairs.length}組</span>` : "";
+      const route = activeDungeon || destination;
+      const guideTierId = window.GameData.config.explorationEvents?.routeMentorship?.guideTierId || "route_guide";
+      const guideMinimumClears = Number(window.GameData.config.explorationEvents?.routeFamiliarity?.tiers?.find(tier => tier.id === guideTierId)?.minimumClears) || 0;
+      const lineageLearners = route ? members.map(member => {
+        const learned = window.Characters.routeMentorships(member).filter(entry => entry.role === "apprentice" && entry.dungeonId === route.baseDungeonId && entry.difficultyId === route.difficultyId);
+        if (!learned.length) return null;
+        const familiarity = window.Characters.destinationExperience(member).find(entry => entry.dungeonId === route.baseDungeonId && entry.difficultyId === route.difficultyId) || null;
+        if (familiarity?.tierId === guideTierId) return null;
+        return { member, teachers: learned.map(entry => entry.partnerName), clears: familiarity?.clears || 0, remaining: Math.max(0, guideMinimumClears - (familiarity?.clears || 0)) };
+      }).filter(Boolean).sort((left, right) => left.remaining - right.remaining || right.clears - left.clears || left.member.name.localeCompare(right.member.name, "ja")) : [];
+      const lineageLead = lineageLearners[0];
+      const lineageTitle = lineageLearners.map(entry => `${entry.member.name}：師 ${entry.teachers.join("・")}／案内役まであと${entry.remaining}回`).join("／");
+      const lineageStatus = lineageLead ? `<span class="fleet-lineage-status ${expedition ? "is-active" : ""}" title="${escape(lineageTitle)}">継承修行 ${escape(lineageLead.member.name)} ${lineageLead.clears}/${guideMinimumClears}${lineageLearners.length > 1 ? `・ほか${lineageLearners.length - 1}人` : ""}</span>` : "";
       const namedHunts = window.Characters.namedHuntsForMembers(members.map(member => member.id));
       const namedHunt = namedHunts[0];
       const namedHuntStatus = namedHunt
@@ -673,7 +881,7 @@
       const reputationMoment = window.Characters.expeditionRoleConversation(members);
       const partyMood = reputationMoment ? `<details class="fleet-party-mood"><summary><span>隊の空気</span><strong>${escape(reputationMoment.label)}</strong><i aria-hidden="true">⌄</i></summary><p>${escape(reputationMoment.text)}</p></details>` : "";
       const partyPower = Math.round(window.Party.power(index)).toLocaleString("ja-JP");
-      return `<article class="party-overview-row ${active ? "is-selected" : ""} ${expedition ? "is-exploring" : result ? `is-last-${resultState}` : ""} ${unreadResult ? "has-unread-result" : ""}" data-party-overview="${index}"><div class="fleet-party"><button class="fleet-party-select" data-action="rename-party" data-party="${index}" aria-label="${escape(partyName)}の名前を変更"><span>${escape(partyName)}</span><i aria-hidden="true">✎</i></button><span class="fleet-status ${expedition ? "exploring" : resultState}">${status}</span>${unreadResult ? '<span class="fleet-new-result">NEW</span>' : ""}<div class="fleet-party-meta" aria-label="第${index + 1}隊の編成情報"><span>第${index + 1}隊</span><span>${members.length}/${memberLimit}人</span><span>${vacancies ? `空き${vacancies}` : "満員"}</span><span>戦力 ${partyPower}</span>${bondStatus}${namedHuntStatus}${developingHuntStatus}${presetLink}</div><div class="fleet-member-strip">${memberStrip}</div>${partyMood}</div>${journey}<div class="fleet-actions"><button class="button ghost" data-action="party-open" data-party="${index}" data-view="formation" aria-label="${escape(partyName)}を編成する">パーティを編成する</button>${expedition ? `<button class="button ghost" data-action="party-open" data-party="${index}" data-view="adventure" aria-label="${escape(partyName)}の探索ログ">探索ログ</button>` : `<button class="button primary" data-action="quick-start-party" data-party="${index}" aria-label="${escape(partyName)}を${destination ? escape(destination.name) : "設定した攻略先"}へ出撃" ${!members.length || !destination || !partyRuleCheck.ok ? "disabled" : ""}>出撃</button>`}<button class="button secondary ${unreadResult ? "has-notice" : ""}" data-action="party-open" data-party="${index}" data-view="results" aria-label="${escape(partyName)}の直近ログ${unreadResult ? "・未読" : ""}" ${!result ? "disabled" : ""}>直近ログ${unreadResult ? "・新着" : ""}</button></div></article>`;
+      return `<article class="party-overview-row ${active ? "is-selected" : ""} ${expedition ? "is-exploring" : result ? `is-last-${resultState}` : ""} ${unreadResult ? "has-unread-result" : ""}" data-party-overview="${index}"><div class="fleet-party"><button class="fleet-party-select" data-action="rename-party" data-party="${index}" aria-label="${escape(partyName)}の名前を変更"><span>${escape(partyName)}</span><i aria-hidden="true">✎</i></button><span class="fleet-status ${expedition ? "exploring" : resultState}">${status}</span>${unreadResult ? '<span class="fleet-new-result">NEW</span>' : ""}<div class="fleet-party-meta" aria-label="第${index + 1}隊の編成情報"><span>第${index + 1}隊</span><span>${members.length}/${memberLimit}人</span><span>${vacancies ? `空き${vacancies}` : "満員"}</span><span>戦力 ${partyPower}</span>${lineageStatus}${bondStatus}${namedHuntStatus}${developingHuntStatus}${presetLink}</div><div class="fleet-member-strip">${memberStrip}</div>${partyMood}</div>${journey}<div class="fleet-actions"><button class="button ghost" data-action="party-open" data-party="${index}" data-view="formation" aria-label="${escape(partyName)}を編成する">パーティを編成する</button>${expedition ? `<button class="button ghost" data-action="party-open" data-party="${index}" data-view="adventure" aria-label="${escape(partyName)}の探索ログ">探索ログ</button>` : `<button class="button primary ${departureKind === "retry" ? "retry-departure" : departureKind === "revisit" ? "revisit-departure" : ""}" data-action="quick-start-party" data-party="${index}" data-departure-kind="${departureKind}" aria-label="${escape(partyName)}を${destination ? escape(destination.name) : "設定した攻略先"}へ${departureLabel}" ${!members.length || !destination || !partyRuleCheck.ok ? "disabled" : ""}>${departureLabel}</button>`}<button class="button secondary ${unreadResult ? "has-notice" : ""}" data-action="party-open" data-party="${index}" data-view="results" aria-label="${escape(partyName)}の直近ログ${unreadResult ? "・未読" : ""}" ${!result ? "disabled" : ""}>直近ログ${unreadResult ? "・新着" : ""}</button></div></article>`;
     }).join("");
     const stateFilters = `<nav class="fleet-state-filters" aria-label="パーティの状態で絞り込み">${[["all", "全隊"], ["exploring", "探索中"], ["waiting", "待機中"], ["reports", "報告あり"]].map(([id, label]) => {
       const unread = id === "reports" ? unreadReports : 0;
@@ -721,12 +929,37 @@
       ? `次の頁「${escape(harvestLedgerProgress.nextTier.label)}」まであと${harvestLedgerProgress.remaining}回（${harvestLedgerProgress.successes}/${harvestLedgerProgress.nextTier.minimumSuccesses}）`
       : harvestLedgerProgress ? "狩り名が定着した最終頁" : "";
     const trackedGuide = tracked ? `<section class="tracked-loot-guide ${trackedTarget.progress >= trackedTarget.quantity ? "is-complete" : ""}"><span>探索目標</span><strong>${escape(tracked.icon || "◇")} ${escape(tracked.name)}</strong><small>${trackedTarget.progress >= trackedTarget.quantity ? "達成済み" : "収集中"} ${trackedTarget.progress}/${trackedTarget.quantity}・${trackedHarvestReadyHere ? `この土地では${escape(trackedMonster.name)}から狙って採る支度ができます。` : "過去の入手記録がある攻略先に印を付けています。"}</small></section>` : "";
+    const trackedItemMemory = tracked && destination ? (window.GameState.data.partyHistory || []).flatMap((entries, partyIndex) => (entries || []).map(entry => {
+      const quantity = [...(entry.equipment || []), ...(entry.materials || [])]
+        .filter(drop => drop.itemId === tracked.id)
+        .reduce((total, drop) => total + (Number(drop.quantity) || 0), 0);
+      return { entry, partyIndex, quantity };
+    })).filter(memory => memory.quantity > 0 && memory.entry.dungeonId === destination.baseDungeonId
+      && (memory.entry.difficultyId || "normal") === destination.difficultyId
+      && (memory.entry.timeMultiplier || 1) === multiplier)
+      .sort((left, right) => right.quantity - left.quantity || right.entry.completedAt - left.entry.completedAt)[0] || null : null;
+    const trackedItemMemoryGuide = trackedItemMemory ? (() => {
+      const memory = trackedItemMemory.entry;
+      const formerMembers = (memory.partySetup || []).map(member => ({ id: member.id, name: member.name }));
+      const currentIds = new Set(window.Party.members().map(member => member.id));
+      const returning = formerMembers.filter(member => currentIds.has(member.id)).length;
+      const partyLine = formerMembers.length ? formerMembers.map(member => escape(member.name)).join("・") : escape(window.Party.name(trackedItemMemory.partyIndex));
+      const company = formerMembers.length
+        ? returning === formerMembers.length ? `当時の${formerMembers.length}人全員が今回も同行` : `当時の仲間 ${returning}/${formerMembers.length}人が今回も同行`
+        : "当時の編成記録は残っていません";
+      const source = trackedItemMemory.partyIndex === window.Party.selected() ? company : `第${trackedItemMemory.partyIndex + 1}隊の記録 · ${company}`;
+      const date = new Date(memory.completedAt).toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+      return `<section class="tracked-item-memory"><span aria-hidden="true">栞</span><div><small>同じ条件で残した最高記録 · ${escape(date)}</small><strong>${escape(tracked.icon || "◇")} ${escape(tracked.name)} +${trackedItemMemory.quantity}</strong><p>${partyLine} · ${source}</p></div><button type="button" class="text-button" data-action="open-item-history" data-party="${trackedItemMemory.partyIndex}" data-history="${escape(memory.id)}" data-item="${escape(tracked.id)}">この帰還簿を読み直す</button></section>`;
+    })() : "";
     const trackedMonsterTrailReady = Boolean(trackedMonster && destination && !trackedMonster.boss
       && window.Encyclopedia.monsterHabitats(trackedMonster.id).some(habitat => habitat.dungeonId === destination.baseDungeonId && habitat.difficultyId === destination.difficultyId)
       && window.Encyclopedia.habitatSurvey(destination.baseDungeonId, destination.difficultyId).complete);
     const monsterGuide = trackedMonster ? `<section class="tracked-loot-guide tracked-monster-guide ${monsterTarget.progress >= monsterTarget.quantity ? "is-complete" : ""}"><span>討伐目標</span><strong>${escape(trackedMonster.icon || "♟")} ${escape(trackedMonster.name)}</strong><small>${monsterTarget.progress >= monsterTarget.quantity ? "達成済み" : "追跡中"} ${monsterTarget.progress}/${monsterTarget.quantity}体・${trackedMonsterTrailReady ? "この土地では現地調査簿を頼りに痕跡を追えます。" : "遭遇記録のある攻略先に印を付けています。"}</small></section>` : "";
     const harvestGuide = trackedHarvestReadyHere ? `<section class="tracked-loot-guide tracked-harvest-guide ${trackedTarget.progress >= trackedTarget.quantity && monsterTarget.progress >= monsterTarget.quantity ? "is-complete" : ""}"><span>狙い採り</span><strong>${escape(trackedMonster.icon || "♟")} ${escape(trackedMonster.name)} → ${escape(tracked.icon || "◇")} ${escape(tracked.name)}</strong><small>品 ${trackedTarget.progress}/${trackedTarget.quantity}・討伐 ${monsterTarget.progress}/${monsterTarget.quantity}体。この土地で確かめた採取記録を携えて出発します。</small>${harvestPractitioner ? `<small class="harvest-practice-note">${escape(harvestPractitioner.member.name)}には「${escape(harvestPractitioner.tier.label)}」手覚えがあります。</small>` : ""}${harvestTracker ? `<small class="harvest-practice-note">${escape(harvestTracker.member.name)}は「${escape(harvestTracker.tier.label)}」採れなかった跡も手掛かりにします。</small>` : ""}${harvestConsultation ? `<small class="harvest-consultation-note"><b>${harvestConsultationLedger ? `${harvestConsultationEpithet ? escape(harvestConsultationEpithet) : "二人の狩り帳"}・${escape(harvestConsultationLedger.tier.label)}` : "狩りの相談"}</b>${escape(harvestConsultationLedger ? `以前綴じた一冊を二人で開き直した。${harvestConsultationLedger.tier.departure}` : harvestConsultation.departure)}${harvestLedgerProgressText ? `<span class="harvest-ledger-progress">${harvestLedgerProgressText}<i><b style="width:${Math.round(harvestLedgerProgress.ratio * 100)}%"></b></i></span>` : ""}${harvestConsultationLedger?.tier.combatSupport ? `<em>${escape(harvestConsultationLedger.tier.combatSupport.label)} · ${escape(harvestConsultationLedger.tier.combatSupport.description)}</em>` : ""}</small>` : ""}</section>` : "";
-    const trackingGuides = harvestGuide || `${trackedGuide}${monsterGuide}`;
+    const trackedAchievement = window.Achievements.tracked();
+    const achievementPotential = trackedAchievement && destination ? window.Achievements.expeditionPotential(trackedAchievement, destination.baseDungeonId, destination.difficultyId) : null;
+    const achievementGuide = trackedAchievement ? `<section class="tracked-loot-guide tracked-achievement-guide ${trackedAchievement.complete ? "is-complete" : achievementPotential?.relevant ? "is-relevant" : "is-unrelated"}"><span>実績目標</span><strong>${escape(trackedAchievement.icon)} ${escape(trackedAchievement.name)}　${Math.min(trackedAchievement.current, trackedAchievement.target)}/${trackedAchievement.target}</strong><small>${trackedAchievement.complete ? "達成済みです。記念の印章を受け取ると次の目標へ栞が移ります。" : escape(achievementPotential?.note || "攻略先を選ぶと目標との関係が分かります。")}</small></section>` : "";
+    const trackingGuides = `${achievementGuide}${harvestGuide || `${trackedGuide}${monsterGuide}`}${trackedItemMemoryGuide}`;
     const restrictionMessage = !partyRuleCheck.ok ? `<small class="departure-restriction-warning">編成条件未達：${escape(partyRuleCheck.message)}</small>` : partyRuleCheck.restricted ? `<small class="departure-restriction-ready">編成条件を満たしています</small>` : "";
     return `${departureSummary()}<section class="departure-selection-bar"><div><span>選択中の攻略先</span><strong>${destination ? `${escape(destination.name)} · ${multiplier}倍探索` : "攻略先を選択してください"}</strong>${restrictionMessage}</div><button class="button primary" data-action="quick-start-party" data-party="${window.Party.selected()}" ${destination && partyRuleCheck.ok ? "" : "disabled"}>この攻略先へ出撃</button></section><div class="section-heading route-selection-heading"><div><span class="label">DESTINATION</span><h3>攻略先を選択</h3></div></div><p class="small-note">章を切り替えて攻略先を選びます。探索時間が長いほど連戦・報酬が増えますが、時間あたりの報酬は等倍が有利です。</p>${trackingGuides}${chapterNavigator(context)}${dungeonCards(context)}`;
   }
@@ -737,6 +970,7 @@
     const activeId = selectedChapterId(context, partyIndex);
     const story = window.Story.ensure();
     const chapters = routeChapters();
+    const trackedAchievement = window.Achievements?.tracked?.() || null;
     const activeIndex = Math.max(0, chapters.findIndex(chapter => chapter.id === activeId));
     const start = Math.max(0, Math.min(activeIndex - 2, chapters.length - 5));
     const visible = chapters.slice(start, start + 5);
@@ -745,16 +979,21 @@
       const cleared = routes.filter(dungeon => story.facts.clears.includes(dungeon.id)).length;
       const enterable = window.Story.chapterDungeons(chapter.id).some(dungeon => window.Story.canEnter(dungeon.id));
       const complete = story.completed.includes(chapter.id);
-      return { routes, cleared, enterable, complete };
+      const targetRoutes = trackedAchievement && !trackedAchievement.complete
+        ? window.Story.chapterDungeons(chapter.id).filter(dungeon => window.Story.canEnter(dungeon.id)
+          && window.DungeonDifficulty.ids().some(difficultyId => window.DungeonDifficulty.unlocked(dungeon.id, difficultyId)
+            && window.Achievements.expeditionPotential(trackedAchievement, dungeon.id, difficultyId).relevant)).length
+        : 0;
+      return { routes, cleared, enterable, complete, targetRoutes };
     }
     const options = chapters.map(chapter => {
       const state = status(chapter);
-      return `<option value="${chapter.id}" ${activeId === chapter.id ? "selected" : ""}>${escape(chapter.title)} — ${state.cleared}/${state.routes.length}${state.complete ? " 達成" : state.enterable ? " 攻略中" : " 未解放"}</option>`;
+      return `<option value="${chapter.id}" ${activeId === chapter.id ? "selected" : ""}>${escape(chapter.title)} — ${state.cleared}/${state.routes.length}${state.complete ? " 達成" : state.enterable ? " 攻略中" : " 未解放"}${state.targetRoutes ? `・実績候補${state.targetRoutes}` : ""}</option>`;
     }).join("");
     const tabs = visible.map(chapter => {
-      const { routes, cleared, enterable, complete } = status(chapter);
+      const { routes, cleared, enterable, complete, targetRoutes } = status(chapter);
       const shortTitle = chapter.title.split("：")[0];
-      return `<button class="route-chapter-tab ${activeId === chapter.id ? "is-active" : ""} ${complete ? "is-complete" : ""} ${enterable ? "" : "is-locked"}" data-action="select-dungeon-chapter" data-chapter="${chapter.id}" aria-pressed="${activeId === chapter.id}"><strong>${escape(shortTitle)}</strong><span>${cleared}/${routes.length}${complete ? " 達成" : enterable ? " 攻略中" : " 未解放"}</span></button>`;
+      return `<button class="route-chapter-tab ${activeId === chapter.id ? "is-active" : ""} ${complete ? "is-complete" : ""} ${enterable ? "" : "is-locked"} ${targetRoutes ? "has-achievement-route" : ""}" data-action="select-dungeon-chapter" data-chapter="${chapter.id}" aria-pressed="${activeId === chapter.id}"><strong>${escape(shortTitle)}</strong><span>${cleared}/${routes.length}${complete ? " 達成" : enterable ? " 攻略中" : " 未解放"}${targetRoutes ? `<b>実績候補 ${targetRoutes}</b>` : ""}</span></button>`;
     }).join("");
     return `<div class="route-chapter-navigator"><label class="route-chapter-select"><span>攻略する章</span><select data-dungeon-chapter-select aria-label="攻略する章を選択">${options}</select></label><nav class="route-chapter-tabs" aria-label="現在章付近の章">${tabs}</nav><small>${start + 1}〜${start + visible.length} / ${chapters.length}章を表示</small></div>`;
   }
@@ -776,6 +1015,7 @@
     const trackedItemId = window.Encyclopedia.trackedItem();
     const trackedItem = trackedItemId ? window.GameData.items[trackedItemId] : null;
     const trackedSources = trackedItem ? window.Encyclopedia.itemAcquisitionSources(trackedItemId) : null;
+    const trackedAchievement = window.Achievements?.tracked?.() || null;
     const monsterTarget = window.Encyclopedia.trackedMonsterTarget();
     const trackedMonster = monsterTarget ? window.GameData.monsters[monsterTarget.monsterId] : null;
     const trackedMonsterHabitatKeys = new Set((trackedMonster ? window.Encyclopedia.monsterHabitats(trackedMonster.id) : []).map(habitat => `${habitat.dungeonId}:${habitat.difficultyId}`));
@@ -788,6 +1028,23 @@
       if (!window.Story.canEnter(dungeon.id)) return `<article class="dungeon-card compact-route locked-dungeon ${dungeon.color}"><div class="dungeon-route-summary"><span class="dungeon-route-emblem" aria-hidden="true">${emblem}</span><div class="dungeon-route-name"><span>${routeLabel}</span><h3>${escape(dungeon.name)}</h3><p>${escape(dungeon.description)}</p></div><span class="badge">未解放</span></div><div class="dungeon-route-locked"><p class="story-lock-condition">${escape(window.Story.dungeonCondition(dungeon.id))}</p><button class="button ghost" data-nav="home">物語を確認</button></div></article>`;
       const difficultyId = selectedDifficultyId(context, partyIndex, dungeon.id);
       const variant = window.DungeonDifficulty.variant(dungeon, difficultyId);
+      const chapterMapBenefit = window.DungeonDifficulty.chapterMapBenefit(dungeon, difficultyId);
+      const mappedDuration = chapterMapBenefit ? Math.max(1, Math.round(variant.duration * chapterMapBenefit.explorationTimeMultiplier)) : variant.duration;
+      const chapterMapLead = chapterMapBenefit
+        ? `<span class="dungeon-chapter-map-benefit" title="この章の本編攻略地をすべて${escape(chapterMapBenefit.difficultyName)}で踏破した記録です">${escape(chapterMapBenefit.label)} · 探索時間-${chapterMapBenefit.reductionPercent}%</span>`
+        : "";
+      const routeExperience = window.Party.routeExperience(dungeon.id, difficultyId, partyIndex);
+      const retryPreparation = window.Party.retryPreparation(dungeon.id, difficultyId, partyIndex);
+      const routeExperienceTitle = routeExperience.successfulDetails.map(entry => `${entry.name}（${entry.label}・攻略${entry.clears}回）`).join("、");
+      const routeExperienceLead = routeExperience.successful
+        ? `<span class="dungeon-route-experience is-success" title="${escape(routeExperienceTitle)}">現編成・攻略経験 ${routeExperience.successful}/${routeExperience.members}人・${escape(routeExperience.strongestFamiliarityLabel || "土地勘あり")}</span>`
+        : routeExperience.experienced ? `<span class="dungeon-route-experience is-attempted" title="${escape(routeExperience.experiencedNames.join("、"))}">現編成・挑戦経験 ${routeExperience.experienced}/${routeExperience.members}人</span>` : "";
+      const routeTraditionLead = routeExperience.traditionEstablished
+        ? `<span class="dungeon-route-tradition" title="三代の案内役が残し、後続の帰還で育った道です">${escape(routeExperience.traditionTier?.label || "ギルドの道標")} · 道中判定+${Math.round((routeExperience.traditionTier?.successChanceBonus || .01) * 100)}% · 案内${routeExperience.traditionAssistedSorties}回</span>` : "";
+      const routeMentorshipLead = routeExperience.mentorship
+        ? `<span class="dungeon-route-mentorship ${routeExperience.mentorship.inheritedGuide ? "is-inherited-guide" : ""} ${routeExperience.mentorship.lineageSupport ? "is-route-lineage" : ""}" title="${escape(routeExperience.mentorship.lineageSupport ? `${routeExperience.mentorship.lineagePredecessorName}と${routeExperience.mentorship.mentorName}が、${routeExperience.mentorship.apprenticeNames.join("、")}へ帰り道を受け継ぎます` : `${routeExperience.mentorship.mentorName}が${routeExperience.mentorship.apprenticeNames.join("、")}へ帰り道の目印を教えます`)}">${routeExperience.mentorship.lineageSupport ? `三代の道継ぎ ${escape(routeExperience.mentorship.lineagePredecessorName)} → ${escape(routeExperience.mentorship.mentorName)} → 初見 ${routeExperience.mentorship.apprenticeNames.map(escape).join("、")}` : `${routeExperience.mentorship.inheritedGuide ? "継承案内役" : "案内役"} ${escape(routeExperience.mentorship.mentorName)} → 初見 ${routeExperience.mentorship.apprenticeNames.map(escape).join("、")}`}</span>` : "";
+      const routeReunionLead = routeExperience.reunions.length
+        ? `<span class="dungeon-route-reunion" title="${escape("以前この道を教えた二人が、同じ探索地へ再び向かいます")}">再訪 ${escape(routeExperience.reunions[0].mentorName)} ↔ ${escape(routeExperience.reunions[0].apprenticeName)}</span>` : "";
       const habitatSurvey = window.Encyclopedia.habitatSurvey(dungeon.id, difficultyId);
       const trackedTreasure = trackedSources?.treasures.some(source => source.dungeonId === dungeon.id);
       const trackedMonsters = trackedSources?.monsters.filter(source => source.dungeonId === dungeon.id && source.difficultyId === difficultyId) || [];
@@ -799,10 +1056,19 @@
       const trackedMonsterHere = trackedMonster && trackedMonsterHabitatKeys.has(`${dungeon.id}:${difficultyId}`);
       const trackedMonsterTrailReady = trackedMonsterHere && habitatSurvey.complete && !trackedMonster.boss;
       const trackedHarvestReadyHere = trackedHere && trackedMonsterHere && trackedHarvestReady(trackedItem.id, trackedMonster.id, dungeon.id, difficultyId);
+      const achievementPotential = trackedAchievement && !trackedAchievement.complete
+        ? window.Achievements.expeditionPotential(trackedAchievement, dungeon.id, difficultyId)
+        : null;
+      const achievementBadge = achievementPotential?.relevant
+        ? `<p class="tracked-loot-match tracked-achievement-match"><span>追跡実績の道筋</span><strong>${escape(trackedAchievement.icon)} ${escape(trackedAchievement.name)}</strong><small>${escape(achievementPotential.note)}</small></p>`
+        : "";
+      const retryPreparationLead = retryPreparation.failures
+        ? `<span class="dungeon-retry-preparation" title="${escape(retryPreparation.description)}">${escape(retryPreparation.label)} · 撤退記録${retryPreparation.failures}回 · 戦闘被ダメージ-${Math.round(retryPreparation.damageReduction * 100)}%</span>`
+        : "";
       const trackedBadge = trackedHere ? `<p class="tracked-loot-match"><span>探索目標の記録あり</span><strong>${escape(trackedItem.icon || "◇")} ${escape(trackedItem.name)}</strong><small>${trackedHarvestReadyHere ? `${escape(trackedMonster.name)}から狙って採れます` : escape(trackedClue)}</small></p>` : "";
       const trackedMonsterBadge = trackedMonsterHere ? `<p class="tracked-loot-match tracked-monster-match"><span>討伐目標の生息記録あり</span><strong>${escape(trackedMonster.icon || "♟")} ${escape(trackedMonster.name)}</strong><small>${trackedHarvestReadyHere ? "採取記録あり・対象品を狙えます" : trackedMonsterTrailReady ? "現地調査済み・痕跡を追えます" : "この攻略先で遭遇を確認済み"}</small></p>` : "";
       const trackedHarvestBadge = trackedHarvestReadyHere ? `<p class="tracked-loot-match tracked-harvest-match"><span>狙い採りの記録あり</span><strong>${escape(trackedMonster.icon || "♟")} ${escape(trackedMonster.name)} → ${escape(trackedItem.icon || "◇")} ${escape(trackedItem.name)}</strong><small>この難度で採取を確認済み</small></p>` : "";
-      const trackingBadges = trackedHarvestBadge || `${trackedBadge}${trackedMonsterBadge}`;
+      const trackingBadges = `${achievementBadge}${trackedHarvestBadge || `${trackedBadge}${trackedMonsterBadge}`}`;
       const monsters = monsterIds.map(id => window.DungeonDifficulty.monster(id, difficultyId));
       const monsterPreview = monsters.map(monster => {
         const knownHere = window.Encyclopedia.monsterHabitats(monster.id).some(habitat => habitat.dungeonId === dungeon.id && habitat.difficultyId === difficultyId);
@@ -846,9 +1112,9 @@
       const routeRumorStatus = (routeRumorRecord?.rumorMatches || 0) > 0
         ? `<small class="dungeon-route-rumor-status is-confirmed">以前の遠征で、この兆しを実地確認済み</small>`
         : `<small class="dungeon-route-rumor-status">まだ記録と結び付いていない噂</small>`;
-      const routeRumorLead = (routeRumorRecord?.rumorMatches || 0) > 0
+      const routeRumorLead = chapterMapLead + retryPreparationLead + routeTraditionLead + routeExperienceLead + routeMentorshipLead + routeReunionLead + ((routeRumorRecord?.rumorMatches || 0) > 0
         ? `<span class="dungeon-route-rumor-lead is-confirmed">噂を照合済み</span>`
-        : `<span class="dungeon-route-rumor-lead">未照合の噂あり</span>`;
+        : `<span class="dungeon-route-rumor-lead">未照合の噂あり</span>`);
       const routeMasteryThreshold = window.GameData.config.explorationEvents?.routeMastery?.successes || 3;
       const knownRouteMasteryIds = (window.GameData.config.explorationEvents?.routeEvents || [])
         .filter(event => (window.Story.ensure().facts.routeEvents?.[event.id]?.successes || 0) >= routeMasteryThreshold)
@@ -861,12 +1127,23 @@
         const tier = window.DungeonDifficulty.tier(id), unlocked = window.DungeonDifficulty.unlocked(dungeon.id, id), done = window.DungeonDifficulty.cleared(dungeon.id, id);
         return `<button class="dungeon-difficulty-option ${id === difficultyId ? "is-active" : ""} ${done ? "is-cleared" : ""}" data-action="select-dungeon-difficulty" data-dungeon="${dungeon.id}" data-difficulty="${id}" ${busy || !unlocked ? "disabled" : ""}><strong>${tier.name}</strong><small>${done ? "攻略済" : unlocked ? "挑戦可能" : "未解放"}</small></button>`;
       }).join("") + trackingBadges;
-      return `<article class="dungeon-card compact-route route-choice ${selected ? "is-selected" : ""} ${nextRoute?.id === dungeon.id ? "is-next-route" : ""} ${cleared ? "is-cleared" : ""} ${rumorDefinition ? "has-rumor" : ""} ${dungeon.color}"><div class="dungeon-difficulty-selector" aria-label="${escape(dungeon.name)}の難易度">${difficultyButtons}</div><div class="dungeon-route-summary"><span class="dungeon-route-emblem" aria-hidden="true">${emblem}</span><div class="dungeon-route-name"><span>推奨Lv.${variant.recommendedLevel} · ${routeLabel}${cleared ? " · 攻略済" : nextRoute?.id === dungeon.id && difficultyId === "normal" ? " · 次の攻略先" : ""}</span><h3>${escape(variant.name)}</h3><p>${escape(dungeon.description)}</p></div><div class="dungeon-route-metrics"><span><small>基本時間</small><strong>${variant.duration}秒</strong></span><span><small>戦闘</small><strong>${variant.encounters.length}戦</strong></span><span class="${habitatSurvey.complete ? "is-complete" : ""}"><small>現地の気配</small><strong>${habitatSurvey.confirmed}/${habitatSurvey.total}種</strong></span></div></div>${routeRumorLead}${rumorNote}${previousRecord}${namedHuntLead}${firstClearText ? `<p class="difficulty-first-clear"><span>初回踏破</span><strong>${escape(firstClearText)}</strong></p>` : ""}${partyRestriction}<div class="dungeon-route-controls"><label for="exploration-${dungeon.id}"><span>探索時間</span><select id="exploration-${dungeon.id}" data-exploration-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${[1, 2, 3, 4, 5, 6].map(value => `<option value="${value}" ${value === multiplier ? "selected" : ""}>${value}倍 · ${variant.duration * value}秒 · ${variant.encounters.length * value}戦</option>`).join("")}</select></label><button class="button ${selected ? "secondary" : "primary"}" data-action="select-dungeon" data-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${selected ? "選択中" : "選択する"}</button></div><details class="dungeon-details" data-detail="route-${dungeon.id}"><summary>依頼・噂・現地記録を見る</summary><div class="dungeon-route-detail-grid"><div><h4>道中で聞いた話</h4><p class="dungeon-route-field-rumor">「${escape(routeRumor)}」</p>${routeRumorStatus}<p class="dungeon-route-readiness is-${routeReadiness.state}"><span>観察記録との照合</span><strong>${escape(routeReadiness.text)}</strong></p><h4>確認された気配</h4><div class="monster-preview">${monsterPreview}</div></div><div><h4>主な発見物</h4><p>${escape(drops)}</p><h4>探索時間と報酬</h4><p class="small-note">${multiplier}倍探索は${variant.encounters.length * multiplier}戦。${window.DungeonDifficulty.tier(difficultyId).name}では基本探索時間と敵の強さ、報酬が変化します。</p></div></div></details></article>`;
+      return `<article class="dungeon-card compact-route route-choice ${selected ? "is-selected" : ""} ${nextRoute?.id === dungeon.id ? "is-next-route" : ""} ${cleared ? "is-cleared" : ""} ${rumorDefinition ? "has-rumor" : ""} ${dungeon.color}"><div class="dungeon-difficulty-selector" aria-label="${escape(dungeon.name)}の難易度">${difficultyButtons}</div><div class="dungeon-route-summary"><span class="dungeon-route-emblem" aria-hidden="true">${emblem}</span><div class="dungeon-route-name"><span>推奨Lv.${variant.recommendedLevel} · ${routeLabel}${cleared ? " · 攻略済" : nextRoute?.id === dungeon.id && difficultyId === "normal" ? " · 次の攻略先" : ""}</span><h3>${escape(variant.name)}</h3><p>${escape(dungeon.description)}</p></div><div class="dungeon-route-metrics"><span><small>${chapterMapBenefit ? "踏破図適用" : "基本時間"}</small><strong>${mappedDuration}秒</strong></span><span><small>戦闘</small><strong>${variant.encounters.length}戦</strong></span><span class="${habitatSurvey.complete ? "is-complete" : ""}"><small>現地の気配</small><strong>${habitatSurvey.confirmed}/${habitatSurvey.total}種</strong></span></div></div>${routeRumorLead}${rumorNote}${previousRecord}${namedHuntLead}${firstClearText ? `<p class="difficulty-first-clear"><span>初回踏破</span><strong>${escape(firstClearText)}</strong></p>` : ""}${partyRestriction}<div class="dungeon-route-controls"><label for="exploration-${dungeon.id}"><span>探索時間</span><select id="exploration-${dungeon.id}" data-exploration-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${[1, 2, 3, 4, 5, 6].map(value => `<option value="${value}" ${value === multiplier ? "selected" : ""}>${value}倍 · ${mappedDuration * value}秒 · ${variant.encounters.length * value}戦</option>`).join("")}</select></label><button class="button ${selected ? "secondary" : "primary"}" data-action="select-dungeon" data-dungeon="${dungeon.id}" ${busy ? "disabled" : ""}>${selected ? "選択中" : "選択する"}</button></div><details class="dungeon-details" data-detail="route-${dungeon.id}"><summary>依頼・噂・現地記録を見る</summary><div class="dungeon-route-detail-grid"><div><h4>道中で聞いた話</h4><p class="dungeon-route-field-rumor">「${escape(routeRumor)}」</p>${routeRumorStatus}<p class="dungeon-route-readiness is-${routeReadiness.state}"><span>観察記録との照合</span><strong>${escape(routeReadiness.text)}</strong></p><h4>確認された気配</h4><div class="monster-preview">${monsterPreview}</div></div><div><h4>主な発見物</h4><p>${escape(drops)}</p><h4>探索時間と報酬</h4><p class="small-note">${multiplier}倍探索は${variant.encounters.length * multiplier}戦。${chapterMapBenefit ? `${escape(chapterMapBenefit.label)}により、この章の${escape(chapterMapBenefit.difficultyName)}探索時間を${chapterMapBenefit.reductionPercent}%短縮します。` : `${window.DungeonDifficulty.tier(difficultyId).name}では基本探索時間と敵の強さ、報酬が変化します。`}</p></div></div></details></article>`;
     }).join(""); }
     if (!chapter) return `<p class="small-note">攻略できる章がありません。</p>`;
     const progressLabel = postgame ? "領域踏破" : "本編攻略";
     const groupLabel = postgame ? "星後遠征" : "本編ルート";
-    return `<section class="route-chapter-browser ${postgame ? "is-postgame" : ""}"><header class="route-chapter-overview"><div><span>${escape(chapter.title)}</span><h3>${progressLabel} ${clearedMain}/${mainRoutes.length}</h3></div><div class="route-chapter-progress" aria-label="${progressLabel}進捗 ${clearedMain}/${mainRoutes.length}"><i style="width:${mainRoutes.length ? clearedMain / mainRoutes.length * 100 : 0}%"></i></div><small>推奨Lv.${chapter.recommendedLevelRange[0]}〜${chapter.recommendedLevelRange[1]}</small></header><div class="route-group-heading"><strong>${groupLabel}</strong><span>${nextRoute ? `次は「${escape(nextRoute.name)}」` : clearedMain === mainRoutes.length ? `${progressLabel}済み` : "解放条件を満たしてください"}</span></div><div class="dungeon-grid dungeon-route-list">${routeCards(mainRoutes)}</div>${optionalRoutes.length ? `<section class="optional-route-group"><div class="route-group-heading"><strong>寄り道・高難度</strong><span>物語の進行には影響しません</span></div><div class="dungeon-grid dungeon-route-list">${routeCards(optionalRoutes)}</div></section>` : ""}</section>`;
+    const availableRouteIds = [...mainRoutes, ...optionalRoutes].filter(dungeon => window.Story.canEnter(dungeon.id)).map(dungeon => dungeon.id);
+    const harderProgress = window.DungeonDifficulty.progress(availableRouteIds).filter(entry => entry.difficultyId !== "normal");
+    const difficultyLedger = harderProgress.some(entry => entry.total > 0)
+      ? `<div class="route-difficulty-progress" aria-label="${escape(chapter.title)}の高難度踏破"><strong>高難度踏破</strong>${harderProgress.map(entry => {
+        const next = window.DungeonDifficulty.nextUncleared(availableRouteIds, entry.difficultyId);
+        const destination = next
+          ? `<button type="button" data-action="select-dungeon-difficulty" data-dungeon="${escape(next.baseDungeonId)}" data-difficulty="${escape(entry.difficultyId)}" aria-label="${escape(next.name)}を攻略先に指定"><small>次</small>${escape(next.shortName)}<i aria-hidden="true">›</i></button>`
+          : `<small>${entry.total ? entry.complete ? "踏破済" : "未踏あり" : "未解放"}</small>`;
+        return `<span class="${entry.complete ? "is-complete" : entry.total ? "has-open-route" : "is-locked"}"><b>${escape(entry.name)} ${entry.completed}/${entry.total}</b><i><em style="width:${entry.total ? entry.completed / entry.total * 100 : 0}%"></em></i>${destination}</span>`;
+      }).join("")}</div>`
+      : "";
+    return `<section class="route-chapter-browser ${postgame ? "is-postgame" : ""}"><header class="route-chapter-overview"><div><span>${escape(chapter.title)}</span><h3>${progressLabel} ${clearedMain}/${mainRoutes.length}</h3></div><div class="route-chapter-progress" aria-label="${progressLabel}進捗 ${clearedMain}/${mainRoutes.length}"><i style="width:${mainRoutes.length ? clearedMain / mainRoutes.length * 100 : 0}%"></i></div><small>推奨Lv.${chapter.recommendedLevelRange[0]}〜${chapter.recommendedLevelRange[1]}</small>${difficultyLedger}</header><div class="route-group-heading"><strong>${groupLabel}</strong><span>${nextRoute ? `次は「${escape(nextRoute.name)}」` : clearedMain === mainRoutes.length ? `${progressLabel}済み` : "解放条件を満たしてください"}</span></div><div class="dungeon-grid dungeon-route-list">${routeCards(mainRoutes)}</div>${optionalRoutes.length ? `<section class="optional-route-group"><div class="route-group-heading"><strong>寄り道・高難度</strong><span>物語の進行には影響しません</span></div><div class="dungeon-grid dungeon-route-list">${routeCards(optionalRoutes)}</div></section>` : ""}</section>`;
   }
 
   window.GameUIViews.party = { adventure, dungeonCards, history, overview, selectedChapterId, selectedDifficultyId, selectedDungeon, selectedDungeonId, selectedVariant };

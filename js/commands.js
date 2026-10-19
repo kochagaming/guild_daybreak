@@ -11,6 +11,9 @@
     "commission.claim": p => window.Commissions.claim(p.commissionId),
     "recurringMission.claim": p => window.RecurringMissions.claim(p.groupId, p.missionId),
     "recurringMission.claimAll": p => window.RecurringMissions.claimAll(p.groupId),
+    "achievement.claim": p => window.Achievements.claim(p.achievementId),
+    "achievement.claimAll": () => window.Achievements.claimAll(),
+    "achievement.track": p => window.Achievements.track(p.achievementId),
     "facility.collect": p => window.Facilities.collect(p.facilityId),
     "facility.collectAll": () => window.Facilities.collectAll(),
     "facility.upgrade": p => window.Facilities.upgrade(p.facilityId, p.trackId),
@@ -42,8 +45,18 @@
       if (!harvest.ok) return harvest;
       return { ok: true, plan: plan.plan, message: `${harvest.message} 過去の行き先も指定しました。` };
     },
+    "party.retraceItem": p => {
+      const plan = window.Party.setPlan(p, p.partyIndex);
+      if (!plan.ok) return plan;
+      const clearedMonster = window.Encyclopedia.setTrackedMonster(null);
+      if (!clearedMonster.ok) return clearedMonster;
+      const target = window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity ?? 1, true);
+      if (!target.ok) return target;
+      return { ok: true, plan: plan.plan, message: `${target.message} この品を持ち帰った道を出撃先に指定しました。` };
+    },
     "party.rename": p => window.Party.rename(p.name, p.partyIndex),
     "party.toggle": p => window.Party.toggle(p.characterId, p.partyIndex),
+    "party.transfer": p => window.Party.transfer(p.characterId, p.partyIndex),
     "party.move": p => window.Party.move(p.characterId, p.direction, p.partyIndex),
     "party.actionPreset": p => window.Party.applyActionPreset(p.presetId, p.partyIndex),
     "party.unlock": p => window.Party.unlock(p.partySlot),
@@ -53,6 +66,8 @@
     "encyclopedia.read": p => p.kind === "items" ? window.Encyclopedia.markItemsRead() : p.kind === "monsters" ? window.Encyclopedia.markMonstersRead() : { ok: false, message: "図鑑の種類が不正です。" },
     "encyclopedia.trackItem": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity ?? 1),
     "encyclopedia.trackRequirement": p => window.Encyclopedia.setTrackedItem(p.itemId, p.targetQuantity, true),
+    "encyclopedia.trackRecipe": p => window.Encyclopedia.setCraftingTarget(p.recipeId),
+    "encyclopedia.clearTrackedRecipe": () => window.Encyclopedia.setCraftingTarget(null),
     "encyclopedia.clearTrackedItem": () => window.Encyclopedia.setTrackedItem(null),
     "encyclopedia.trackMonster": p => window.Encyclopedia.setTrackedMonster(p.monsterId, p.targetQuantity ?? 1),
     "encyclopedia.trackHarvest": p => window.Encyclopedia.setTrackedHarvest(p.itemId, p.monsterId),
@@ -88,6 +103,9 @@
     "commission.claim": ["commissionId"],
     "recurringMission.claim": ["groupId", "missionId"],
     "recurringMission.claimAll": ["groupId"],
+    "achievement.claim": ["achievementId"],
+    "achievement.claimAll": [],
+    "achievement.track": ["achievementId?"],
     "facility.collect": ["facilityId"],
     "facility.collectAll": [],
     "facility.upgrade": ["facilityId", "trackId"],
@@ -104,7 +122,7 @@
     "autosell.add": ["instanceId"],
     "autosell.remove": ["ruleId"], "autosell.toggle": ["enabled"],
     "shop.buy": ["itemId"], "shop.daily.buy": ["offerId"], "blacksmith.craft": ["recipeId"],
-    "party.select": ["partyIndex"], "party.readResult": ["partyIndex"], "party.setPlan": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier"], "party.reuseHarvest": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier", "itemId", "monsterId"], "party.rename": ["partyIndex", "name"], "party.toggle": ["characterId", "partyIndex?"],
+    "party.select": ["partyIndex"], "party.readResult": ["partyIndex"], "party.setPlan": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier"], "party.reuseHarvest": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier", "itemId", "monsterId"], "party.retraceItem": ["partyIndex", "dungeonId", "difficultyId", "timeMultiplier", "itemId", "targetQuantity?"], "party.rename": ["partyIndex", "name"], "party.toggle": ["characterId", "partyIndex?"], "party.transfer": ["characterId", "partyIndex"],
     "party.move": ["characterId", "direction", "partyIndex?"], "party.actionPreset": ["presetId", "partyIndex?"], "party.unlock": ["partySlot"],
     "accessCode.redeem": ["featureId", "code"],
     "observation.read": ["noteId"],
@@ -112,6 +130,8 @@
     "encyclopedia.read": ["kind"],
     "encyclopedia.trackItem": ["itemId", "targetQuantity?"],
     "encyclopedia.trackRequirement": ["itemId", "targetQuantity"],
+    "encyclopedia.trackRecipe": ["recipeId"],
+    "encyclopedia.clearTrackedRecipe": [],
     "encyclopedia.clearTrackedItem": [],
     "encyclopedia.trackMonster": ["monsterId", "targetQuantity?"],
     "encyclopedia.trackHarvest": ["itemId", "monsterId"],
@@ -148,6 +168,8 @@
       if (key === "offerId") return typeof value === "string" && /^daily-\d{4}-\d{2}-\d{2}-(?:10|[1-9])$/.test(value);
       if (key === "groupId") return window.GameData.config.recurringMissions.groups.some(group => group.id === value);
       if (key === "missionId") return window.GameData.config.recurringMissions.groups.some(group => group.missions.some(entry => entry.id === value));
+      if (key === "achievementId") return typeof value === "string" && window.GameData.achievements.some(entry => entry.id === value);
+      if (key === "recipeId") return typeof value === "string" && window.GameData.recipes.some(entry => entry.id === value);
       if (key === "slot") return Number.isInteger(value) && value >= 0 && value < 6;
       const tables = { jobId: "jobs", targetJobId: "jobs", raceId: "races", birthId: "births", focus: "recruitmentTalents", portraitId: "portraits", itemId: "items", dungeonId: "dungeons" };
       if (type === "recruitment.post") tables[key] = window.GameData.config.recruitment.fields.find(field => field.id === key)?.table;

@@ -122,12 +122,18 @@ async function run() {
     statusLanded: ["burn"], statusResisted: ["poison"], burstRounds: [2, 5], difficultySkillIds: [], drops: []
   } }, "normal");
   assert((await game.GameClient.execute("encyclopedia.trackItem", { itemId: "sticky_fluid" })).ok);
+  assert(game.Achievements.track("first_footprint").ok, "A guild milestone can be carried into destination planning");
+  game.GameState.data.story.facts.routeTraditions = ["meadow:normal"];
   await click("party-view", { view: "adventure" });
   assert(html().includes("DEPARTURE PARTY") && html().includes("先頭の戦士") && html().includes("後衛の魔術師"));
   assert(html().includes("風読み隊 · 2/"), "The party name is reused in the departure summary");
+  assert(html().includes("帰還簿の道標 · 道中判定+1% · 案内0回"), "An established guild route marker and its current maturity are visible before choosing the exact destination again");
   assert(html().includes("獲得・探索補正") && html().includes("魔術理論") && html().includes("後衛の魔術師の経験値 ×1.12"), "Departure screen repeats the acquisition effects that will be snapshotted");
   assert(html().indexOf("DEPARTURE PARTY") < html().indexOf("dungeon-grid"));
   assert(html().includes('data-action="select-dungeon"') && html().includes("この攻略先へ出撃") && html().includes("選択中の攻略先"));
+  assert(html().includes("tracked-achievement-guide is-relevant") && html().includes("実績目標") && html().includes("最初の足跡") && html().includes("未踏破のため、攻略できれば記録が1つ進みます。"), "Destination planning explains whether the selected route advances the tracked milestone");
+  assert(html().includes("tracked-loot-match tracked-achievement-match") && html().includes("追跡実績の道筋"), "Matching route cards visibly mark the path toward the tracked milestone");
+  assert(html().includes("route-chapter-tab is-active") && html().includes("has-achievement-route") && html().includes("実績候補"), "Chapter navigation marks chapters containing an enterable route for the tracked milestone");
   assert(html().includes('<details class="dungeon-details"') && html().includes("依頼・噂・現地記録を見る"));
   assert(html().includes("道中で聞いた話") && html().includes(game.Exploration.routeRumor(game.GameData.dungeons.meadow)) && html().includes("観察記録との照合") && html().includes("未照合の噂あり") && !game.Exploration.routeRumor(game.GameData.dungeons.meadow).includes("%"), "Destination cards expose an unresolved narrative lead and learned party comparison without event odds or a prescribed answer");
   assert(html().includes("これまでの現地記録") && html().includes("攻撃命中 4/6回") && html().includes("一度に最大2回攻撃") && html().includes("魔法行動を確認") && html().includes("攻撃属性：無属性") && html().includes("付与攻撃：毒") && html().includes("弱点反応：炎") && html().includes("耐性反応：氷") && html().includes("通用した異常：火傷") && html().includes("抵抗された異常：毒") && html().includes("隊列後方への攻撃を確認") && html().includes("大技発動：第2T・第5T"), "Destination details recall only enemy behavior previously observed in battle");
@@ -162,6 +168,8 @@ async function run() {
   await click("select-dungeon-chapter", { chapter: "ember_crown" });
   assert(html().includes("古灰竜の火口") && html().includes("竜人のみ編成可能") && html().includes("dungeon-party-restriction is-unmet"), "Restricted routes show their requirement and current party status before departure");
   await click("select-dungeon-chapter", { chapter: "roadside" });
+  assert(html().includes('class="route-difficulty-progress"') && html().includes("高難度踏破") && html().includes("魔境 0/5") && html().includes("神域 0/0") && html().includes("未解放"), "A completed chapter keeps a compact ladder of currently eligible abyss and divine clears");
+  assert(html().includes('data-action="select-dungeon-difficulty" data-dungeon="meadow" data-difficulty="abyss"') && html().includes("魔境の風鳴りの草原を攻略先に指定"), "The difficulty ledger links directly to the next eligible uncleared route");
   game.GameState.data.unlockedPartyCount = 2;
   await click("party-open", { party: "1", view: "formation" }); await click("toggle-party", { character: d });
   await click("party-view", { view: "adventure" });

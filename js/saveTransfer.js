@@ -12,6 +12,13 @@
   const validReputation = reputation => reputation == null || object(reputation)
     && ["exploration", "damage", "healing", "status", "endurance"].includes(reputation.kind)
     && text(reputation.label) && text(reputation.title) && text(reputation.icon);
+  const validTrackedAchievement = (value, data) => object(value)
+    && (data.achievements || []).some(achievement => achievement.id === value.id)
+    && integer(value.current) && integer(value.target) && value.target > 0;
+  const validTrackedAchievementProgress = (value, data) => object(value)
+    && (data.achievements || []).some(achievement => achievement.id === value.achievementId)
+    && integer(value.before) && integer(value.after) && integer(value.target) && value.target > 0
+    && typeof value.complete === "boolean" && value.complete === (value.after >= value.target);
   function fieldSpecialtyCount(record, data) {
     if (!record) return 0;
     const routeThreshold = data.config.explorationEvents?.personalPractice?.successes || 5;
@@ -155,6 +162,45 @@
       return true;
     });
   }
+  function validDestinationFamiliarity(entries, data, characters, dungeonId, difficultyId) {
+    if (!Array.isArray(entries) || entries.length > 6) return false;
+    const tiers = data.config.explorationEvents?.routeFamiliarity?.tiers || [], seen = new Set();
+    return entries.every(entry => {
+      const character = object(entry) ? characters.get(entry.characterId) : null;
+      const tierIndex = object(entry) ? tiers.findIndex(tier => tier.id === entry.tierId) : -1;
+      const tier = tiers[tierIndex], previousTier = tiers[tierIndex - 1] || null, nextTier = tiers[tierIndex + 1] || null;
+      const mentor = entry.mentorCharacterId == null && entry.mentorName == null ? null : characters.get(entry.mentorCharacterId);
+      if (!character || seen.has(entry.characterId) || entry.name !== character.name || entry.dungeonId !== dungeonId || entry.difficultyId !== difficultyId
+        || !tier || entry.tierLabel !== tier.label || entry.successChanceBonus !== tier.successChanceBonus
+        || !integer(entry.clears) || entry.clears !== tier.minimumClears
+        || entry.previousTierId !== (previousTier?.id || null) || entry.previousTierLabel !== (previousTier?.label || null)
+        || entry.nextTierId !== (nextTier?.id || null) || entry.nextTierLabel !== (nextTier?.label || null)
+        || !integer(entry.clearsUntilNext) || entry.clearsUntilNext !== (nextTier ? nextTier.minimumClears - entry.clears : 0)
+        || Boolean(mentor) !== (entry.mentorCharacterId != null || entry.mentorName != null)
+        || mentor && (mentor.id === character.id || entry.mentorName !== mentor.name || tierIndex !== 0)) return false;
+      seen.add(entry.characterId);
+      return true;
+    });
+  }
+  function validRouteTraditionGrowth(value, data, dungeonId, difficultyId) {
+    if (!object(value) || value.dungeonId !== dungeonId || value.difficultyId !== difficultyId || !integer(value.assistedSorties)) return false;
+    const tier = (data.config.explorationEvents?.routeTradition?.tiers || []).find(entry => entry.id === value.tierId);
+    return Boolean(tier && tier.minimumAssists === value.assistedSorties && value.tierLabel === tier.label
+      && value.successChanceBonus === tier.successChanceBonus && value.description === tier.description);
+  }
+  function validRetryPreparation(value, data, allowZero = false) {
+    const rule = data.config.explorationEvents?.retryPreparation || { maximumFailures: 3, damageReductionPerFailure: .03 };
+    if (!object(value) || !integer(value.failures) || value.failures < (allowZero ? 0 : 1) || value.failures > rule.maximumFailures || !number(value.damageReduction)) return false;
+    const expected = Math.round(value.failures * rule.damageReductionPerFailure * 100) / 100;
+    return value.damageReduction === expected;
+  }
+  function validRetryPreparationGrowth(value, data) {
+    const rule = data.config.explorationEvents?.retryPreparation || { maximumFailures: 3, damageReductionPerFailure: .03 };
+    if (!object(value) || !integer(value.previousFailures) || value.previousFailures < 0 || value.previousFailures > rule.maximumFailures
+      || !validRetryPreparation(value, data) || typeof value.atMaximum !== "boolean") return false;
+    return value.failures === Math.min(rule.maximumFailures, value.previousFailures + 1)
+      && value.atMaximum === (value.failures >= rule.maximumFailures);
+  }
   function validBossRivalries(value, data) {
     return object(value) && Object.entries(value).every(([bossId, entry]) => known(data.monsters, bossId) && data.monsters[bossId].boss
       && object(entry) && integer(entry.defeats) && integer(entry.victories) && entry.defeats + entry.victories > 0
@@ -172,6 +218,31 @@
       seen.add(key);
       return true;
     });
+  }
+  function validDifficultyChapterCompletion(value, data, story) {
+    if (!object(value) || !["abyss", "divine"].includes(value.difficultyId)) return false;
+    const chapter = data.storyChapters.find(entry => entry.id === value.chapterId);
+    if (!chapter || value.chapterTitle !== chapter.title || value.difficultyName !== data.dungeonDifficulties[value.difficultyId]?.name) return false;
+    const routes = Object.values(data.dungeons).filter(dungeon => dungeon.chapterId === chapter.id && dungeon.requiredForStory);
+    if (!routes.length || value.totalRoutes !== routes.length || !integer(value.completedChapters) || value.completedChapters < 1) return false;
+    const cleared = new Set(story.facts.difficultyClears || []);
+    if (!routes.every(dungeon => cleared.has(`${dungeon.id}:${value.difficultyId}`))) return false;
+    const completedChapters = data.storyChapters.filter(candidate => {
+      const candidateRoutes = Object.values(data.dungeons).filter(dungeon => dungeon.chapterId === candidate.id && dungeon.requiredForStory);
+      return candidateRoutes.length && candidateRoutes.every(dungeon => cleared.has(`${dungeon.id}:${value.difficultyId}`));
+    }).length;
+    return value.completedChapters <= completedChapters;
+  }
+  function validChapterMapBenefit(value, data, story, dungeonId, difficultyId, completedResult = false) {
+    if (!object(value) || !known(data.dungeons, dungeonId) || !["abyss", "divine"].includes(difficultyId)) return false;
+    const definition = data.dungeonDifficulties[difficultyId]?.chapterMapBenefit;
+    if (!definition || value.label !== definition.label || value.explorationTimeMultiplier !== definition.explorationTimeMultiplier
+      || value.reductionPercent !== Math.round((1 - definition.explorationTimeMultiplier) * 100)) return false;
+    if (completedResult ? !integer(value.secondsSaved) || value.secondsSaved < 0 : value.secondsSaved != null) return false;
+    const dungeon = data.dungeons[dungeonId];
+    const routes = Object.values(data.dungeons).filter(route => route.chapterId === dungeon.chapterId && route.requiredForStory);
+    const cleared = new Set(story.facts.difficultyClears || []);
+    return routes.length > 0 && routes.every(route => cleared.has(`${route.id}:${difficultyId}`));
   }
   function safeTree(value, depth) {
     check(depth < 32, "データの階層が深すぎます。");
@@ -265,6 +336,24 @@
         && object(record) && integer(record.encounters) && record.encounters > 0 && integer(record.openings) && record.openings >= 0 && record.openings <= record.encounters), "宝箱の観察記録が不正です。");
     }
     check(integer(story.facts.teamSurveys), "連携探索の記録が不正です。");
+    if (story.facts.retryPreparationObserved != null) check(typeof story.facts.retryPreparationObserved === "boolean", "再挑戦の観察記録が不正です。");
+    if (story.facts.retryPreparationOvercome != null) check(typeof story.facts.retryPreparationOvercome === "boolean" && (!story.facts.retryPreparationOvercome || story.facts.retryPreparationObserved === true), "再挑戦の攻略記録が不正です。");
+    check(story.facts.routeLineageSorties == null || integer(story.facts.routeLineageSorties), "三代の道継ぎの帰還記録が不正です。");
+    if (story.facts.routeTraditions != null) check(Array.isArray(story.facts.routeTraditions) && new Set(story.facts.routeTraditions).size === story.facts.routeTraditions.length && story.facts.routeTraditions.every(key => {
+      const [dungeonId, difficultyId, extra] = String(key).split(":");
+      return !extra && known(data.dungeons, dungeonId) && known(data.dungeonDifficulties || { normal: true, abyss: true, divine: true }, difficultyId);
+    }), "ギルドの道標の記録が不正です。");
+    if (story.facts.routeTraditionRecords != null) check(object(story.facts.routeTraditionRecords) && Object.entries(story.facts.routeTraditionRecords).every(([key, record]) => {
+      const [dungeonId, difficultyId, extra] = String(key).split(":");
+      return !extra && (story.facts.routeTraditions || []).includes(key) && known(data.dungeons, dungeonId)
+        && known(data.dungeonDifficulties || { normal: true, abyss: true, divine: true }, difficultyId)
+        && object(record) && record.dungeonId === dungeonId && record.difficultyId === difficultyId
+        && Array.isArray(record.memberIds) && record.memberIds.length === 3 && new Set(record.memberIds).size === 3 && record.memberIds.every(text)
+        && Array.isArray(record.memberNames) && record.memberNames.length === 3 && record.memberNames.every(text)
+        && number(record.establishedAt)
+        && (record.assistedSorties == null || integer(record.assistedSorties))
+        && (record.lastAssistedAt == null || number(record.lastAssistedAt) && (record.lastAssistedAt === 0 || record.lastAssistedAt >= record.establishedAt));
+    }), "ギルドの道標帳が不正です。");
     if (story.facts.difficultyClears != null) check(Array.isArray(story.facts.difficultyClears) && new Set(story.facts.difficultyClears).size === story.facts.difficultyClears.length && story.facts.difficultyClears.every(key => {
       const [dungeonId, difficultyId] = String(key).split(":");
       return known(data.dungeons, dungeonId) && ["abyss", "divine"].includes(difficultyId);
@@ -288,8 +377,13 @@
         check(new Set(current.claimed).size === current.claimed.length && current.claimed.every(id => { const entry = group.missions.find(candidate => candidate.id === id); return current.selectedIds.includes(id) && entry && current.progress[id] === entry.target; }), "定期依頼の受け取り状況が不正です。");
       });
     } else check(Object.values(recurring.groups).every(current => object(current) && Array.isArray(current.selectedIds) && object(current.progress) && Array.isArray(current.claimed)), "定期依頼の進行データが不正です。");
+    const achievementRewards = state.achievementRewards, achievementIds = new Set((data.achievements || []).map(entry => entry.id));
+    check(object(achievementRewards) && achievementRewards.version === 1 && Array.isArray(achievementRewards.claimed)
+      && new Set(achievementRewards.claimed).size === achievementRewards.claimed.length
+      && achievementRewards.claimed.every(id => achievementIds.has(id))
+      && (achievementRewards.trackedId == null || achievementIds.has(achievementRewards.trackedId)), "実績の達成報酬記録が不正です。");
     const encyclopedia = state.encyclopedia;
-    check(object(encyclopedia) && encyclopedia.version === 13 && object(encyclopedia.items) && object(encyclopedia.itemDiscoveries) && object(encyclopedia.bestQualities) && Array.isArray(encyclopedia.ultraRareTitles) && object(encyclopedia.monsters) && Array.isArray(encyclopedia.unreadItems) && Array.isArray(encyclopedia.unreadUltraRareTitles) && Array.isArray(encyclopedia.unreadMonsters), "図鑑データが不正です。");
+    check(object(encyclopedia) && encyclopedia.version === 14 && object(encyclopedia.items) && object(encyclopedia.itemDiscoveries) && object(encyclopedia.bestQualities) && Array.isArray(encyclopedia.ultraRareTitles) && object(encyclopedia.monsters) && Array.isArray(encyclopedia.unreadItems) && Array.isArray(encyclopedia.unreadUltraRareTitles) && Array.isArray(encyclopedia.unreadMonsters), "図鑑データが不正です。");
     check(Object.entries(encyclopedia.items).every(([id, count]) => known(data.items, id) && integer(count) && count > 0), "アイテム図鑑が不正です。");
     check(Object.entries(encyclopedia.itemDiscoveries).every(([id, entry]) => known(data.items, id) && encyclopedia.items[id] > 0 && object(entry)
       && text(entry.characterId) && text(entry.name) && (entry.roleTitle === null || text(entry.roleTitle))
@@ -301,6 +395,7 @@
     check(new Set(encyclopedia.unreadItems).size === encyclopedia.unreadItems.length && encyclopedia.unreadItems.every(id => known(data.items, id) && encyclopedia.items[id] > 0), "アイテム図鑑の新着情報が不正です。");
     const targetKnown = itemId => encyclopedia.items[itemId] > 0 || data.recipes.some(recipe => recipe.materials?.[itemId] && (!recipe.unlockAfter || story.completed.includes(recipe.unlockAfter) || story.facts.clears.includes(recipe.unlockAfter)));
     check(encyclopedia.itemTarget === null || (object(encyclopedia.itemTarget) && known(data.items, encyclopedia.itemTarget.itemId) && targetKnown(encyclopedia.itemTarget.itemId) && integer(encyclopedia.itemTarget.quantity) && encyclopedia.itemTarget.quantity >= 1 && encyclopedia.itemTarget.quantity <= 999 && integer(encyclopedia.itemTarget.progress) && encyclopedia.itemTarget.progress >= 0), "探索目標の記録が不正です。");
+    check(encyclopedia.craftingTargetId === null || data.recipes.some(recipe => recipe.id === encyclopedia.craftingTargetId && (!recipe.unlockAfter || story.completed.includes(recipe.unlockAfter) || story.facts.clears.includes(recipe.unlockAfter))), "製作目標の記録が不正です。");
     check(encyclopedia.monsterTarget === null || (object(encyclopedia.monsterTarget) && known(data.monsters, encyclopedia.monsterTarget.monsterId) && encyclopedia.monsters[encyclopedia.monsterTarget.monsterId] && integer(encyclopedia.monsterTarget.quantity) && encyclopedia.monsterTarget.quantity >= 1 && encyclopedia.monsterTarget.quantity <= 999 && integer(encyclopedia.monsterTarget.progress) && encyclopedia.monsterTarget.progress >= 0), "討伐目標の記録が不正です。");
     check(new Set(encyclopedia.unreadMonsters).size === encyclopedia.unreadMonsters.length && encyclopedia.unreadMonsters.every(id => known(data.monsters, id) && encyclopedia.monsters[id]), "モンスター図鑑の新着情報が不正です。");
     check(Object.entries(encyclopedia.monsters).every(([id, entry]) => {
@@ -413,6 +508,11 @@
           }) && Object.values(record.targetedHarvestRecords || {}).reduce((sum, entry) => sum + entry.attempts, 0) <= record.targetedHarvestAttempts
             && Object.values(record.targetedHarvestRecords || {}).reduce((sum, entry) => sum + entry.successes, 0) <= record.targetedHarvestSuccesses
             && Object.values(record.targetedHarvestRecords || {}).reduce((sum, entry) => sum + entry.items, 0) <= record.targetedHarvestItems)
+          && (record.routeMentorships == null || Array.isArray(record.routeMentorships) && record.routeMentorships.length <= 32 && record.routeMentorships.every(entry => object(entry)
+            && ["mentor", "apprentice"].includes(entry.role) && typeof entry.key === "string" && typeof entry.partnerCharacterId === "string"
+            && entry.partnerCharacterId !== character.id && state.characters.some(candidate => candidate.id === entry.partnerCharacterId)
+            && typeof entry.partnerName === "string" && entry.partnerName.length > 0 && known(data.dungeons, entry.dungeonId)
+            && ["normal", "abyss", "divine"].includes(entry.difficultyId) && number(entry.completedAt)))
           && validBossRivalries(record.bossRivalries || {}, data)
           && (record.skillRecords == null || object(record.skillRecords) && Object.entries(record.skillRecords).every(([skillId, entry]) => known(data.skills, skillId) && object(entry)
             && ["uses", "damage", "healing", "statuses"].every(key => integer(entry[key])) && entry.uses > 0))
@@ -557,14 +657,26 @@
           }
           if (entry.storyMoments != null) check(Array.isArray(entry.storyMoments) && entry.storyMoments.every(moment => object(moment)
             && ["opening", "discovery", "ending"].includes(moment.kind) && known(data.dungeons, moment.dungeonId) && known(data.storyScenes, moment.sceneId)), "探索履歴の物語記録が不正です。");
+          if (entry.newAchievementIds != null) check(Array.isArray(entry.newAchievementIds) && new Set(entry.newAchievementIds).size === entry.newAchievementIds.length
+            && entry.newAchievementIds.every(id => data.achievements.some(achievement => achievement.id === id)), "探索履歴の実績記録が不正です。");
+          if (entry.trackedAchievementProgress != null) check(validTrackedAchievementProgress(entry.trackedAchievementProgress, data), "探索履歴の追跡実績が不正です。");
+          if (entry.difficultyChapterCompletion != null) check(validDifficultyChapterCompletion(entry.difficultyChapterCompletion, data, story), "探索履歴の高難度踏破図が不正です。");
+          if (entry.chapterMapBenefit != null) check(validChapterMapBenefit(entry.chapterMapBenefit, data, story, entry.dungeonId, entry.difficultyId, true), "探索履歴の踏破図案内が不正です。");
           if (entry.routeEvents != null) {
             const routeEvents = data.config.explorationEvents?.routeEvents || [];
             check(Array.isArray(entry.routeEvents) && entry.routeEvents.length <= routeEvents.length && new Set(entry.routeEvents.map(event => event.id)).size === entry.routeEvents.length && entry.routeEvents.every(event => {
               const definition = object(event) ? routeEvents.find(candidate => candidate.id === event.id) : null;
               const bondNames = event.bondSupportMemberNames || [];
+              const familiarityNames = event.destinationFamiliarityMemberNames || [];
+              const apprenticeNames = event.apprenticeNames || [];
+              const traditionFounderNames = event.traditionFounderNames || [];
               const aptitudeIds = event.attributeIds || [];
+              const routeRecord = story.facts.routeTraditionRecords?.[`${entry.dungeonId}:${entry.difficultyId || "normal"}`];
               const bondLabels = new Set((data.config.explorationEvents?.adventurerBondRouteSupport || []).map(tier => tier.label));
-              return Boolean(definition && event.kind === definition.kind && typeof event.success === "boolean" && typeof event.masteryApplied === "boolean" && (event.personalPracticeApplied == null || typeof event.personalPracticeApplied === "boolean") && (event.naturalAptitudeApplied == null || typeof event.naturalAptitudeApplied === "boolean") && (event.actorName == null || text(event.actorName)) && Array.isArray(aptitudeIds) && aptitudeIds.length <= 2 && new Set(aptitudeIds).size === aptitudeIds.length && aptitudeIds.every(id => attributeIds.includes(id)) && (event.teamSurveyApplied == null || typeof event.teamSurveyApplied === "boolean") && Array.isArray(event.teamSurveyMemberNames || []) && (event.teamSurveyMemberNames || []).length <= 6 && (event.teamSurveyMemberNames || []).every(text) && (event.bondSupportApplied == null || typeof event.bondSupportApplied === "boolean") && Array.isArray(bondNames) && (!event.bondSupportApplied || bondNames.length === 2 && bondNames.every(text) && bondLabels.has(event.bondSupportLabel)) && typeof event.rumorMatched === "boolean" && text(event.text));
+              const mentorship = data.config.explorationEvents?.routeMentorship || {}, inherited = Boolean(event.mentorshipInherited), lineage = Boolean(event.lineageSupportApplied);
+              const mentorshipLimit = (mentorship.maximumApprentices || 2) + (inherited ? Number(mentorship.inheritedAdditionalApprentices) || 0 : 0);
+              const mentorshipBonus = (Number(mentorship.successChanceBonus) || 0) + (inherited ? Number(mentorship.inheritedSuccessChanceBonus) || 0 : 0) + (lineage ? Number(mentorship.lineageSuccessChanceBonus) || 0 : 0);
+              return Boolean(definition && event.kind === definition.kind && typeof event.success === "boolean" && typeof event.masteryApplied === "boolean" && (event.personalPracticeApplied == null || typeof event.personalPracticeApplied === "boolean") && (event.naturalAptitudeApplied == null || typeof event.naturalAptitudeApplied === "boolean") && (event.actorName == null || text(event.actorName)) && Array.isArray(aptitudeIds) && aptitudeIds.length <= 2 && new Set(aptitudeIds).size === aptitudeIds.length && aptitudeIds.every(id => attributeIds.includes(id)) && (event.teamSurveyApplied == null || typeof event.teamSurveyApplied === "boolean") && Array.isArray(event.teamSurveyMemberNames || []) && (event.teamSurveyMemberNames || []).length <= 6 && (event.teamSurveyMemberNames || []).every(text) && (event.destinationFamiliarityApplied == null || typeof event.destinationFamiliarityApplied === "boolean") && Array.isArray(familiarityNames) && familiarityNames.length <= 6 && familiarityNames.every(text) && (!event.destinationFamiliarityApplied || familiarityNames.length > 0 && number(event.destinationFamiliarityBonus) && event.destinationFamiliarityBonus > 0 && event.destinationFamiliarityBonus <= (data.config.explorationEvents?.routeFamiliarity?.maximumBonus || .1)) && (event.mentorshipApplied == null || typeof event.mentorshipApplied === "boolean") && (event.mentorshipInherited == null || typeof event.mentorshipInherited === "boolean") && (event.lineageSupportApplied == null || typeof event.lineageSupportApplied === "boolean") && (!lineage || inherited && text(event.lineagePredecessorName)) && (event.traditionApplied == null || typeof event.traditionApplied === "boolean") && (!event.traditionApplied || (story.facts.routeTraditions || []).includes(`${entry.dungeonId}:${entry.difficultyId || "normal"}`)) && Array.isArray(traditionFounderNames) && (traditionFounderNames.length === 0 || traditionFounderNames.length === 3) && traditionFounderNames.every(text) && (!traditionFounderNames.length || event.traditionApplied && traditionFounderNames.every((name, index) => name === routeRecord?.memberNames?.[index])) && Array.isArray(apprenticeNames) && apprenticeNames.length <= mentorshipLimit && apprenticeNames.every(text) && (!event.mentorshipApplied || text(event.mentorName) && apprenticeNames.length > 0 && event.mentorshipBonus === mentorshipBonus) && (event.bondSupportApplied == null || typeof event.bondSupportApplied === "boolean") && Array.isArray(bondNames) && (!event.bondSupportApplied || bondNames.length === 2 && bondNames.every(text) && bondLabels.has(event.bondSupportLabel)) && typeof event.rumorMatched === "boolean" && text(event.text));
             }), "探索履歴の道中記録が不正です。");
           }
           if (entry.adventurerBondMoments != null) {
@@ -576,6 +688,11 @@
             }), "探索履歴の旅仲間記録が不正です。");
           }
           if (entry.newAdventurerBondTiers != null) check(validBondTierProgress(entry.newAdventurerBondTiers, data, characters, bonds), "探索履歴の旅仲間成長が不正です。");
+          if (entry.newDestinationFamiliarities != null) check(validDestinationFamiliarity(entry.newDestinationFamiliarities, data, characters, entry.dungeonId, entry.difficultyId || "normal"), "探索履歴の土地勘成長が不正です。");
+          if (entry.newRouteTradition != null) check(object(entry.newRouteTradition) && entry.newRouteTradition.dungeonId === entry.dungeonId && entry.newRouteTradition.difficultyId === (entry.difficultyId || "normal") && Array.isArray(entry.newRouteTradition.memberIds) && entry.newRouteTradition.memberIds.length === 3 && new Set(entry.newRouteTradition.memberIds).size === 3 && entry.newRouteTradition.memberIds.every(id => characters.has(id)) && Array.isArray(entry.newRouteTradition.memberNames) && entry.newRouteTradition.memberNames.length === 3 && entry.newRouteTradition.memberNames.every(text), "探索履歴のギルドの道標が不正です。");
+          if (entry.routeTraditionGrowth != null) check(validRouteTraditionGrowth(entry.routeTraditionGrowth, data, entry.dungeonId, entry.difficultyId || "normal"), "探索履歴の道標成長が不正です。");
+          if (entry.retryPreparation != null) check(validRetryPreparation(entry.retryPreparation, data), "探索履歴の再挑戦準備が不正です。");
+          if (entry.retryPreparationGrowth != null) check(!entry.success && validRetryPreparationGrowth(entry.retryPreparationGrowth, data), "探索履歴の再挑戦準備の成長が不正です。");
           if (entry.newSharedHuntLedgerTier != null) check(validSharedHuntLedgerTier(entry.newSharedHuntLedgerTier, data, characters, bonds), "探索履歴の二人の狩り帳成長が不正です。");
           if (entry.sharedHuntLedgerProgress != null) check(validSharedHuntLedgerProgress(entry.sharedHuntLedgerProgress, data, characters, bonds), "探索履歴の二人の狩り帳進捗が不正です。");
           if (entry.namedHuntRecognitionReward != null) check(validNamedHuntRecognitionReward(entry.namedHuntRecognitionReward, entry.newSharedHuntLedgerTier, data), "探索履歴の狩り名の証が不正です。");
@@ -636,6 +753,7 @@
       if (window.AcquisitionSkills) check(object(expedition.acquisitionBonuses), "探索時の獲得補正がありません。");
       const acquisition = window.AcquisitionSkills?.normalize(expedition.acquisitionBonuses);
       check(number(expedition.accessDurationMultiplier) && expedition.accessDurationMultiplier > 0 && expedition.accessDurationMultiplier <= 1, "コードによる探索時間補正が不正です。");
+      if (expedition.chapterMapBenefit != null) check(validChapterMapBenefit(expedition.chapterMapBenefit, data, story, expedition.dungeonId, difficultyId), "探索開始時の踏破図案内が不正です。");
       const normalDuration = window.AcquisitionSkills ? window.AcquisitionSkills.durationMs(duration, expedition.timeMultiplier, acquisition) : duration * expedition.timeMultiplier * 1000;
       const expectedDuration = Math.max(1000, Math.round(normalDuration * expedition.accessDurationMultiplier));
       check(expedition.endsAt - expedition.startedAt === expectedDuration, "探索時間と倍率が一致しません。");
@@ -644,10 +762,22 @@
       check(!state.expeditions.some((other, index) => index < partyIndex && other && expedition.partyIds.some(id => other.partyIds.includes(id))), "同じ冒険者が複数の探索に参加しています。");
       check(number(expedition.startedAt) && number(expedition.endsAt) && expedition.endsAt > expedition.startedAt && integer(expedition.seed) && expedition.seed > 0 && expedition.seed < 2147483647);
       check(number(expedition.power));
-      if (expedition.trackedItemId != null) check(known(data.items, expedition.trackedItemId) && (expedition.trackedItemGoal == null || integer(expedition.trackedItemGoal) && expedition.trackedItemGoal >= 1 && expedition.trackedItemGoal <= 999), "探索中の目標品が不正です。");
-      else check(expedition.trackedItemGoal == null, "探索中の目標数が不正です。");
+      if (expedition.trackedItemId != null) check(known(data.items, expedition.trackedItemId) && (expedition.trackedItemGoal == null || integer(expedition.trackedItemGoal) && expedition.trackedItemGoal >= 1 && expedition.trackedItemGoal <= 999) && (expedition.trackedItemProgressAtDeparture == null || integer(expedition.trackedItemProgressAtDeparture) && expedition.trackedItemProgressAtDeparture >= 0), "探索中の目標品が不正です。");
+      else check(expedition.trackedItemGoal == null && expedition.trackedItemProgressAtDeparture == null, "探索中の目標数が不正です。");
       if (expedition.trackedMonsterId != null) check(known(data.monsters, expedition.trackedMonsterId) && (expedition.trackedMonsterGoal == null || integer(expedition.trackedMonsterGoal) && expedition.trackedMonsterGoal >= 1 && expedition.trackedMonsterGoal <= 999) && (expedition.trackedMonsterProgressAtDeparture == null || integer(expedition.trackedMonsterProgressAtDeparture) && expedition.trackedMonsterProgressAtDeparture >= 0), "探索中の討伐目標が不正です。");
       else check(expedition.trackedMonsterGoal == null && expedition.trackedMonsterProgressAtDeparture == null, "探索中の討伐目標数が不正です。");
+      if (expedition.trackedAchievement != null) check(validTrackedAchievement(expedition.trackedAchievement, data), "探索中の追跡実績が不正です。");
+      if (expedition.guildRouteTradition != null) check(typeof expedition.guildRouteTradition === "boolean" && (!expedition.guildRouteTradition || (story.facts.routeTraditions || []).includes(`${expedition.dungeonId}:${difficultyId}`)), "探索開始時のギルドの道標が不正です。");
+      if (expedition.guildRouteTraditionTierId != null) check(Boolean(expedition.guildRouteTradition) && (data.config.explorationEvents?.routeTradition?.tiers || []).some(tier => tier.id === expedition.guildRouteTraditionTierId), "探索開始時の道標段階が不正です。");
+      if (expedition.guildRouteTraditionFounderNames != null) {
+        const founderNames = expedition.guildRouteTraditionFounderNames;
+        const routeRecord = story.facts.routeTraditionRecords?.[`${expedition.dungeonId}:${difficultyId}`];
+        check(Array.isArray(founderNames) && (founderNames.length === 0 || founderNames.length === 3) && founderNames.every(text)
+          && (!founderNames.length || Boolean(expedition.guildRouteTradition) && founderNames.every((name, index) => name === routeRecord?.memberNames?.[index])), "探索開始時の道標創設者が不正です。");
+      }
+      if (expedition.retryPreparationFailures != null || expedition.retryPreparationDamageReduction != null) {
+        check(validRetryPreparation({ failures: expedition.retryPreparationFailures, damageReduction: expedition.retryPreparationDamageReduction }, data, true), "探索開始時の再挑戦準備が不正です。");
+      }
       if (expedition.trackedMonsterTrailId != null) {
         const routeMonsterIds = Array.from(new Set(data.dungeons[expedition.dungeonId].encounters.flatMap(encounter => encounter.groups.flat())));
         const habitatAtDifficulty = monsterId => state.encyclopedia.monsters[monsterId]?.habitats?.[expedition.dungeonId]?.[difficultyId]?.encountered > 0;
@@ -711,6 +841,10 @@
           }
           if (member.basicDamageType != null) check(["physical", "magic"].includes(member.basicDamageType), "探索中の通常攻撃種別が不正です。");
           if (member.routeEventSuccesses != null) check(object(member.routeEventSuccesses) && Object.entries(member.routeEventSuccesses).every(([id, count]) => (data.config.explorationEvents?.routeEvents || []).some(event => event.id === id) && integer(count) && count > 0), "探索開始時の個人道中経験が不正です。");
+          if (member.destinationClearExperience != null) check(typeof member.destinationClearExperience === "boolean", "探索開始時の攻略経験が不正です。");
+          if (member.destinationClearCount != null) check(integer(member.destinationClearCount) && member.destinationClearCount >= 0 && (!member.destinationClearExperience || member.destinationClearCount > 0), "探索開始時の攻略回数が不正です。");
+          if (member.routeMentorIds != null) check(Array.isArray(member.routeMentorIds) && member.routeMentorIds.length <= 6 && new Set(member.routeMentorIds).size === member.routeMentorIds.length && member.routeMentorIds.every(id => id !== member.id && expedition.partyIds.includes(id) && characters.has(id)), "探索開始時の道案内関係が不正です。");
+          if (member.inheritedRouteGuide != null) check(typeof member.inheritedRouteGuide === "boolean", "探索開始時の継承案内記録が不正です。");
           if (member.treasureOpenings != null) check(integer(member.treasureOpenings) && member.treasureOpenings >= 0, "探索開始時の個人開錠経験が不正です。");
           if (member.bossRivalries != null) check(validBossRivalries(member.bossRivalries, data) && Object.values(member.bossRivalries).every(entry => entry.lastOutcome === "defeat"), "探索開始時のボス因縁が不正です。");
           if (member.sharedSorties != null) check(object(member.sharedSorties) && Object.entries(member.sharedSorties).every(([id, count]) => id !== member.id && characters.has(id) && integer(count) && count > 0), "探索開始時の同行記録が不正です。");
@@ -810,6 +944,17 @@
       check(result.viewed == null || typeof result.viewed === "boolean", "探索結果の既読状態が不正です。");
       if (result.trackedItemId != null) check(known(data.items, result.trackedItemId) && integer(result.trackedItemQuantity) && result.trackedItemQuantity >= 0 && (result.trackedItemGoal == null || integer(result.trackedItemGoal) && result.trackedItemGoal >= 1 && result.trackedItemGoal <= 999) && (result.trackedItemProgress == null || integer(result.trackedItemProgress) && result.trackedItemProgress >= 0), "探索結果の目標品が不正です。");
       else check((result.trackedItemQuantity == null || result.trackedItemQuantity === 0) && result.trackedItemGoal == null && result.trackedItemProgress == null, "探索結果の目標品数が不正です。");
+      if (result.craftingTargetAdvance != null) {
+        const advance = result.craftingTargetAdvance;
+        const recipe = data.recipes.find(entry => entry.id === advance.recipeId);
+        check(object(advance) && recipe && advance.resultId === recipe.resultId
+          && advance.completedItemId === result.trackedItemId && Object.prototype.hasOwnProperty.call(recipe.materials, advance.completedItemId)
+          && integer(result.trackedItemGoal) && integer(result.trackedItemProgress) && result.trackedItemProgress >= result.trackedItemGoal
+          && typeof advance.materialsReady === "boolean"
+          && (advance.nextItemId === null
+            ? advance.materialsReady && advance.nextQuantity === 0
+            : !advance.materialsReady && known(data.items, advance.nextItemId) && Object.prototype.hasOwnProperty.call(recipe.materials, advance.nextItemId) && integer(advance.nextQuantity) && advance.nextQuantity > 0), "探索結果の製作目標進行が不正です。");
+      }
       if (result.trackedMonsterId != null) check(known(data.monsters, result.trackedMonsterId) && integer(result.trackedMonsterQuantity) && result.trackedMonsterQuantity >= 0 && (result.trackedMonsterGoal == null || integer(result.trackedMonsterGoal) && result.trackedMonsterGoal >= 1 && result.trackedMonsterGoal <= 999) && (result.trackedMonsterProgress == null || integer(result.trackedMonsterProgress) && result.trackedMonsterProgress >= 0), "探索結果の討伐目標が不正です。");
       else check((result.trackedMonsterQuantity == null || result.trackedMonsterQuantity === 0) && result.trackedMonsterGoal == null && result.trackedMonsterProgress == null, "探索結果の討伐目標数が不正です。");
       if (result.trackedMonsterTrailId != null) {
@@ -861,6 +1006,9 @@
       if (result.newBestQualities != null) check(Array.isArray(result.newBestQualities) && new Set(result.newBestQualities.map(entry => entry.itemId)).size === result.newBestQualities.length && result.newBestQualities.every(entry => object(entry) && known(data.items, entry.itemId) && ["weapon", "armor"].includes(data.items[entry.itemId].type) && known(data.qualities, entry.qualityId)));
       if (result.newUltraRareTitleIds != null) check(Array.isArray(result.newUltraRareTitleIds) && new Set(result.newUltraRareTitleIds).size === result.newUltraRareTitleIds.length && result.newUltraRareTitleIds.every(id => known(data.ultraRareTitles, id)));
       if (result.newAchievementIds != null) check(Array.isArray(result.newAchievementIds) && new Set(result.newAchievementIds).size === result.newAchievementIds.length && result.newAchievementIds.every(id => data.achievements.some(achievement => achievement.id === id)), "探索結果の実績記録が不正です。");
+      if (result.trackedAchievementProgress != null) check(validTrackedAchievementProgress(result.trackedAchievementProgress, data), "探索結果の追跡実績が不正です。");
+      if (result.difficultyChapterCompletion != null) check(validDifficultyChapterCompletion(result.difficultyChapterCompletion, data, story), "探索結果の高難度踏破図が不正です。");
+      if (result.chapterMapBenefit != null) check(validChapterMapBenefit(result.chapterMapBenefit, data, story, result.dungeonId, result.difficultyId || "normal", true), "探索結果の踏破図案内が不正です。");
       if (result.rumor != null) check(object(result.rumor) && result.rumor.dungeonId === result.dungeonId && /^\d{4}-\d{2}-\d{2}$/.test(result.rumor.dayKey) && (data.expeditionRumors || []).some(rumor => rumor.id === result.rumor.id), "探索結果の旅人の噂が不正です。");
       if (result.newAdventurerMilestones != null) {
         const milestoneMap = new Map((data.adventurerMilestones || []).map(milestone => [milestone.id, milestone]));
@@ -962,6 +1110,11 @@
           && result.newAdventurerBondMomentIds.every(id => definitions.has(id) && logged.has(id) && Object.values(bonds.memories).some(momentIds => momentIds.includes(id))), "探索結果の旅仲間記憶が不正です。");
       }
       if (result.newAdventurerBondTiers != null) check(validBondTierProgress(result.newAdventurerBondTiers, data, characters, bonds), "探索結果の旅仲間成長が不正です。");
+      if (result.newDestinationFamiliarities != null) check(validDestinationFamiliarity(result.newDestinationFamiliarities, data, characters, result.dungeonId, result.difficultyId || "normal"), "探索結果の土地勘成長が不正です。");
+      if (result.newRouteTradition != null) check(object(result.newRouteTradition) && result.newRouteTradition.dungeonId === result.dungeonId && result.newRouteTradition.difficultyId === (result.difficultyId || "normal") && Array.isArray(result.newRouteTradition.memberIds) && result.newRouteTradition.memberIds.length === 3 && new Set(result.newRouteTradition.memberIds).size === 3 && result.newRouteTradition.memberIds.every(id => characters.has(id)) && Array.isArray(result.newRouteTradition.memberNames) && result.newRouteTradition.memberNames.length === 3 && result.newRouteTradition.memberNames.every(text) && (story.facts.routeTraditions || []).includes(`${result.dungeonId}:${result.difficultyId || "normal"}`), "探索結果のギルドの道標が不正です。");
+      if (result.routeTraditionGrowth != null) check(validRouteTraditionGrowth(result.routeTraditionGrowth, data, result.dungeonId, result.difficultyId || "normal"), "探索結果の道標成長が不正です。");
+      if (result.retryPreparation != null) check(validRetryPreparation(result.retryPreparation, data), "探索結果の再挑戦準備が不正です。");
+      if (result.retryPreparationGrowth != null) check(!result.success && validRetryPreparationGrowth(result.retryPreparationGrowth, data), "探索結果の再挑戦準備の成長が不正です。");
       if (result.newSharedHuntLedgerTier != null) check(validSharedHuntLedgerTier(result.newSharedHuntLedgerTier, data, characters, bonds)
         && result.newSharedHuntLedgerTier.monsterId === result.trackedItemHarvestMonsterId && result.newSharedHuntLedgerTier.itemId === result.trackedItemHarvestId,
       "探索結果の二人の狩り帳成長が不正です。");
@@ -991,6 +1144,10 @@
       if (result.autoSold != null) check(Array.isArray(result.autoSold) && result.autoSold.every(entry => object(entry) && known(data.items, entry.itemId) && text(entry.displayName) && known(data.qualities, entry.qualityId) && integer(entry.value) && typeof entry.ruleId === "string" && /^auto-sell-[1-9]\d*$/.test(entry.ruleId)));
       if (result.battleLog != null) check(Array.isArray(result.battleLog) && result.battleLog.length <= 10000 && result.battleLog.every(entry => {
         if (!object(entry) || !text(entry.text) || !["system", "reputation", "formation", "encounter", "round", "hero", "skill", "heal", "guard", "enemy", "victory", "defeat", "recovery", "warning", "burst", "weakness", "status", "arrival", "explore", "story", "companion", "bond", "hunt", "secret", "camp", "hazard", "lore", "gather", "treasure", "treasureGold", "treasureItem", "stairs"].includes(entry.kind)) return false;
+        if (entry.acquiredItemId != null || entry.acquiredItemQuantity != null) {
+          if (!known(data.items, entry.acquiredItemId) || !integer(entry.acquiredItemQuantity) || entry.acquiredItemQuantity < 1) return false;
+        }
+        if (entry.chapterMapGuidance != null && (entry.chapterMapGuidance !== true || entry.kind !== "formation" || !result.chapterMapBenefit || !entry.text.includes(result.chapterMapBenefit.label))) return false;
         if (entry.trackedMonsterTrailId != null && (entry.kind !== "hunt" || entry.trackedMonsterTrailId !== result.trackedMonsterTrailId || !known(data.monsters, entry.trackedMonsterTrailId))) return false;
         if (entry.defeatedMonsterCounts != null && (!object(entry.defeatedMonsterCounts) || !Object.entries(entry.defeatedMonsterCounts).every(([monsterId, quantity]) => known(data.monsters, monsterId) && integer(quantity) && quantity > 0))) return false;
         if (entry.encounteredMonsterIds != null && (!Array.isArray(entry.encounteredMonsterIds) || entry.kind !== "encounter" || entry.encounteredMonsterIds.length > 12 || new Set(entry.encounteredMonsterIds).size !== entry.encounteredMonsterIds.length || !entry.encounteredMonsterIds.every(id => known(data.monsters, id)))) return false;
@@ -1009,12 +1166,30 @@
         if (entry.explorationAttributeIds != null && (!Array.isArray(entry.explorationAttributeIds) || entry.explorationAttributeIds.length > 2 || new Set(entry.explorationAttributeIds).size !== entry.explorationAttributeIds.length || !entry.explorationAttributeIds.every(id => attributeIds.includes(id)))) return false;
         if (entry.routeEventId != null) {
           const memberIds = entry.routeTeamSurveyMemberIds || [], memberNames = entry.routeTeamSurveyMemberNames || [];
+          const familiarityIds = entry.routeDestinationFamiliarityMemberIds || [], familiarityNames = entry.routeDestinationFamiliarityMemberNames || [];
+          const apprenticeIds = entry.routeApprenticeIds || [], apprenticeNames = entry.routeApprenticeNames || [];
           const bondIds = entry.routeBondSupportMemberIds || [], bondNames = entry.routeBondSupportMemberNames || [];
+          const traditionFounderNames = entry.routeTraditionFounderNames || [];
+          const routeRecord = story.facts.routeTraditionRecords?.[`${result.dungeonId}:${result.difficultyId || "normal"}`];
           const bondLabels = new Set((data.config.explorationEvents?.adventurerBondRouteSupport || []).map(tier => tier.label));
+          const mentorship = data.config.explorationEvents?.routeMentorship || {}, inherited = Boolean(entry.routeMentorshipInherited), lineage = Boolean(entry.routeLineageSupportApplied);
+          const mentorshipLimit = (mentorship.maximumApprentices || 2) + (inherited ? Number(mentorship.inheritedAdditionalApprentices) || 0 : 0);
+          const mentorshipBonus = (Number(mentorship.successChanceBonus) || 0) + (inherited ? Number(mentorship.inheritedSuccessChanceBonus) || 0 : 0) + (lineage ? Number(mentorship.lineageSuccessChanceBonus) || 0 : 0);
           return (data.config.explorationEvents?.routeEvents || []).some(event => event.id === entry.routeEventId && event.kind === entry.kind) && typeof entry.routeEventSuccess === "boolean" && typeof entry.routeRumorMatched === "boolean" && (entry.routeEventMasteryApplied == null || typeof entry.routeEventMasteryApplied === "boolean") && (entry.routeEventPersonalPracticeApplied == null || typeof entry.routeEventPersonalPracticeApplied === "boolean") && (entry.routeTeamSurveyApplied == null || typeof entry.routeTeamSurveyApplied === "boolean")
             && (entry.routeNaturalAptitudeApplied == null || typeof entry.routeNaturalAptitudeApplied === "boolean")
             && Array.isArray(memberIds) && Array.isArray(memberNames) && memberIds.length === memberNames.length && memberIds.length <= 6 && memberIds.every(text) && memberNames.every(text)
             && (!entry.routeTeamSurveyApplied || memberIds.length >= 2)
+            && (entry.routeDestinationFamiliarityApplied == null || typeof entry.routeDestinationFamiliarityApplied === "boolean")
+            && Array.isArray(familiarityIds) && Array.isArray(familiarityNames) && familiarityIds.length === familiarityNames.length && familiarityIds.length <= 6 && new Set(familiarityIds).size === familiarityIds.length && familiarityIds.every(text) && familiarityNames.every(text)
+            && (!entry.routeDestinationFamiliarityApplied || familiarityIds.length > 0 && number(entry.routeDestinationFamiliarityBonus) && entry.routeDestinationFamiliarityBonus > 0 && entry.routeDestinationFamiliarityBonus <= (data.config.explorationEvents?.routeFamiliarity?.maximumBonus || .1))
+            && (entry.routeMentorshipApplied == null || typeof entry.routeMentorshipApplied === "boolean")
+            && (entry.routeMentorshipInherited == null || typeof entry.routeMentorshipInherited === "boolean")
+            && (entry.routeLineageSupportApplied == null || typeof entry.routeLineageSupportApplied === "boolean")
+            && (!lineage || inherited && text(entry.routeLineagePredecessorId) && text(entry.routeLineagePredecessorName) && entry.routeLineagePredecessorId !== entry.routeMentorId && !apprenticeIds.includes(entry.routeLineagePredecessorId))
+            && (entry.routeTraditionApplied == null || typeof entry.routeTraditionApplied === "boolean") && (!entry.routeTraditionApplied || (story.facts.routeTraditions || []).includes(`${result.dungeonId}:${result.difficultyId || "normal"}`))
+            && Array.isArray(traditionFounderNames) && (traditionFounderNames.length === 0 || traditionFounderNames.length === 3) && traditionFounderNames.every(text) && (!traditionFounderNames.length || entry.routeTraditionApplied && traditionFounderNames.every((name, index) => name === routeRecord?.memberNames?.[index]))
+            && Array.isArray(apprenticeIds) && Array.isArray(apprenticeNames) && apprenticeIds.length === apprenticeNames.length && apprenticeIds.length <= mentorshipLimit && new Set(apprenticeIds).size === apprenticeIds.length && apprenticeIds.every(text) && apprenticeNames.every(text)
+            && (!entry.routeMentorshipApplied || text(entry.routeMentorId) && text(entry.routeMentorName) && !apprenticeIds.includes(entry.routeMentorId) && apprenticeIds.length > 0 && entry.routeMentorshipBonus === mentorshipBonus)
             && (entry.routeBondSupportApplied == null || typeof entry.routeBondSupportApplied === "boolean")
             && Array.isArray(bondIds) && Array.isArray(bondNames) && bondIds.length === bondNames.length
             && (!entry.routeBondSupportApplied || bondIds.length === 2 && new Set(bondIds).size === 2 && bondIds.every(text) && bondNames.every(text) && bondLabels.has(entry.routeBondSupportLabel));
@@ -1062,6 +1237,7 @@
       const next = parsed.state;
       window.GameState.ensurePartyCapacity(next);
       window.GameState.ensureFacilities(next);
+      window.GameState.ensureAchievementRewards(next);
       window.SaveSystem.replaceWithBackup(next, current);
       Object.keys(current).forEach(key => delete current[key]);
       Object.assign(current, next);

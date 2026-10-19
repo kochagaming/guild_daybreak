@@ -2,6 +2,7 @@
   "use strict";
 
   const definitions = () => window.GameData.config.recurringMissions.groups;
+  const destination = trigger => window.GameData.config.recurringMissions.destinations?.[trigger] || null;
   const state = () => window.GameState.data.recurringMissions;
   const pad = value => String(value).padStart(2, "0");
 
@@ -27,8 +28,22 @@
     return value >>> 0;
   }
 
-  function selectedIds(group, key) {
-    const candidates = group.missions.map(mission => mission.id);
+  function serviceAvailable(pageId, gameState = window.GameState?.data) {
+    const service = window.GameData.config.guildServices?.pages?.[pageId];
+    if (!service || service.initiallyAvailable) return true;
+    const story = gameState?.story || { completed: [], readSceneIds: [] }, unlock = service.unlock;
+    if (unlock?.type === "sceneRead") return (story.readSceneIds || []).includes(unlock.sceneId);
+    if (unlock?.type === "chapterCompleted") return (story.completed || []).includes(unlock.chapterId);
+    return false;
+  }
+
+  function missionAvailable(entry, gameState = window.GameState?.data) {
+    const route = destination(entry.trigger);
+    return !route || serviceAvailable(route.page, gameState);
+  }
+
+  function selectedIds(group, key, gameState = window.GameState?.data) {
+    const candidates = group.missions.filter(entry => missionAvailable(entry, gameState)).map(mission => mission.id);
     const count = Math.min(group.selection.count, candidates.length);
     if (group.selection.strategy === "all" || count === candidates.length) return candidates;
     const pinned = (group.selection.pinnedIds || []).filter(id => candidates.includes(id)).slice(0, count);
@@ -76,6 +91,16 @@
       if (!current || current.periodKey !== key) {
         state().groups[group.id] = createCycle(group, key);
         changed = true;
+      } else {
+        const valid = new Set(group.missions.filter(entry => missionAvailable(entry)).map(entry => entry.id));
+        const retained = current.selectedIds.filter(id => valid.has(id));
+        if (retained.length !== current.selectedIds.length) {
+          const replacements = selectedIds(group, key).filter(id => !retained.includes(id));
+          current.selectedIds = retained.concat(replacements).slice(0, Math.min(group.selection.count, valid.size));
+          current.progress = Object.fromEntries(Object.entries(current.progress).filter(([id]) => current.selectedIds.includes(id)));
+          current.claimed = current.claimed.filter(id => current.selectedIds.includes(id));
+          changed = true;
+        }
       }
       const loginMissions = group.missions.filter(entry => cycle(group.id).selectedIds.includes(entry.id) && entry.trigger === "login");
       loginMissions.forEach(entry => {
@@ -113,12 +138,12 @@
     sync();
     const group = groupDefinition(groupId), entry = group && mission(group, missionId), current = cycle(groupId);
     if (!group || !entry || !current?.selectedIds.includes(missionId)) return { ok: false, message: "定期依頼が見つかりません。" };
-    if (current.claimed.includes(missionId)) return { ok: false, message: "この依頼報酬は受け取り済みです。" };
-    if (!ready(groupId, entry)) return { ok: false, message: "まだ依頼を達成していません。" };
+    if (current.claimed.includes(missionId)) return { ok: false, message: "この依頼は報告済みです。" };
+    if (!ready(groupId, entry)) return { ok: false, message: "まだ報告できる条件を満たしていません。" };
     grant(groupId, entry);
-    window.GameState.addLog(`${group.name}「${entry.title}」の報酬を受け取りました。`, "success");
+    window.GameState.addLog(`${group.name}「${entry.title}」の完了を報告し、報酬を受け取りました。`, "success");
     window.GameState.save();
-    return { ok: true, message: `「${entry.title}」の報酬を受け取りました。` };
+    return { ok: true, message: `「${entry.title}」を報告しました。` };
   }
 
   function claimAll(groupId) {
@@ -126,11 +151,11 @@
     const group = groupDefinition(groupId);
     if (!group) return { ok: false, message: "定期依頼の区分が見つかりません。" };
     const entries = group.missions.filter(entry => ready(groupId, entry));
-    if (!entries.length) return { ok: false, message: "受け取れる依頼報酬はありません。" };
+    if (!entries.length) return { ok: false, message: "報告できる依頼はありません。" };
     entries.forEach(entry => grant(groupId, entry));
-    window.GameState.addLog(`${group.name}${entries.length}件の報酬をまとめて受け取りました。`, "success");
+    window.GameState.addLog(`${group.name}${entries.length}件の完了をまとめて報告しました。`, "success");
     window.GameState.save();
-    return { ok: true, message: `${group.name}の報酬${entries.length}件を受け取りました。` };
+    return { ok: true, message: `${group.name}${entries.length}件を報告しました。` };
   }
 
   function active(groupId) {
@@ -142,5 +167,5 @@
     return definitions().reduce((total, group) => total + active(group.id).filter(entry => ready(group.id, entry)).length, 0);
   }
 
-  window.RecurringMissions = { initialState, state, definitions, periodKey, selectionFor: selectedIds, sync, record, ready, readyCount, claim, claimAll, active };
+  window.RecurringMissions = { initialState, state, definitions, destination, missionAvailable, periodKey, selectionFor: selectedIds, sync, record, ready, readyCount, claim, claimAll, active };
 })();

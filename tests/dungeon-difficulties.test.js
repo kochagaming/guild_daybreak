@@ -10,6 +10,10 @@ assert.deepStrictEqual(Array.from(game.DungeonDifficulty.ids()), ["normal", "aby
 const base = game.GameData.dungeons.meadow;
 const abyss = game.DungeonDifficulty.variant(base, "abyss");
 const divine = game.DungeonDifficulty.variant(base, "divine");
+assert(game.GameData.dungeonDifficulties.abyss.chapterMapDialogue?.receptionist && game.GameData.dungeonDifficulties.abyss.chapterMapDialogue?.adventurer && game.GameData.dungeonDifficulties.abyss.chapterMapDialogue?.archivist, "Abyss chapter completion has a data-driven three-person return conversation");
+assert(game.GameData.dungeonDifficulties.divine.chapterMapDialogue?.title && game.GameData.dungeonDifficulties.divine.chapterMapDialogue.archivist.includes("巡礼図"), "Divine chapter completion has its own pilgrimage-map conversation");
+assert.strictEqual(game.GameData.dungeonDifficulties.abyss.chapterMapBenefit.explorationTimeMultiplier, .95, "A completed abyss chapter map provides a modest repeat-exploration benefit");
+assert.strictEqual(game.GameData.dungeonDifficulties.divine.chapterMapBenefit.explorationTimeMultiplier, .9, "A completed divine chapter map provides a stronger repeat-exploration benefit");
 assert.strictEqual(abyss.name, "魔境の風鳴りの草原");
 assert.strictEqual(divine.name, "神域の風鳴りの草原");
 assert.strictEqual(abyss.duration, Math.ceil(base.duration * 1.5));
@@ -21,6 +25,17 @@ assert(!game.DungeonDifficulty.unlocked("meadow", "abyss"));
 game.GameState.data.story.facts.clears.push("meadow");
 assert(game.DungeonDifficulty.unlocked("meadow", "abyss"));
 assert(!game.DungeonDifficulty.unlocked("meadow", "divine"));
+const openProgress = game.DungeonDifficulty.progress(["meadow", "cave"]);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(openProgress.slice(1))), [
+  { difficultyId: "abyss", name: "魔境", completed: 0, total: 1, complete: false },
+  { difficultyId: "divine", name: "神域", completed: 0, total: 0, complete: false }
+], "Difficulty progress counts only routes that have cleared the preceding tier");
+const nextAbyss = game.DungeonDifficulty.nextAfterResult({ success: true, dungeonId: "meadow", difficultyId: "normal" });
+assert(nextAbyss && nextAbyss.difficultyId === "abyss" && nextAbyss.name === "魔境の風鳴りの草原", "A successful normal clear points to the newly unlocked abyss tier");
+const nextUnclearedAbyss = game.DungeonDifficulty.nextUncleared(["meadow", "cave"], "abyss");
+assert(nextUnclearedAbyss && nextUnclearedAbyss.baseDungeonId === "meadow", "The difficulty ledger can resolve its next eligible uncleared route");
+assert.strictEqual(game.DungeonDifficulty.nextUncleared(["cave"], "abyss"), null, "Locked routes are not advertised as the next hard-mode destination");
+assert.strictEqual(game.DungeonDifficulty.nextAfterResult({ success: false, dungeonId: "meadow", difficultyId: "normal" }), null, "A failed expedition never advertises a harder tier");
 assert.deepStrictEqual(JSON.parse(JSON.stringify(game.DungeonDifficulty.firstClearReward("abyss"))), { gold: 0, materials: { guild_seal: 1 } });
 assert.deepStrictEqual(JSON.parse(JSON.stringify(game.DungeonDifficulty.firstClearReward("divine"))), { gold: 0, materials: { guild_seal: 2 } });
 
@@ -55,13 +70,62 @@ assert.strictEqual(game.GameState.data.expeditions[0].endsAt - game.GameState.da
 const sealsBefore = game.Items.count("guild_seal");
 const firstClearResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
 assert(firstClearResult.success && firstClearResult.firstClearReward, "First hard-mode clear grants a separate reward");
+assert(firstClearResult.newAchievementIds.includes("abyss_threshold"), "The first abyss victory is celebrated as the opening hard-mode milestone");
+assert(firstClearResult.newObservationIds.includes("abyss_spoils"), "The first abyss victory reveals its titled-monster field note");
 assert.strictEqual(game.Items.count("guild_seal"), sealsBefore + 1 + (firstClearResult.rumorConfirmationReward?.quantity || 0) + (firstClearResult.monsterHuntSealReward || 0) + (firstClearResult.newMonsterHabitatSurvey?.sealReward || 0));
 const sealsAfterFirstClear = game.Items.count("guild_seal");
 assert(game.DungeonDifficulty.cleared("meadow", "abyss") && game.DungeonDifficulty.unlocked("meadow", "divine"));
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.DungeonDifficulty.progress(["meadow"]).slice(1))), [
+  { difficultyId: "abyss", name: "魔境", completed: 1, total: 1, complete: true },
+  { difficultyId: "divine", name: "神域", completed: 0, total: 1, complete: false }
+], "Clearing abyss completes its ledger row and opens the same route in the divine row");
+const nextDivine = game.DungeonDifficulty.nextAfterResult(firstClearResult);
+assert(nextDivine && nextDivine.difficultyId === "divine" && nextDivine.name === "神域の風鳴りの草原", "A successful abyss clear points to the newly unlocked divine tier");
+const roadsideRoutes = Object.values(game.GameData.dungeons).filter(dungeon => dungeon.chapterId === "roadside" && dungeon.requiredForStory).sort((left, right) => left.orderInChapter - right.orderInChapter);
+const chapterProgressState = JSON.parse(JSON.stringify(game.GameState.data));
+roadsideRoutes.forEach(dungeon => { if (!chapterProgressState.story.facts.clears.includes(dungeon.id)) chapterProgressState.story.facts.clears.push(dungeon.id); });
+const nextAbyssRoute = game.DungeonDifficulty.nextChapterRouteAfterResult(firstClearResult, chapterProgressState);
+assert(nextAbyssRoute && nextAbyssRoute.baseDungeonId === "whispering_brook" && nextAbyssRoute.difficultyId === "abyss" && nextAbyssRoute.completed === 1 && nextAbyssRoute.total === 5 && nextAbyssRoute.remaining === 4, "A hard-mode victory points to the next uncleared route in the same chapter map");
+assert.strictEqual(game.DungeonDifficulty.nextUncleared(["meadow"], "abyss"), null, "A completed tier has no remaining destination");
+assert.strictEqual(game.DungeonDifficulty.nextUncleared(["meadow"], "divine").baseDungeonId, "meadow", "The ledger advances the same route to divine once abyss is cleared");
+assert.strictEqual(game.DungeonDifficulty.nextAfterResult({ success: true, dungeonId: "meadow", difficultyId: "divine" }), null, "The highest tier has no follow-up difficulty");
 assert(game.Dungeon.start("meadow", 0, 1, "abyss").ok);
 const repeatResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
 assert(repeatResult.success && !repeatResult.firstClearReward, "Repeat clears do not grant the one-time reward again");
 assert.strictEqual(game.Items.count("guild_seal"), sealsAfterFirstClear + (repeatResult.rumorConfirmationReward?.quantity || 0) + (repeatResult.monsterHuntSealReward || 0) + (repeatResult.newMonsterHabitatSurvey?.sealReward || 0));
+
+game.GameState.data.story.readSceneIds = Object.keys(game.GameData.storyScenes);
+roadsideRoutes.forEach(dungeon => {
+  if (!game.GameState.data.story.facts.clears.includes(dungeon.id)) game.GameState.data.story.facts.clears.push(dungeon.id);
+});
+const finalRoadsideRoute = roadsideRoutes[roadsideRoutes.length - 1];
+roadsideRoutes.slice(0, -1).forEach(dungeon => {
+  const key = `${dungeon.id}:abyss`;
+  if (!game.GameState.data.story.facts.difficultyClears.includes(key)) game.GameState.data.story.facts.difficultyClears.push(key);
+});
+assert(game.Dungeon.start(finalRoadsideRoute.id, 0, 1, "abyss").ok, "The final open route in a hard-mode chapter can be started");
+const chapterMapResult = game.Dungeon.completeIfReady(game.GameState.data.expeditions[0].endsAt);
+assert(chapterMapResult.success && chapterMapResult.difficultyChapterCompletion, "Clearing the last hard-mode route celebrates completion of its chapter map");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(chapterMapResult.difficultyChapterCompletion)), {
+  chapterId: "roadside", chapterTitle: "第1章：街道の異変", difficultyId: "abyss", difficultyName: "魔境", totalRoutes: 5, completedChapters: 1
+});
+assert.strictEqual(game.GameState.data.partyHistory[0][0].difficultyChapterCompletion.chapterId, "roadside", "The completed chapter map remains readable in expedition history");
+assert(chapterMapResult.newAchievementIds.includes("abyss_chapter_map"), "The chapter-map celebration and its first long-term milestone are resolved on the same return");
+assert(chapterMapResult.newObservationIds.includes("abyss_atlas_complete"), "The return that completes a hard-mode chapter map also reveals its narrative diary page");
+const mapBenefit = game.DungeonDifficulty.chapterMapBenefit(finalRoadsideRoute, "abyss");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(mapBenefit)), {
+  chapterId: "roadside", difficultyId: "abyss", difficultyName: "魔境", label: "赤糸の道案内", explorationTimeMultiplier: .95, reductionPercent: 5
+}, "A completed chapter map resolves a reusable, data-driven navigation benefit");
+assert.strictEqual(game.DungeonDifficulty.chapterMapBenefit(finalRoadsideRoute, "divine"), null, "An incomplete difficulty does not borrow another tier's completed map");
+assert(game.Dungeon.start(finalRoadsideRoute.id, 0, 1, "abyss").ok, "The completed map can guide a repeat expedition");
+const guidedExpedition = game.GameState.data.expeditions[0];
+assert.strictEqual(guidedExpedition.endsAt - guidedExpedition.startedAt, Math.round(game.DungeonDifficulty.variant(finalRoadsideRoute, "abyss").duration * .95 * 1000), "The atlas benefit shortens repeat exploration in its own chapter and difficulty");
+assert.strictEqual(guidedExpedition.acquisitionBonuses.explorationTime.multiplier, .95, "The atlas benefit composes through the existing exploration-time modifier pipeline");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(guidedExpedition.chapterMapBenefit)), { label: "赤糸の道案内", explorationTimeMultiplier: .95, reductionPercent: 5 }, "Departure snapshots the exact map guidance that affected its duration");
+const guidedResult = game.Dungeon.completeIfReady(guidedExpedition.endsAt);
+assert(guidedResult.chapterMapBenefit && guidedResult.chapterMapBenefit.secondsSaved > 0, "The return report preserves how many seconds the chapter map saved");
+assert(guidedResult.battleLog.some(entry => entry.kind === "formation" && entry.text.includes("【赤糸の道案内】") && entry.text.includes("探索時間を5%短縮")), "A map-guided expedition explains the inherited route knowledge in its live journey log");
+assert.strictEqual(game.GameState.data.partyHistory[0][0].chapterMapBenefit.secondsSaved, guidedResult.chapterMapBenefit.secondsSaved, "The time saved by map guidance remains visible in expedition history");
 
 const slimeHp = game.GameData.monsters.slime.hp, slimeAttack = game.GameData.monsters.slime.attack;
 game.GameData.monsters.slime.hp = 9999; game.GameData.monsters.slime.attack = 5;

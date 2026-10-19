@@ -30,6 +30,15 @@ assert(byId.ultra_rare_titles.paragraphs.join("").includes("千個に一個") &&
 assert.strictEqual(data.config.monsterLoot.normalChance, .1);
 assert.strictEqual(data.config.monsterLoot.bossChance, .2);
 assert(byId.monster_spoils.findings.includes("通常装備：一般10%・ボス20%が基準"));
+assert.strictEqual(byId.abyss_spoils.unlock.type, "difficultyClear");
+assert.strictEqual(byId.abyss_spoils.unlock.difficultyId, "abyss");
+assert(byId.abyss_spoils.paragraphs.join("").includes("別々に") && byId.abyss_spoils.findings.some(entry => entry.includes("固有技")), "The abyss diary reveals inherited spoils and titled techniques only after a hard clear");
+assert.strictEqual(byId.divine_spoils.unlock.difficultyId, "divine");
+assert(byId.divine_spoils.findings.some(entry => entry.includes("三段階")) && byId.divine_spoils.findings.some(entry => entry.includes("魔境の固有技")), "The divine diary records both inherited skills and all three independent drop tiers");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(byId.abyss_atlas_complete.unlock)), { type: "difficultyChapterCompleted", difficultyId: "abyss", target: 1 });
+assert(byId.abyss_atlas_complete.paragraphs.join("").includes("一章ぶん、全員帰還") && byId.abyss_atlas_complete.findings.some(entry => entry.includes("踏破図")), "The abyss chapter-map diary turns full completion into an in-world return record");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(byId.divine_atlas_complete.unlock)), { type: "difficultyChapterCompleted", difficultyId: "divine", target: 1 });
+assert(byId.divine_atlas_complete.paragraphs.join("").includes("巡礼図") && byId.divine_atlas_complete.paragraphs.join("").includes("撤退"), "The divine chapter-map diary preserves both victories and fearful choices as history");
 assert.strictEqual(byId.ailment_triage.unlock.chapterId, "starfall");
 assert(byId.ailment_triage.paragraphs.join("").includes("麻痺") && byId.ailment_triage.paragraphs.join("").includes("錬金工房"));
 assert(byId.ailment_triage.findings.some(entry => entry.includes("通常行動を待たず")));
@@ -76,4 +85,8 @@ assert.strictEqual(byId.targeted_harvest_persistence.unlock.tierId, "trace_reade
 assert.strictEqual(byId.targeted_harvest_consultation.unlock.type, "targetedHarvestConsultation");
 assert(!byId.targeted_harvest_persistence.paragraphs.join("").includes("%"), "The failed-harvest diary leaves hidden odds for the player to infer");
 assert(byId.targeted_harvest_persistence.findings.some(entry => entry.includes("空振り")), "The diary establishes that unsuccessful attempts still leave usable personal knowledge");
+assert.strictEqual(byId.route_mentorship.unlock.type, "routeMentorship");
+assert(byId.route_mentorship.paragraphs.join("").includes("同じ探索地") && byId.route_mentorship.findings.some(entry => entry.includes("再訪")), "The first mentorship diary explains exact-route teaching and its later memory without exposing odds");
+assert.strictEqual(byId.route_mentorship_lineage.unlock.type, "routeMentorshipLineage");
+assert(byId.route_mentorship_lineage.paragraphs.join("").includes("帰り道の系譜") && byId.route_mentorship_lineage.findings.some(entry => entry.includes("次の案内役")), "The lineage diary describes how an apprentice can teach the route onward");
 console.log("Observation notes test passed: unique progressive diary entries and master-data-aligned findings");

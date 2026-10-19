@@ -11,6 +11,7 @@
       routeSuccesses: 0, routeEventSuccesses: {}, treasureOpenings: 0, teamSurveys: 0,
       targetedHarvestAttempts: 0, targetedHarvestSuccesses: 0, targetedHarvestItems: 0,
       targetedHarvestRecords: {},
+      routeMentorships: [],
       damageDealt: 0, healingDone: 0, damageTaken: 0, criticalHits: 0, statusAttempts: 0, statusInflicted: 0, knockouts: 0,
       bestDamage: 0, bestHealing: 0, bestEndurance: 0, bossRivalries: {}, skillRecords: {}, lastAt: null
     };
@@ -21,6 +22,7 @@
     const normalized = Object.assign(emptyExpeditionRecord(), record && typeof record === "object" && !Array.isArray(record) ? record : {});
     normalized.routeEventSuccesses = Object.assign({}, record?.routeEventSuccesses || {});
     normalized.targetedHarvestRecords = Object.fromEntries(Object.entries(record?.targetedHarvestRecords || {}).map(([key, entry]) => [key, Object.assign({ attempts: 0, successes: 0, items: 0, lastAt: null }, entry)]));
+    normalized.routeMentorships = (Array.isArray(record?.routeMentorships) ? record.routeMentorships : []).map(entry => ({ ...entry }));
     normalized.bossRivalries = Object.fromEntries(Object.entries(record?.bossRivalries || {}).map(([bossId, entry]) => [bossId, Object.assign({ defeats: 0, victories: 0, lastOutcome: null, lastAt: null }, entry)]));
     normalized.skillRecords = Object.fromEntries(Object.entries(record?.skillRecords || {}).map(([skillId, entry]) => [skillId, Object.assign({ uses: 0, damage: 0, healing: 0, statuses: 0 }, entry)]));
     return normalized;
@@ -237,6 +239,123 @@
     }));
   }
 
+  function destinationExperience(character) {
+    if (!character?.id) return Object.freeze([]);
+    const familiarity = window.GameData.config.explorationEvents?.routeFamiliarity || {};
+    const tiers = familiarity.tiers || [];
+    const records = new Map();
+    (window.GameState.data.partyHistory || []).flatMap(history => history || []).forEach(entry => {
+      const participantIds = new Set([...(entry.partySetup || []), ...(entry.battle?.members || [])].map(member => member.id).filter(Boolean));
+      if (!participantIds.has(character.id)) return;
+      const difficultyId = entry.difficultyId || "normal", key = `${entry.dungeonId}::${difficultyId}`;
+      const record = records.get(key) || { dungeonId: entry.dungeonId, difficultyId, attempts: 0, clears: 0, lastAt: 0 };
+      record.attempts += 1;
+      if (entry.success) record.clears += 1;
+      record.lastAt = Math.max(record.lastAt, Number(entry.completedAt) || 0);
+      records.set(key, record);
+    });
+    return Object.freeze([...records.values()].filter(record => record.clears > 0).map(record => {
+      const tierIndex = tiers.reduce((found, tier, index) => record.clears >= tier.minimumClears ? index : found, -1);
+      const tier = tierIndex >= 0 ? tiers[tierIndex] : null, nextTier = tiers[tierIndex + 1] || null;
+      return Object.freeze({ ...record, tierId: tier?.id || null, label: tier?.label || "道を知る", successChanceBonus: Number(tier?.successChanceBonus) || 0, nextTierId: nextTier?.id || null, nextLabel: nextTier?.label || null, clearsUntilNext: nextTier ? Math.max(0, nextTier.minimumClears - record.clears) : 0 });
+    }).sort((left, right) => right.successChanceBonus - left.successChanceBonus || right.clears - left.clears || right.lastAt - left.lastAt));
+  }
+
+  function routeMentorships(character) {
+    return Object.freeze(expeditionRecord(character).routeMentorships
+      .filter(entry => entry && ["mentor", "apprentice"].includes(entry.role) && get(entry.partnerCharacterId))
+      .map(entry => Object.freeze({ ...entry }))
+      .sort((left, right) => (Number(right.completedAt) || 0) - (Number(left.completedAt) || 0)));
+  }
+
+  function routeTraditions(character) {
+    if (!character?.id) return Object.freeze([]);
+    const records = window.GameState.data.story?.facts?.routeTraditionRecords || {};
+    return Object.freeze(Object.entries(records).map(([key, record]) => {
+      const memberIds = Array.isArray(record?.memberIds) ? record.memberIds : [];
+      const position = memberIds.indexOf(character.id);
+      if (position < 0 || !window.GameData.dungeons?.[record.dungeonId]) return null;
+      const assistedSorties = Math.max(0, Number(record.assistedSorties) || 0);
+      const traditionTier = window.Exploration.routeTraditionTier(assistedSorties);
+      return Object.freeze({
+        key,
+        dungeonId: record.dungeonId,
+        difficultyId: record.difficultyId || "normal",
+        completedAt: Math.max(0, Number(record.establishedAt) || 0),
+        assistedSorties,
+        lastAssistedAt: Math.max(0, Number(record.lastAssistedAt) || 0),
+        traditionTier: traditionTier ? Object.freeze({ ...traditionTier }) : null,
+        memberIds: Object.freeze([...memberIds]),
+        memberNames: Object.freeze(Array.isArray(record.memberNames) ? [...record.memberNames] : memberIds.map(id => get(id)?.name || "名の残らない冒険者")),
+        role: ["最初の案内役", "道を継いだ案内役", "初めて歩いた仲間"][position] || "道標を残した仲間"
+      });
+    }).filter(Boolean).sort((left, right) => right.completedAt - left.completedAt || left.key.localeCompare(right.key, "ja")));
+  }
+
+  function recordRouteMentorship(character, mentorship) {
+    if (!character?.id || !mentorship || !["mentor", "apprentice"].includes(mentorship.role)) return null;
+    const partner = get(mentorship.partnerCharacterId);
+    if (!partner || partner.id === character.id || !window.GameData.dungeons?.[mentorship.dungeonId]) return null;
+    const record = expeditionRecord(character);
+    const key = [mentorship.role, partner.id, mentorship.dungeonId, mentorship.difficultyId || "normal"].join("::");
+    const previous = record.routeMentorships.find(entry => entry.key === key);
+    if (previous) return Object.freeze({ ...previous });
+    const entry = {
+      key,
+      role: mentorship.role,
+      partnerCharacterId: partner.id,
+      partnerName: partner.name,
+      dungeonId: mentorship.dungeonId,
+      difficultyId: mentorship.difficultyId || "normal",
+      completedAt: Number(mentorship.completedAt) || window.GameRuntime.now()
+    };
+    record.routeMentorships = [entry, ...record.routeMentorships].slice(0, 32);
+    character.expeditionRecord = record;
+    return Object.freeze({ ...entry });
+  }
+
+  function routeMentorshipLineages() {
+    const steps = (window.GameState.data.characters || []).flatMap(mentor => routeMentorships(mentor)
+      .filter(entry => entry.role === "mentor")
+      .map(entry => {
+        const apprentice = get(entry.partnerCharacterId);
+        if (!apprentice) return null;
+        const inherited = routeMentorships(mentor)
+          .filter(previous => previous.role === "apprentice" && previous.dungeonId === entry.dungeonId
+            && previous.difficultyId === entry.difficultyId && previous.completedAt <= entry.completedAt)
+          .sort((left, right) => right.completedAt - left.completedAt)[0] || null;
+        const predecessor = inherited ? get(inherited.partnerCharacterId) : null;
+        const people = [...(predecessor ? [predecessor] : []), mentor, apprentice];
+        return Object.freeze({
+          key: entry.key,
+          dungeonId: entry.dungeonId,
+          difficultyId: entry.difficultyId,
+          completedAt: entry.completedAt,
+          mentorId: mentor.id,
+          mentorName: mentor.name,
+          apprenticeId: apprentice.id,
+          apprenticeName: apprentice.name,
+          inheritedFromId: predecessor?.id || null,
+          inheritedFromName: predecessor?.name || null,
+          characterIds: Object.freeze(people.map(person => person.id)),
+          characterNames: Object.freeze(people.map(person => person.name))
+        });
+      }).filter(Boolean));
+    return Object.freeze(steps.sort((left, right) => right.completedAt - left.completedAt || left.key.localeCompare(right.key, "ja")));
+  }
+
+  function routeMentorshipLineageCount(state = window.GameState.data) {
+    const characters = state?.characters || [], activeIds = new Set(characters.map(character => character.id));
+    return characters.reduce((total, mentor) => {
+      const records = Array.isArray(mentor.expeditionRecord?.routeMentorships) ? mentor.expeditionRecord.routeMentorships : [];
+      const inherited = records.filter(entry => entry?.role === "apprentice" && activeIds.has(entry.partnerCharacterId));
+      return total + records.filter(entry => entry?.role === "mentor" && activeIds.has(entry.partnerCharacterId)
+        && inherited.some(previous => previous.dungeonId === entry.dungeonId
+          && (previous.difficultyId || "normal") === (entry.difficultyId || "normal")
+          && (Number(previous.completedAt) || 0) <= (Number(entry.completedAt) || 0))).length;
+    }, 0);
+  }
+
   function treasureSpecialty(character) {
     const threshold = window.GameData.config.explorationEvents?.treasurePersonalPractice?.openings || 10;
     const count = expeditionRecord(character).treasureOpenings;
@@ -413,10 +532,17 @@
     const record = expeditionRecord(character);
     const masteryRanks = window.GameData.config.characterGrowth?.skillMasteryRanks || [];
     const masteredSkills = signatureSkills(character).filter(entry => entry.mastery.current);
+    const learnedRoutes = new Set(routeMentorships(character).filter(entry => entry.role === "apprentice").map(entry => `${entry.dungeonId}::${entry.difficultyId}`));
+    const inheritedRoutes = new Set(routeMentorships(character).filter(entry => entry.role === "mentor" && learnedRoutes.has(`${entry.dungeonId}::${entry.difficultyId}`)).map(entry => `${entry.dungeonId}::${entry.difficultyId}`));
+    const foundedRouteTraditions = routeTraditions(character);
     return (window.GameData.adventurerMilestones || []).map(definition => {
       const condition = definition.condition;
       const current = condition.type === "routeEventRecord"
         ? Math.max(0, Number(record.routeEventSuccesses?.[condition.routeEventId]) || 0)
+        : condition.type === "routeMentorshipLineageCount"
+          ? inheritedRoutes.size
+        : condition.type === "routeTraditionCount"
+          ? foundedRouteTraditions.length
         : condition.type === "specialtyCount"
           ? fieldSpecialties(character).length
           : condition.type === "sharedSorties"
@@ -943,5 +1069,5 @@
     return { ok: true, message: "キャラクター画像を変更しました。" };
   }
 
-  window.Characters = { get, stats, statBreakdown, attributes, attributeBreakdown, attributeChart, expectedAttribute, attributeKeys, luckAcquisitionMultiplier, addExperience, emptyExpeditionRecord, expeditionRecord, targetedHarvestRecords, targetedHarvestPractice, targetedHarvestPersistence, targetedHarvestConsultation, targetedHarvestConsultationRemembered, targetedHarvestConsultationLedger, sharedHuntLedger, sharedHuntLedgers, sharedHuntLedgerProgress, sharedHuntLedgerPairs, namedHuntEpithets, developingHuntLedgers, namedHuntsForMembers, recordSharedHuntLedger, expeditionRoleLabel, recentExpeditionRole, expeditionRoleConversation, expeditionRoleReturnConversation, expeditionRoleConversationChange, skillMastery, signatureSkills, bossRivalries, activeBossRivalries, recordBossEncounter, expeditionMilestones, routeExperience, routeSpecialties, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, recordBondMemory, bondMemories, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseAttributes, companionDefinition, attackCountFor, attackCountForSpeed };
+  window.Characters = { get, stats, statBreakdown, attributes, attributeBreakdown, attributeChart, expectedAttribute, attributeKeys, luckAcquisitionMultiplier, addExperience, emptyExpeditionRecord, expeditionRecord, targetedHarvestRecords, targetedHarvestPractice, targetedHarvestPersistence, targetedHarvestConsultation, targetedHarvestConsultationRemembered, targetedHarvestConsultationLedger, sharedHuntLedger, sharedHuntLedgers, sharedHuntLedgerProgress, sharedHuntLedgerPairs, namedHuntEpithets, developingHuntLedgers, namedHuntsForMembers, recordSharedHuntLedger, expeditionRoleLabel, recentExpeditionRole, expeditionRoleConversation, expeditionRoleReturnConversation, expeditionRoleConversationChange, skillMastery, signatureSkills, bossRivalries, activeBossRivalries, recordBossEncounter, expeditionMilestones, routeExperience, routeSpecialties, destinationExperience, routeMentorships, routeTraditions, recordRouteMentorship, routeMentorshipLineages, routeMentorshipLineageCount, treasureSpecialty, fieldSpecialties, sharedSorties, recordSharedSortie, recordBondMemory, bondMemories, recordTitle, setRecordTitle, recordExpedition, expToNext, maxWeight, baseMaxWeight, equipmentCapacityAtLevel, averageEquipmentWeight, equipmentWeightUnitAtLevel, equipmentWeight, learnedSkills, weaponRange, basicDamageType, origins, profile, equipmentEffects, skillProgression, portraitId, portraitChoices, matchingPortraits, actionRates, setActionRates, setPortrait, specialEquipment, jobName, baseAttributes, companionDefinition, attackCountFor, attackCountForSpeed };
 })();

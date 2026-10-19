@@ -162,6 +162,18 @@
         attributeIds: [...(entry.explorationAttributeIds || [])],
         teamSurveyApplied: Boolean(entry.routeTeamSurveyApplied),
         teamSurveyMemberNames: [...(entry.routeTeamSurveyMemberNames || [])],
+        destinationFamiliarityApplied: Boolean(entry.routeDestinationFamiliarityApplied),
+        destinationFamiliarityMemberNames: [...(entry.routeDestinationFamiliarityMemberNames || [])],
+        destinationFamiliarityBonus: Number(entry.routeDestinationFamiliarityBonus) || 0,
+        mentorshipApplied: Boolean(entry.routeMentorshipApplied),
+        mentorshipInherited: Boolean(entry.routeMentorshipInherited),
+        lineageSupportApplied: Boolean(entry.routeLineageSupportApplied),
+        lineagePredecessorName: entry.routeLineagePredecessorName || null,
+        mentorName: entry.routeMentorName || null,
+        apprenticeNames: [...(entry.routeApprenticeNames || [])],
+        mentorshipBonus: Number(entry.routeMentorshipBonus) || 0,
+        traditionApplied: Boolean(entry.routeTraditionApplied),
+        traditionFounderNames: [...(entry.routeTraditionFounderNames || [])],
         bondSupportApplied: Boolean(entry.routeBondSupportApplied),
         bondSupportMemberNames: [...(entry.routeBondSupportMemberNames || [])],
         bondSupportLabel: entry.routeBondSupportLabel || null,
@@ -178,6 +190,11 @@
         memberIds: [...entry.memberIds], memberNames: [...entry.memberNames], sharedSorties: entry.sharedSorties,
         routeLabel: entry.routeLabel || null, battleLabel: entry.battleLabel || null
       })),
+      newDestinationFamiliarities: (result.newDestinationFamiliarities || []).map(entry => ({ ...entry })),
+      newRouteTradition: result.newRouteTradition ? { ...result.newRouteTradition, memberIds: [...result.newRouteTradition.memberIds], memberNames: [...result.newRouteTradition.memberNames] } : null,
+      routeTraditionGrowth: result.routeTraditionGrowth ? { ...result.routeTraditionGrowth } : null,
+      retryPreparation: result.retryPreparation ? { ...result.retryPreparation } : null,
+      retryPreparationGrowth: result.retryPreparationGrowth ? { ...result.retryPreparationGrowth } : null,
       newSharedHuntLedgerTier: result.newSharedHuntLedgerTier ? {
         ...result.newSharedHuntLedgerTier,
         memberIds: [...result.newSharedHuntLedgerTier.memberIds], memberNames: [...result.newSharedHuntLedgerTier.memberNames]
@@ -220,7 +237,12 @@
         practice: result.trackedHarvestPractice ? { ...result.trackedHarvestPractice } : null,
         persistence: result.trackedHarvestPersistence ? { ...result.trackedHarvestPersistence } : null
       } : null,
+      craftingTargetAdvance: result.craftingTargetAdvance ? { ...result.craftingTargetAdvance } : null,
       routeMasteryIds: [...(result.newRouteMasteryIds || [])],
+      newAchievementIds: [...(result.newAchievementIds || [])],
+      trackedAchievementProgress: result.trackedAchievementProgress ? { ...result.trackedAchievementProgress } : null,
+      difficultyChapterCompletion: result.difficultyChapterCompletion ? { ...result.difficultyChapterCompletion } : null,
+      chapterMapBenefit: result.chapterMapBenefit ? { ...result.chapterMapBenefit } : null,
       memberHighlights: memberHighlights(result),
       partySetup: Array.isArray(result.partySetup) ? result.partySetup.map(member => ({ ...member, actionRates: { ...member.actionRates }, equipmentNames: [...member.equipmentNames] })) : [],
       storyMoments: Array.isArray(result.storyMoments) ? result.storyMoments.map(moment => ({
@@ -252,6 +274,9 @@
     if (partyRuleCheck && !partyRuleCheck.ok) return { ok: false, message: `この探索地の編成条件を満たしていません。${partyRuleCheck.message}` };
     const power = window.Party.power(partyIndex);
     const startedAt = window.GameRuntime.now();
+    const routeExperience = window.Party.routeExperience(dungeonId, difficultyId, partyIndex);
+    const retryPreparation = window.Party.retryPreparation(dungeonId, difficultyId, partyIndex);
+    const successfulRouteMemberIds = new Set(routeExperience.successfulIds);
     const partySnapshot = members.map((member, position) => {
       const equipped = member.equipment.map(id => window.Items.getInstance(id)).filter(Boolean);
       const reputation = window.Characters.recentExpeditionRole(member);
@@ -264,6 +289,13 @@
         companionStageId: member.source?.type === "companion" ? window.Companions.stageId(member.source.companionId) : null,
         familyIds: window.CreatureFamilies ? window.CreatureFamilies.familyIdsForRace(member.raceId || "human") : [],
         routeEventSuccesses: { ...window.Characters.expeditionRecord(member).routeEventSuccesses },
+        destinationClearExperience: successfulRouteMemberIds.has(member.id),
+        destinationClearCount: Number(routeExperience.successfulClearCounts[member.id]) || 0,
+        routeMentorIds: window.Characters.routeMentorships(member)
+          .filter(entry => entry.role === "apprentice" && entry.dungeonId === dungeonId && entry.difficultyId === difficultyId && members.some(candidate => candidate.id === entry.partnerCharacterId))
+          .map(entry => entry.partnerCharacterId),
+        inheritedRouteGuide: window.Characters.routeMentorships(member)
+          .some(entry => entry.role === "apprentice" && entry.dungeonId === dungeonId && entry.difficultyId === difficultyId),
         treasureOpenings: window.Characters.expeditionRecord(member).treasureOpenings,
         bossRivalries: Object.fromEntries(window.Characters.activeBossRivalries(member).map(entry => [entry.bossId, { defeats: entry.defeats, victories: entry.victories, lastOutcome: entry.lastOutcome, lastAt: entry.lastAt }])),
         sharedSorties: Object.fromEntries(window.Characters.sharedSorties(member).map(entry => [entry.characterId, entry.count])),
@@ -295,7 +327,9 @@
     const baseAcquisitionBonuses = acquisitionApi.resolve(partySnapshot);
     const accessAcquisitionBonuses = window.AccessCodes ? window.AccessCodes.applyAcquisitionBonuses(baseAcquisitionBonuses) : baseAcquisitionBonuses;
     const rumor = window.ExpeditionRumors?.forDungeon(dungeonId) || null;
-    const acquisitionBonuses = window.ExpeditionRumors ? window.ExpeditionRumors.apply(accessAcquisitionBonuses, rumor) : accessAcquisitionBonuses;
+    const rumorAcquisitionBonuses = window.ExpeditionRumors ? window.ExpeditionRumors.apply(accessAcquisitionBonuses, rumor) : accessAcquisitionBonuses;
+    const chapterMapBenefit = difficultySystem?.chapterMapBenefit(baseDungeon, difficultyId, state) || null;
+    const acquisitionBonuses = difficultySystem?.applyChapterMapBenefit(rumorAcquisitionBonuses, baseDungeon, difficultyId, state) || rumorAcquisitionBonuses;
     const accessDurationMultiplier = window.AccessCodes ? window.AccessCodes.explorationDurationMultiplier() : 1;
     const itemTarget = window.Encyclopedia?.trackedTarget() || null;
     const monsterTarget = window.Encyclopedia?.trackedMonsterTarget() || null;
@@ -348,6 +382,7 @@
     const knownTreasureMasteryIds = (window.GameData.config.explorationEvents?.treasure?.types || [])
       .filter(tier => (state.story.facts.treasureTiers?.[tier.id]?.openings || 0) >= treasureMasteryOpenings)
       .map(tier => tier.id);
+    const trackedAchievement = window.Achievements?.tracked?.() || null;
     state.expeditions[partyIndex] = {
       partyIndex,
       timeMultiplier,
@@ -356,13 +391,25 @@
       knownCompanionMomentKeys: [...(state.story.facts.companionMoments || [])],
       knownRouteMasteryIds,
       knownTreasureMasteryIds,
+      guildRouteTradition: routeExperience.traditionEstablished,
+      guildRouteTraditionTierId: routeExperience.traditionTier?.id || null,
+      guildRouteTraditionFounderNames: [...routeExperience.traditionFounderNames],
+      retryPreparationFailures: retryPreparation.failures,
+      retryPreparationDamageReduction: retryPreparation.damageReduction,
       knownMonsterDefeats,
+      trackedAchievement: trackedAchievement ? { id: trackedAchievement.id, current: trackedAchievement.current, target: trackedAchievement.target } : null,
       acquisitionBonuses,
       luckAcquisitionMultiplier: window.Characters.luckAcquisitionMultiplier(members),
       rumor,
       accessDurationMultiplier,
+      chapterMapBenefit: chapterMapBenefit ? {
+        label: chapterMapBenefit.label,
+        explorationTimeMultiplier: chapterMapBenefit.explorationTimeMultiplier,
+        reductionPercent: chapterMapBenefit.reductionPercent
+      } : null,
       trackedItemId: itemTarget?.itemId || null,
       trackedItemGoal: itemTarget?.quantity || null,
+      trackedItemProgressAtDeparture: itemTarget ? itemTarget.progress : null,
       trackedMonsterId: monsterTarget?.monsterId || null,
       trackedMonsterGoal: monsterTarget?.quantity || null,
       trackedMonsterProgressAtDeparture: monsterTarget?.progress || null,
@@ -378,7 +425,7 @@
       seed: Math.floor(window.GameRuntime.random() * 2147483646) + 1
     };
     const rumorDefinition = window.ExpeditionRumors?.definition(rumor);
-    window.GameState.addLog(`${window.Party.name(partyIndex)}が${dungeon.name}へ出発しました。${rumorDefinition ? `「${rumorDefinition.name}」の噂を確かめに向かいます。` : ""}${trackedMonsterTrailId ? `現地調査簿を携え、${monsterTargetDefinition.name}の痕跡を追います。` : ""}${trackedItemHarvestId ? `${monsterTargetDefinition.name}から${window.GameData.items[trackedItemHarvestId].name}を採る支度を整えました。` : ""}${trackedHarvestPractice ? `${trackedHarvestPractice.characterName}の「${trackedHarvestPractice.tierName}」手覚えを頼りにします。` : ""}${trackedHarvestPersistence ? `${trackedHarvestPersistence.characterName}は、これまで採れなかった跡も手掛かりにします。` : ""}${trackedHarvestConsultationTier && trackedHarvestConsultation ? `${trackedHarvestConsultationEpithet ? `「${trackedHarvestConsultationEpithet}」と呼ばれる` : ""}${trackedHarvestConsultation.memberNames.join("と")}は、以前二人で綴じた狩り帳の「${trackedHarvestConsultationTier.tierName}」を開きました。${trackedHarvestConsultationLedger.tier.departure}` : ""}`, "info");
+    window.GameState.addLog(`${window.Party.name(partyIndex)}が${dungeon.name}へ出発しました。${chapterMapBenefit ? `完成した踏破図「${chapterMapBenefit.label}」を広げ、探索時間を${chapterMapBenefit.reductionPercent}%短縮します。` : ""}${retryPreparation.failures ? `${retryPreparation.failures}度の撤退記録を読み返し、「${retryPreparation.label}」を整えました。` : ""}${routeExperience.traditionEstablished ? `三代の案内役から育った「${routeExperience.traditionTier?.label || "ギルドの道標"}」を携えます。` : ""}${rumorDefinition ? `「${rumorDefinition.name}」の噂を確かめに向かいます。` : ""}${trackedMonsterTrailId ? `現地調査簿を携え、${monsterTargetDefinition.name}の痕跡を追います。` : ""}${trackedItemHarvestId ? `${monsterTargetDefinition.name}から${window.GameData.items[trackedItemHarvestId].name}を採る支度を整えました。` : ""}${trackedHarvestPractice ? `${trackedHarvestPractice.characterName}の「${trackedHarvestPractice.tierName}」手覚えを頼りにします。` : ""}${trackedHarvestPersistence ? `${trackedHarvestPersistence.characterName}は、これまで採れなかった跡も手掛かりにします。` : ""}${trackedHarvestConsultationTier && trackedHarvestConsultation ? `${trackedHarvestConsultationEpithet ? `「${trackedHarvestConsultationEpithet}」と呼ばれる` : ""}${trackedHarvestConsultation.memberNames.join("と")}は、以前二人で綴じた狩り帳の「${trackedHarvestConsultationTier.tierName}」を開きました。${trackedHarvestConsultationLedger.tier.departure}` : ""}`, "info");
     if (window.Story) window.Story.recordDeparture(dungeonId);
     if (window.RecurringMissions) window.RecurringMissions.record("departure");
     window.GameState.save();
@@ -498,6 +545,35 @@
         });
       }
     }
+    const familiarityTiers = window.GameData.config.explorationEvents?.routeFamiliarity?.tiers || [];
+    const mentorshipRule = window.GameData.config.explorationEvents?.routeMentorship || {};
+    const guideTier = familiarityTiers.find(tier => tier.id === mentorshipRule.guideTierId);
+    const routeMentor = guideTier ? (expedition.partySnapshot || []).filter(member => Math.max(0, Number(member.destinationClearCount) || 0) >= guideTier.minimumClears)
+      .sort((left, right) => Number(Boolean(right.inheritedRouteGuide)) - Number(Boolean(left.inheritedRouteGuide)) || (Number(right.destinationClearCount) || 0) - (Number(left.destinationClearCount) || 0))[0] || null : null;
+    const mentorshipLimit = (mentorshipRule.maximumApprentices || 1) + (routeMentor?.inheritedRouteGuide ? Number(mentorshipRule.inheritedAdditionalApprentices) || 0 : 0);
+    const mentoredMemberIds = new Set(routeMentor ? (expedition.partySnapshot || []).filter(member => member.id !== routeMentor.id && Math.max(0, Number(member.destinationClearCount) || 0) <= (Number(mentorshipRule.apprenticeMaximumClears) || 0)).slice(0, mentorshipLimit).map(member => member.id) : []);
+    const newDestinationFamiliarities = outcome.success ? (expedition.partySnapshot || []).map(member => {
+      const beforeClears = Math.max(0, Number(member.destinationClearCount) || 0), clears = beforeClears + 1;
+      const previousTier = [...familiarityTiers].reverse().find(tier => beforeClears >= tier.minimumClears) || null;
+      const tier = [...familiarityTiers].reverse().find(candidate => clears >= candidate.minimumClears) || null;
+      if (!tier || tier.id === previousTier?.id) return null;
+      const tierIndex = familiarityTiers.findIndex(candidate => candidate.id === tier.id), nextTier = familiarityTiers[tierIndex + 1] || null;
+      return {
+        characterId: member.id, name: member.name, dungeonId: expedition.dungeonId, difficultyId: expedition.difficultyId || "normal",
+        clears, tierId: tier.id, tierLabel: tier.label, successChanceBonus: tier.successChanceBonus,
+        previousTierId: previousTier?.id || null, previousTierLabel: previousTier?.label || null,
+        nextTierId: nextTier?.id || null, nextTierLabel: nextTier?.label || null,
+        clearsUntilNext: nextTier ? nextTier.minimumClears - clears : 0,
+        ...(routeMentor && mentoredMemberIds.has(member.id) ? { mentorCharacterId: routeMentor.id, mentorName: routeMentor.name } : {})
+      };
+    }).filter(Boolean) : [];
+    newDestinationFamiliarities.filter(entry => entry.mentorCharacterId).forEach(entry => {
+      const mentor = window.Characters.get(entry.mentorCharacterId), apprentice = window.Characters.get(entry.characterId);
+      if (!mentor || !apprentice) return;
+      const shared = { dungeonId: entry.dungeonId, difficultyId: entry.difficultyId, completedAt: expedition.endsAt };
+      window.Characters.recordRouteMentorship(mentor, { ...shared, role: "mentor", partnerCharacterId: apprentice.id });
+      window.Characters.recordRouteMentorship(apprentice, { ...shared, role: "apprentice", partnerCharacterId: mentor.id });
+    });
     const explorationContributions = new Map();
     const explorationContribution = memberId => {
       const current = explorationContributions.get(memberId) || { routeSuccesses: 0, routeEventSuccesses: {}, treasureOpenings: 0, teamSurveys: 0 };
@@ -574,7 +650,41 @@
         if (change.avenged) bossRevengeVictories.push(entry);
       });
     });
+    const routeLineageEntry = outcome.success ? (outcome.battleLog || []).find(entry => entry.routeLineageSupportApplied) : null;
+    const routeLineageSortie = Boolean(routeLineageEntry);
+    if (routeLineageSortie) state.story.facts.routeLineageSorties = Math.max(0, Number(state.story.facts.routeLineageSorties) || 0) + 1;
     const difficultyId = expedition.difficultyId || "normal";
+    const routeTraditionKey = `${baseDungeon.id}:${difficultyId}`;
+    const establishedRouteRecord = state.story.facts.routeTraditionRecords[routeTraditionKey];
+    const establishedRouteUsed = Boolean(establishedRouteRecord && (outcome.battleLog || []).some(entry => entry.routeTraditionApplied));
+    let routeTraditionGrowth = null;
+    if (establishedRouteUsed) {
+      const previousAssists = Math.max(0, Number(establishedRouteRecord.assistedSorties) || 0);
+      const previousTier = window.Exploration.routeTraditionTier(previousAssists);
+      establishedRouteRecord.assistedSorties = previousAssists + 1;
+      establishedRouteRecord.lastAssistedAt = expedition.endsAt;
+      const tier = window.Exploration.routeTraditionTier(establishedRouteRecord.assistedSorties);
+      if (tier && tier.id !== previousTier?.id) routeTraditionGrowth = {
+        dungeonId: baseDungeon.id, difficultyId,
+        assistedSorties: establishedRouteRecord.assistedSorties,
+        tierId: tier.id, tierLabel: tier.label,
+        successChanceBonus: tier.successChanceBonus,
+        description: tier.description
+      };
+    }
+    const establishesRouteTradition = routeLineageSortie && !state.story.facts.routeTraditions.includes(routeTraditionKey);
+    const newRouteTradition = establishesRouteTradition ? {
+      dungeonId: baseDungeon.id, difficultyId,
+      memberIds: [routeLineageEntry.routeLineagePredecessorId, routeLineageEntry.routeMentorId, routeLineageEntry.routeApprenticeIds?.[0]].filter(Boolean),
+      memberNames: [routeLineageEntry.routeLineagePredecessorName, routeLineageEntry.routeMentorName, routeLineageEntry.routeApprenticeNames?.[0]].filter(Boolean),
+      establishedAt: expedition.endsAt,
+      assistedSorties: 0,
+      lastAssistedAt: 0
+    } : null;
+    if (newRouteTradition) {
+      state.story.facts.routeTraditions.push(routeTraditionKey);
+      state.story.facts.routeTraditionRecords[routeTraditionKey] = { ...newRouteTradition, memberIds: [...newRouteTradition.memberIds], memberNames: [...newRouteTradition.memberNames] };
+    }
     const newMonsterInsights = window.Encyclopedia ? window.Encyclopedia.battleInsights(outcome.monsterObservations) : [];
     const newMonsterHabitats = window.Encyclopedia ? window.Encyclopedia.habitatInsights(outcome.monsterEncounters, baseDungeon.id, difficultyId) : [];
     const habitatSurveyBefore = window.Encyclopedia ? window.Encyclopedia.habitatSurvey(baseDungeon.id, difficultyId) : null;
@@ -652,6 +762,7 @@
       ? outcome.drops.filter(drop => drop.itemId === trackedItemId).reduce((sum, drop) => sum + drop.quantity, 0)
       : 0;
     const trackedProgress = trackedItemQuantity ? window.Encyclopedia?.recordTargetProgress(trackedItemId, trackedItemQuantity) : null;
+    const craftingTargetAdvance = trackedProgress?.craftingAdvance || null;
     const trackedMonsterId = expedition.trackedMonsterId || null;
     const trackedMonsterQuantity = trackedMonsterId ? Math.max(0, Number(outcome.monsterCounts?.[trackedMonsterId]) || 0) : 0;
     const trackedMonsterProgress = trackedMonsterQuantity ? window.Encyclopedia?.recordMonsterTargetProgress(trackedMonsterId, trackedMonsterQuantity) : null;
@@ -660,6 +771,30 @@
       return [id, character ? window.Characters.recentExpeditionRole(character) : null];
     }));
     const partyReputationMomentBefore = window.Characters.expeditionRoleConversation(expedition.partySnapshot || []);
+    const retryRule = window.GameData.config.explorationEvents?.retryPreparation || {};
+    const previousRetryFailures = Math.max(0, Math.min(Number(retryRule.maximumFailures) || 0, Number(expedition.retryPreparationFailures) || 0));
+    const nextRetryFailures = outcome.success ? 0 : Math.min(Number(retryRule.maximumFailures) || 0, previousRetryFailures + 1);
+    const retryPreparationGrowth = outcome.success || !nextRetryFailures ? null : {
+      previousFailures: previousRetryFailures,
+      failures: nextRetryFailures,
+      damageReduction: Math.round(nextRetryFailures * (Number(retryRule.damageReductionPerFailure) || 0) * 100) / 100,
+      atMaximum: nextRetryFailures >= (Number(retryRule.maximumFailures) || 0)
+    };
+    const chapterMapBenefit = expedition.chapterMapBenefit ? (() => {
+      const applied = acquisitionApi.normalize(expedition.acquisitionBonuses);
+      const withoutMap = {
+        ...applied,
+        explorationTime: {
+          ...applied.explorationTime,
+          multiplier: applied.explorationTime.multiplier / expedition.chapterMapBenefit.explorationTimeMultiplier
+        }
+      };
+      const baselineDuration = Math.max(1000, Math.round(acquisitionApi.durationMs(dungeon.duration, expedition.timeMultiplier || 1, withoutMap) * expedition.accessDurationMultiplier));
+      return {
+        ...expedition.chapterMapBenefit,
+        secondsSaved: Math.max(0, Math.round((baselineDuration - (expedition.endsAt - expedition.startedAt)) / 1000))
+      };
+    })() : null;
     state.lastResult = {
       id: `result-${window.GameRuntime.now()}-${partyIndex}`, partyIndex, dungeonId: baseDungeon.id, difficultyId, dungeonName: dungeon.name, completedAt: window.GameRuntime.now(),
       success: outcome.success, gold: outcome.gold, exp: outcome.exp, experienceGains, viewed: false,
@@ -667,6 +802,7 @@
       trackedItemId, trackedItemQuantity,
       trackedItemGoal: expedition.trackedItemGoal || null,
       trackedItemProgress: trackedProgress?.progress ?? null,
+      craftingTargetAdvance,
       trackedItemHarvestId: outcome.trackedItemHarvestId || null,
       trackedItemHarvestMonsterId: outcome.trackedItemHarvestMonsterId || null,
       trackedHarvestPractice: outcome.trackedHarvestPractice || null,
@@ -691,6 +827,15 @@
       bossRevengeVictories,
       newAdventurerBondMomentIds,
       newAdventurerBondTiers,
+      newDestinationFamiliarities,
+      newRouteTradition,
+      routeTraditionGrowth,
+      retryPreparation: expedition.retryPreparationFailures > 0 ? {
+        failures: expedition.retryPreparationFailures,
+        damageReduction: expedition.retryPreparationDamageReduction
+      } : null,
+      retryPreparationGrowth,
+      chapterMapBenefit,
       newSharedHuntLedgerTier,
       sharedHuntLedgerProgress,
       namedHuntRecognitionReward,
@@ -721,6 +866,21 @@
     if (namedHuntRecognitionReward) window.Items.add(namedHuntRecognitionReward.itemId, namedHuntRecognitionReward.quantity);
     state.expeditions[partyIndex] = null;
     if (window.Story) state.lastResult.storyCompleted = window.Story.recordResult(state.lastResult);
+    if (earnsFirstClearReward && baseDungeon.requiredForStory && window.Achievements) {
+      const atlas = window.Achievements.difficultyChapterAtlas(difficultyId);
+      const completedChapter = atlas.find(chapter => chapter.chapterId === baseDungeon.chapterId && chapter.complete);
+      if (completedChapter) {
+        state.lastResult.difficultyChapterCompletion = {
+          chapterId: completedChapter.chapterId,
+          chapterTitle: completedChapter.chapterTitle,
+          difficultyId,
+          difficultyName: completedChapter.difficultyName,
+          totalRoutes: completedChapter.total,
+          completedChapters: atlas.filter(chapter => chapter.complete).length
+        };
+        window.GameState.addLog(`${completedChapter.chapterTitle}の${completedChapter.difficultyName}踏破図が完成しました。`, "success");
+      }
+    }
     state.lastResult.newRouteMasteryIds = masteredRouteIds().filter(id => !knownRouteMasteryIds.has(id));
     state.lastResult.newTreasureMasteryIds = masteredTreasureIds().filter(id => !knownTreasureMasteryIds.has(id));
     if (earnsFirstClearReward) {
@@ -787,6 +947,17 @@
     state.lastResult.newAchievementIds = window.Achievements
       ? window.Achievements.entries().filter(entry => entry.complete && !knownAchievementIds.has(entry.id)).map(entry => entry.id)
       : [];
+    if (expedition.trackedAchievement && window.Achievements) {
+      const definition = window.GameData.achievements.find(entry => entry.id === expedition.trackedAchievement.id);
+      const current = definition ? window.Achievements.entry(definition) : null;
+      state.lastResult.trackedAchievementProgress = current ? {
+        achievementId: current.id,
+        before: expedition.trackedAchievement.current,
+        after: current.current,
+        target: current.target,
+        complete: current.complete
+      } : null;
+    }
     state.partyHistory[partyIndex].unshift(historySummary(state.lastResult));
     state.partyHistory[partyIndex] = state.partyHistory[partyIndex].slice(0, 10);
     state.lastResult.newAdventurerReputations = expedition.partyIds.map(id => {

@@ -11,7 +11,7 @@
   function blankDifficulty() { return { encountered: 0, defeated: 0, drops: [], skillIds: [] }; }
   function blankHabitat() { return { encountered: 0, defeated: 0 }; }
   function blankMonster() { return { encountered: 0, defeated: 0, firstDefeat: null, observations: blankObservations(), difficulties: {}, habitats: {} }; }
-  function blank() { return { version: 13, items: {}, itemDiscoveries: {}, bestQualities: {}, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null, monsterTarget: null }; }
+  function blank() { return { version: 14, items: {}, itemDiscoveries: {}, bestQualities: {}, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null, monsterTarget: null, craftingTargetId: null }; }
   function normalizeMonster(entry) {
     const normalized = Object.assign(blankMonster(), entry || {});
     normalized.observations = Object.assign(blankObservations(), entry?.observations || {});
@@ -29,10 +29,11 @@
       // This is an additive extension of the current save format. Persist it on startup.
       window.GameState.needsInitialSave = true;
       bootstrap(state.encyclopedia);
-    } else if (state.encyclopedia.version !== 13 || !state.encyclopedia.itemDiscoveries || !state.encyclopedia.bestQualities || !Array.isArray(state.encyclopedia.ultraRareTitles) || !Array.isArray(state.encyclopedia.unreadUltraRareTitles) || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters) || !(state.encyclopedia.itemTarget === null || typeof state.encyclopedia.itemTarget === "object") || !(state.encyclopedia.monsterTarget === null || typeof state.encyclopedia.monsterTarget === "object")) {
+    } else if (state.encyclopedia.version !== 14 || !state.encyclopedia.itemDiscoveries || !state.encyclopedia.bestQualities || !Array.isArray(state.encyclopedia.ultraRareTitles) || !Array.isArray(state.encyclopedia.unreadUltraRareTitles) || !Array.isArray(state.encyclopedia.unreadItems) || !Array.isArray(state.encyclopedia.unreadMonsters) || !(state.encyclopedia.itemTarget === null || typeof state.encyclopedia.itemTarget === "object") || !(state.encyclopedia.monsterTarget === null || typeof state.encyclopedia.monsterTarget === "object") || !(state.encyclopedia.craftingTargetId === null || typeof state.encyclopedia.craftingTargetId === "string")) {
       const legacyTargetId = state.encyclopedia.trackedItemId;
       const currentTarget = state.encyclopedia.itemTarget;
-      state.encyclopedia.version = 13;
+      const currentCraftingTargetId = state.encyclopedia.craftingTargetId;
+      state.encyclopedia.version = 14;
       state.encyclopedia.items = state.encyclopedia.items || {};
       state.encyclopedia.itemDiscoveries = state.encyclopedia.itemDiscoveries || {};
       state.encyclopedia.bestQualities = state.encyclopedia.bestQualities || {};
@@ -49,6 +50,7 @@
       state.encyclopedia.monsterTarget = state.encyclopedia.monsterTarget && window.GameData.monsters[state.encyclopedia.monsterTarget.monsterId] && state.encyclopedia.monsters[state.encyclopedia.monsterTarget.monsterId]
         ? { monsterId: state.encyclopedia.monsterTarget.monsterId, quantity: state.encyclopedia.monsterTarget.quantity || 1, progress: state.encyclopedia.monsterTarget.progress || 0 }
         : null;
+      state.encyclopedia.craftingTargetId = window.GameData.recipes.some(recipe => recipe.id === currentCraftingTargetId) ? currentCraftingTargetId : null;
       delete state.encyclopedia.trackedItemId;
       Object.keys(state.encyclopedia.monsters || {}).forEach(id => { state.encyclopedia.monsters[id] = normalizeMonster(state.encyclopedia.monsters[id]); });
       bootstrap(state.encyclopedia);
@@ -349,6 +351,26 @@
   function unreadMonsters() { return ensure().unreadMonsters.slice(); }
   function trackedTarget() { const target = ensure().itemTarget; return target ? Object.assign({}, target) : null; }
   function trackedItem() { return trackedTarget()?.itemId || null; }
+  function craftingTarget() { return ensure().craftingTargetId || null; }
+  function setCraftingTarget(recipeId) {
+    const book = ensure();
+    if (recipeId === null) {
+      book.craftingTargetId = null;
+      window.GameState.save();
+      return { ok: true, message: "製作目標を解除しました。" };
+    }
+    const recipe = window.GameData.recipes.find(entry => entry.id === recipeId);
+    if (!recipe || window.Story && !window.Story.canCraft(recipe)) return { ok: false, message: "まだ選べない製作記録です。" };
+    book.craftingTargetId = recipe.id;
+    const needs = Object.entries(recipe.materials).map(([itemId, quantity]) => ({ itemId, quantity: Math.max(0, quantity - window.Items.count(itemId)) }))
+      .filter(entry => entry.quantity > 0)
+      .sort((left, right) => right.quantity - left.quantity || window.GameData.items[left.itemId].name.localeCompare(window.GameData.items[right.itemId].name, "ja"));
+    const next = needs[0] || null;
+    if (next) book.itemTarget = { itemId: next.itemId, quantity: next.quantity, progress: 0 };
+    window.GameState.save();
+    const result = window.GameData.items[recipe.resultId];
+    return { ok: true, message: `${result.name}を製作目標にしました。${next ? `${window.GameData.items[next.itemId].name}×${next.quantity}を次の探索目標にします。` : "必要な素材は揃っています。"}`, itemId: next?.itemId || null, targetQuantity: next?.quantity || 0 };
+  }
   function targetKnown(book, itemId) {
     if (book.items[itemId]) return true;
     const story = window.GameState.data.story;
@@ -370,10 +392,29 @@
     return { ok: true, message: `${template.name}×${targetQuantity}を探索目標に設定しました。` };
   }
   function recordTargetProgress(itemId, quantity) {
-    const target = ensure().itemTarget;
+    const book = ensure();
+    const target = book.itemTarget;
     if (!target || target.itemId !== itemId || !Number.isInteger(quantity) || quantity <= 0) return null;
     target.progress = Math.min(Number.MAX_SAFE_INTEGER, target.progress + quantity);
-    return Object.assign({}, target);
+    const recorded = Object.assign({}, target);
+    if (target.progress < target.quantity || !book.craftingTargetId) return recorded;
+    const recipe = window.GameData.recipes.find(entry => entry.id === book.craftingTargetId);
+    if (!recipe || !Object.prototype.hasOwnProperty.call(recipe.materials, itemId) || window.Items.count(itemId) < recipe.materials[itemId]) return recorded;
+    const remaining = Object.entries(recipe.materials)
+      .map(([requiredItemId, required]) => ({ itemId: requiredItemId, quantity: Math.max(0, required - window.Items.count(requiredItemId)) }))
+      .filter(entry => entry.quantity > 0)
+      .sort((left, right) => right.quantity - left.quantity || window.GameData.items[left.itemId].name.localeCompare(window.GameData.items[right.itemId].name, "ja"));
+    const next = remaining[0] || null;
+    book.itemTarget = next ? { itemId: next.itemId, quantity: next.quantity, progress: 0 } : null;
+    recorded.craftingAdvance = {
+      recipeId: recipe.id,
+      resultId: recipe.resultId,
+      completedItemId: itemId,
+      nextItemId: next?.itemId || null,
+      nextQuantity: next?.quantity || 0,
+      materialsReady: !next
+    };
+    return recorded;
   }
   function trackedMonsterTarget() { const target = ensure().monsterTarget; return target ? Object.assign({}, target) : null; }
   function setTrackedMonster(monsterId, targetQuantity = 1, resetProgress = false) {
@@ -473,5 +514,5 @@
   }
 
   ensure();
-  window.Encyclopedia = { ensure, recordItem, recordItemDiscovery, recordQuality, recordUltraRareTitle, battleInsights, habitatInsights, habitatSurvey, recordBattle, item, itemDiscovery, itemDiscoveriesByCharacter, recentItemDiscoveries, monsterFirstDefeatsByCharacter, recentMonsterFirstDefeats, huntMarks, huntFamiliarity, crossedHuntMarks, bestQuality, ultraRareTitle, monster, monsterHabitats, unreadItems, unreadUltraRareTitles, unreadMonsters, trackedItem, trackedTarget, setTrackedItem, recordTargetProgress, trackedMonsterTarget, setTrackedMonster, recordMonsterTargetProgress, setTrackedHarvest, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
+  window.Encyclopedia = { ensure, recordItem, recordItemDiscovery, recordQuality, recordUltraRareTitle, battleInsights, habitatInsights, habitatSurvey, recordBattle, item, itemDiscovery, itemDiscoveriesByCharacter, recentItemDiscoveries, monsterFirstDefeatsByCharacter, recentMonsterFirstDefeats, huntMarks, huntFamiliarity, crossedHuntMarks, bestQuality, ultraRareTitle, monster, monsterHabitats, unreadItems, unreadUltraRareTitles, unreadMonsters, trackedItem, trackedTarget, setTrackedItem, recordTargetProgress, craftingTarget, setCraftingTarget, trackedMonsterTarget, setTrackedMonster, recordMonsterTargetProgress, setTrackedHarvest, markItemsRead, markMonstersRead, itemAcquisitionSources, itemSources, monsterDungeons };
 })();

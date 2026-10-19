@@ -13,12 +13,26 @@
       id: "abyss", name: "魔境", namePrefix: "魔境の", order: 1, unlockAfter: "normal",
       durationMultiplier: 1.5, rewardMultiplier: 1.5, recommendedLevelMultiplier: 1.35,
       firstClearReward: { gold: 0, materials: { guild_seal: 1 } },
+      chapterMapBenefit: { label: "赤糸の道案内", explorationTimeMultiplier: .95 },
+      chapterMapDialogue: {
+        title: "五枚目の地図を綴じる夜",
+        receptionist: "最後の帰還札です。これで、この章の道すべてへ同じ赤い糸を通せます。",
+        adventurer: "安全になったわけじゃない。でも次の隊は、私たちが迷った場所から先を考えられる。",
+        archivist: "なら恐れた場所も消さずに綴じましょう。完成とは、危険を忘れることではありません。"
+      },
       monsterModifiers: { hp: 1.6, attack: 1.4, defense: 1.3, magicAttack: 1.4, magicDefense: 1.3, speed: 1.15, hitRate: 1.06, evasionRate: 1.1 }
     },
     divine: {
       id: "divine", name: "神域", namePrefix: "神域の", order: 2, unlockAfter: "abyss",
       durationMultiplier: 2.5, rewardMultiplier: 2.5, recommendedLevelMultiplier: 1.75,
       firstClearReward: { gold: 0, materials: { guild_seal: 2 } },
+      chapterMapBenefit: { label: "巡礼図の導き", explorationTimeMultiplier: .9 },
+      chapterMapDialogue: {
+        title: "巡礼図へ金具を留める朝",
+        receptionist: "神域から戻った札が、これで五枚そろいました。どの文字も、ちゃんと帰還者の手で書かれています。",
+        adventurer: "先人の線をなぞるだけでは帰れなかった。だから、逃げた道も助けられた場所も残しておきたい。",
+        archivist: "勝利だけを清書すれば、次の人は同じ恐れを一人で抱えます。震えた筆跡ごと、巡礼図の一部にしましょう。"
+      },
       monsterModifiers: { hp: 2.8, attack: 2, defense: 1.8, magicAttack: 2, magicDefense: 1.8, speed: 1.35, hitRate: 1.12, evasionRate: 1.2 }
     }
   };

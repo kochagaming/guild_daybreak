@@ -46,6 +46,35 @@
     })).filter(group => group.entries.length);
   }
 
+  function trackedMilestone(expedition, events, resolved) {
+    const snapshot = expedition.trackedAchievement;
+    const definition = snapshot && window.GameData.achievements.find(entry => entry.id === snapshot.id);
+    if (!definition) return null;
+    const condition = definition.condition || {};
+    const visibleDefeats = events.flatMap(event => event.entries).reduce((sum, entry) => sum
+      + Object.values(entry.defeatedMonsterCounts || {}).reduce((count, quantity) => count + Number(quantity || 0), 0), 0);
+    const visibleSpecies = new Set(events.flatMap(event => event.entries).flatMap(entry => Object.entries(entry.defeatedMonsterCounts || {})
+      .filter(([, quantity]) => Number(quantity) > 0).map(([monsterId]) => monsterId)));
+    const potential = window.Achievements.expeditionPotential(definition, expedition.dungeonId, expedition.difficultyId || "normal");
+    let gained = 0, possibleGain = potential.possibleGain, relevant = potential.relevant;
+    if (condition.type === "monsterDefeats") {
+      gained = visibleDefeats;
+    } else if (condition.type === "monsterSpecies") {
+      gained = [...visibleSpecies].filter(monsterId => !(window.GameState.data.encyclopedia?.monsters?.[monsterId]?.defeated > 0)).length;
+    }
+    const deterministicClearTypes = new Set(["dungeonClears", "optionalClears", "divineClears", "specificDungeonClear"]);
+    if (resolved && deterministicClearTypes.has(condition.type) && possibleGain) gained = possibleGain;
+    return {
+      achievementId: definition.id,
+      currentAtDeparture: snapshot.current,
+      current: Math.min(snapshot.target, snapshot.current + gained),
+      target: snapshot.target,
+      gained,
+      possibleGain: Math.max(gained, possibleGain),
+      relevant
+    };
+  }
+
   function active(expedition, now = window.GameRuntime.now()) {
     const dungeon = window.DungeonDifficulty.variant(expedition.dungeonId, expedition.difficultyId || "normal");
     const outcome = preview(expedition), plan = window.Exploration.plan(dungeon, expedition.timeMultiplier || 1);
@@ -93,6 +122,16 @@
       progressAtDeparture: expedition.trackedMonsterProgressAtDeparture || 0,
       quantity: trackedMonsterQuantity
     } : null;
+    const trackedItemId = expedition.trackedItemId || null;
+    const trackedItemQuantity = trackedItemId ? events.reduce((sum, event) => sum + event.entries.reduce((entrySum, entry) => entrySum
+      + (entry.acquiredItemId === trackedItemId ? Number(entry.acquiredItemQuantity) || 0 : 0), 0), 0) : 0;
+    const itemTarget = trackedItemId ? {
+      itemId: trackedItemId,
+      goal: expedition.trackedItemGoal || 1,
+      progressAtDeparture: expedition.trackedItemProgressAtDeparture || 0,
+      quantity: trackedItemQuantity
+    } : null;
+    const milestone = trackedMilestone(expedition, events, resolved && last?.status !== "撤退");
     return {
       active: true, revision, progress, setup: groups.setup, events,
       status: last?.status === "撤退" ? "撤退・帰還中" : resolved ? "帰還中" : last?.status === "交戦中" ? `第${last.number}戦・交戦中` : last ? `第${last.number}区画・探索中` : "探索中",
@@ -100,7 +139,9 @@
       dungeonName: dungeon.name,
       partyIndex: expedition.partyIndex || 0,
       partyNames: (expedition.partySnapshot || []).map(member => member.name).filter(Boolean),
-      huntTarget
+      huntTarget,
+      itemTarget,
+      milestone
     };
   }
 

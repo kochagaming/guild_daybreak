@@ -46,6 +46,17 @@ async function run() {
   assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok, "The exploration target is valid save data");
   assert((await game.GameClient.execute("encyclopedia.clearTrackedItem", {})).ok);
   assert.strictEqual(game.Encyclopedia.trackedItem(), null);
+  const trackedRecipe = await game.GameClient.execute("encyclopedia.trackRecipe", { recipeId: "forge_hide_robe" });
+  assert(trackedRecipe.ok && trackedRecipe.itemId === "beast_hide" && trackedRecipe.targetQuantity === 4, "A crafting target immediately selects its largest missing material");
+  assert.strictEqual(game.Encyclopedia.craftingTarget(), "forge_hide_robe");
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "beast_hide", quantity: 4, progress: 0 });
+  game.Items.add("beast_hide", 4, { source: "test" });
+  const advancedCraftingTarget = game.Encyclopedia.recordTargetProgress("beast_hide", 4);
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(advancedCraftingTarget.craftingAdvance)), { recipeId: "forge_hide_robe", resultId: "hide_robe", completedItemId: "beast_hide", nextItemId: "slime_gel", nextQuantity: 2, materialsReady: false });
+  assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "slime_gel", quantity: 2, progress: 0 }, "Completing one crafting requirement automatically advances the exploration target to the next missing material");
+  assert(game.SaveTransfer.parse(JSON.stringify(game.GameState.data)).ok, "A persistent crafting target is valid save data");
+  assert((await game.GameClient.execute("encyclopedia.clearTrackedRecipe", {})).ok);
+  assert.strictEqual(game.Encyclopedia.craftingTarget(), null);
   const firstUltra = game.Items.add("wooden_sword", 1, { source: "drop", qualityId: "standard", ultraRareTitleId: "worldbreaker", modifiers: { hp: 0, attack: 0, defense: 0 } });
   assert.deepStrictEqual(Array.from(firstUltra.newUltraRareTitleIds), ["worldbreaker"]);
   assert(game.Encyclopedia.ultraRareTitle("worldbreaker") && game.Encyclopedia.unreadUltraRareTitles().includes("worldbreaker"));
@@ -257,6 +268,9 @@ async function run() {
   const invalidTrackedItem = JSON.parse(JSON.stringify(game.GameState.data));
   invalidTrackedItem.encyclopedia.itemTarget = { itemId: "unknown_relic", quantity: 5, progress: 0 };
   assert(!game.SaveTransfer.parse(JSON.stringify(invalidTrackedItem)).ok);
+  const invalidCraftingTarget = JSON.parse(JSON.stringify(game.GameState.data));
+  invalidCraftingTarget.encyclopedia.craftingTargetId = "missing_recipe";
+  assert(!game.SaveTransfer.parse(JSON.stringify(invalidCraftingTarget)).ok);
   const invalidTrackedMonster = JSON.parse(JSON.stringify(game.GameState.data));
   invalidTrackedMonster.encyclopedia.monsterTarget = { monsterId: "unknown_monster", quantity: 5, progress: 0 };
   assert(!game.SaveTransfer.parse(JSON.stringify(invalidTrackedMonster)).ok);
@@ -301,7 +315,8 @@ async function run() {
   delete priorV8.encyclopedia.itemTarget;
   storage.set(game.SaveSystem.exportKey, JSON.stringify(priorV8));
   game = load();
-  assert.strictEqual(game.GameState.data.encyclopedia.version, 13);
+  assert.strictEqual(game.GameState.data.encyclopedia.version, 14);
+  assert.strictEqual(game.Encyclopedia.craftingTarget(), null);
   assert.deepStrictEqual(JSON.parse(JSON.stringify(game.Encyclopedia.trackedTarget())), { itemId: "wooden_sword", quantity: 1, progress: 0 });
   assert.strictEqual(game.Encyclopedia.bestQuality("wooden_sword"), "standard");
   assert(game.Encyclopedia.ultraRareTitle("worldbreaker"), "Version 8 archives retain ultra-rare discoveries while migrating the exploration target");

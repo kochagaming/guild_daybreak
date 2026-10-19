@@ -47,6 +47,17 @@
     Object.values(target.story.facts.routeEvents).forEach(record => { if (record.rumorMatches == null) record.rumorMatches = 0; });
     if (!target.story.facts.treasureTiers || typeof target.story.facts.treasureTiers !== "object" || Array.isArray(target.story.facts.treasureTiers)) target.story.facts.treasureTiers = {};
     if (!Number.isInteger(target.story.facts.teamSurveys) || target.story.facts.teamSurveys < 0) target.story.facts.teamSurveys = 0;
+    if (typeof target.story.facts.retryPreparationObserved !== "boolean") target.story.facts.retryPreparationObserved = false;
+    if (typeof target.story.facts.retryPreparationOvercome !== "boolean") target.story.facts.retryPreparationOvercome = false;
+    if (!Number.isInteger(target.story.facts.routeLineageSorties) || target.story.facts.routeLineageSorties < 0) target.story.facts.routeLineageSorties = 0;
+    if (!Array.isArray(target.story.facts.routeTraditions)) target.story.facts.routeTraditions = [];
+    target.story.facts.routeTraditions = [...new Set(target.story.facts.routeTraditions.filter(key => typeof key === "string" && key.includes(":")))];
+    if (!target.story.facts.routeTraditionRecords || typeof target.story.facts.routeTraditionRecords !== "object" || Array.isArray(target.story.facts.routeTraditionRecords)) target.story.facts.routeTraditionRecords = {};
+    Object.values(target.story.facts.routeTraditionRecords).forEach(record => {
+      if (!record || typeof record !== "object") return;
+      if (record.assistedSorties == null) record.assistedSorties = 0;
+      if (record.lastAssistedAt == null) record.lastAssistedAt = 0;
+    });
     if (!Array.isArray(target.story.readSceneIds)) {
       const read = new Set();
       (target.story.completed || []).forEach(chapterId => {
@@ -89,6 +100,7 @@
         if (!Number.isInteger(character.expeditionRecord.targetedHarvestSuccesses)) character.expeditionRecord.targetedHarvestSuccesses = 0;
         if (!Number.isInteger(character.expeditionRecord.targetedHarvestItems)) character.expeditionRecord.targetedHarvestItems = 0;
         if (!character.expeditionRecord.targetedHarvestRecords || typeof character.expeditionRecord.targetedHarvestRecords !== "object" || Array.isArray(character.expeditionRecord.targetedHarvestRecords)) character.expeditionRecord.targetedHarvestRecords = {};
+        if (!Array.isArray(character.expeditionRecord.routeMentorships)) character.expeditionRecord.routeMentorships = [];
       }
       if (character.source.type === "companion") {
         const profile = window.GameData.companionProfiles?.[character.source.companionId];
@@ -96,6 +108,15 @@
         if (profile?.previousPortraitIds?.includes(character.portraitId)) character.portraitId = identity?.portraitId || character.portraitId;
       }
     });
+    return target;
+  }
+
+  function ensureAchievementRewards(target) {
+    if (!target.achievementRewards || typeof target.achievementRewards !== "object" || Array.isArray(target.achievementRewards)) {
+      target.achievementRewards = { version: 1, claimed: [], trackedId: null };
+    }
+    if (!Array.isArray(target.achievementRewards.claimed)) target.achievementRewards.claimed = [];
+    if (target.achievementRewards.trackedId === undefined) target.achievementRewards.trackedId = null;
     return target;
   }
 
@@ -120,13 +141,14 @@
   function initialState() {
     return {
       version: 12,
-      story: { version: 1, completed: [], readSceneIds: [], joinedCompanionIds: [], companionStages: {}, facts: { departed: false, clears: [], difficultyClears: [], discoveries: [], companionMoments: [], routeEvents: {}, treasureTiers: {}, teamSurveys: 0 } },
+      story: { version: 1, completed: [], readSceneIds: [], joinedCompanionIds: [], companionStages: {}, facts: { departed: false, clears: [], difficultyClears: [], discoveries: [], companionMoments: [], routeEvents: {}, treasureTiers: {}, teamSurveys: 0, retryPreparationObserved: false, retryPreparationOvercome: false, routeLineageSorties: 0, routeTraditions: [], routeTraditionRecords: {} } },
       gold: 500,
       facilities: initialFacilities(),
       recruitment: { version: 2, nextId: 1, pending: null },
       commissions: { version: 1, progress: {}, claimed: [] },
       recurringMissions: window.RecurringMissions ? window.RecurringMissions.initialState() : { version: 1, groups: {} },
-      encyclopedia: { version: 13, items: { wooden_sword: 1, cloth_clothes: 1 }, itemDiscoveries: {}, bestQualities: { wooden_sword: "standard", cloth_clothes: "standard" }, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null, monsterTarget: null },
+      achievementRewards: { version: 1, claimed: [], trackedId: null },
+      encyclopedia: { version: 14, items: { wooden_sword: 1, cloth_clothes: 1 }, itemDiscoveries: {}, bestQualities: { wooden_sword: "standard", cloth_clothes: "standard" }, ultraRareTitles: [], monsters: {}, unreadItems: [], unreadUltraRareTitles: [], unreadMonsters: [], itemTarget: null, monsterTarget: null, craftingTargetId: null },
       observationJournal: { version: 1, readIds: [] },
       dailyShop: { version: 1, dateKey: null, offers: [] },
       autoSell: { version: 2, enabled: false, nextId: 1, rules: [] },
@@ -157,7 +179,9 @@
     || saved.recruitment?.version !== 2 || saved.autoSell?.version !== 2 || saved.facilities?.version !== 3
     || !Array.isArray(saved.inventory?.equipment) || saved.inventory.equipment.some(item => item.ultraRareTitleId === undefined || Object.prototype.hasOwnProperty.call(item, "equipmentSkills"))))
     ? "旧形式または不完全なセーブは読み込めません。保存データは変更していません。" : null;
-  const state = ensureCharacterSources(ensureStory(ensureFacilities(ensurePartyCapacity(loadError ? initialState() : saved || initialState()))));
+  const sourceState = loadError ? initialState() : saved || initialState();
+  const addedAchievementRewards = !sourceState.achievementRewards;
+  const state = ensureAchievementRewards(ensureCharacterSources(ensureStory(ensureFacilities(ensurePartyCapacity(sourceState)))));
   const addedDailyShop = !state.dailyShop;
   if (addedDailyShop) state.dailyShop = { version: 1, dateKey: null, offers: [] };
   const addedObservationJournal = !state.observationJournal;
@@ -175,8 +199,9 @@
     ensureFacilities,
     ensureStory,
     ensureCharacterSources,
+    ensureAchievementRewards,
     loadError,
-    needsInitialSave: (!saved || addedDailyShop || addedObservationJournal) && !loadError,
+    needsInitialSave: (!saved || addedDailyShop || addedObservationJournal || addedAchievementRewards) && !loadError,
     save() {
       if (this.loadError) throw new Error(this.loadError);
       if (transactionActive) { saveRequested = true; return; }

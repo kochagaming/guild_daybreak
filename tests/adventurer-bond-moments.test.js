@@ -19,7 +19,9 @@ function moments(seed, members) {
 
 const definitions = new Map(game.GameData.config.explorationEvents.adventurerBondMoments.map(entry => [entry.id, entry]));
 const huntMemoryId = game.GameData.config.explorationEvents.targetedHarvestConsultation.bondMomentId;
+const routeReunionMemoryId = "route_mentorship_reunion";
 assert.strictEqual(definitions.get(huntMemoryId).trigger, "targetedHarvestConsultation", "The shared hunt ledger is an earned event memory rather than a random travel scene");
+assert.strictEqual(definitions.get(routeReunionMemoryId).trigger, "routeMentorshipReunion", "A route reunion is earned by an exact-route mentorship rather than random travel");
 assert.strictEqual(moments(1, party(4)).length, 0, "A pair needs five shared departures before a travel-companion scene can occur");
 for (let seed = 1; seed <= 100; seed += 1) assert.strictEqual(moments(seed, party(4)).length, 0, "An unfamiliar pair never rolls a relationship scene");
 for (let seed = 1; seed <= 100; seed += 1) assert.strictEqual(moments(seed, party(20, true)).length, 0, "Authored companions use their authored scenes instead of generic recruit moments");
@@ -49,6 +51,17 @@ rememberedParty[1].bondMomentIds = { "adventurer-1": basicIds };
 let unseenAfterBasics = null;
 for (let seed = 1; seed <= 100 && !unseenAfterBasics; seed += 1) unseenAfterBasics = moments(seed, rememberedParty)[0] || null;
 assert(unseenAfterBasics && definitions.get(unseenAfterBasics.adventurerBondMomentId).minimumSharedSorties === 20, "A pair sees newly unlocked memories before repeating earlier scenes");
+
+const reunionParty = party(1);
+reunionParty[1].routeMentorIds = [reunionParty[0].id];
+const reunionMoments = moments(41, reunionParty);
+assert.strictEqual(reunionMoments.length, 1, "A mentor and apprentice revisit produces one relationship scene without also rolling a generic scene");
+assert.strictEqual(reunionMoments[0].adventurerBondMomentId, routeReunionMemoryId);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(reunionMoments[0].adventurerBondMemberNames)), ["アルト", "ベル"], "The reunion keeps the mentor and apprentice roles in narrative order");
+assert(reunionMoments[0].text.includes("教わった道ですから") && reunionMoments[0].text.includes("アルト") && reunionMoments[0].text.includes("ベル"), "The exact-route reunion resolves both names into an authored exchange");
+reunionParty[0].bondMomentIds = { "adventurer-2": [routeReunionMemoryId] };
+reunionParty[1].bondMomentIds = { "adventurer-1": [routeReunionMemoryId] };
+assert(!moments(41, reunionParty).some(entry => entry.adventurerBondMomentId === routeReunionMemoryId), "The exact same reunion is archived once instead of repeating on every return");
 
 const routeKinds = new Set(game.GameData.config.explorationEvents.routeEvents.map(entry => entry.kind));
 const routeEntry = (seed, members) => game.Exploration.journey(dungeon, 1, seed, undefined, members, [])

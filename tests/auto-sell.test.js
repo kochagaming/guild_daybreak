@@ -21,7 +21,7 @@ const assert = require("assert");
   }
   const game = context.window;
   const execute = (type, payload) => game.GameClient.execute(type, payload);
-  const controlled = { source: "drop", qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 }, equipmentSkills: [] };
+  const controlled = { source: "drop", qualityId: "standard", modifiers: { hp: 0, attack: 0, defense: 0 }, equipmentSkills: [], random: () => 1 };
 
   const sample = game.Items.createInstance("wooden_sword", controlled);
   let result = await execute("autosell.add", { instanceId: sample.id });
@@ -47,13 +47,13 @@ const assert = require("assert");
   assert(!(await execute("autosell.add", { instanceId: ultra.id })).ok, "Ultra-rare equipment cannot be registered");
 
   for (let index = 0; index < 12; index += 1) {
-    const extra = game.Items.createInstance("wooden_sword", { qualityId: "standard", modifiers: { hp: 50 + index, attack: 0, defense: 0 }, equipmentSkills: [] });
+    const extra = game.Items.createInstance("wooden_sword", { qualityId: "standard", modifiers: { hp: 50 + index, attack: 0, defense: 0 }, equipmentSkills: [], random: () => 1 });
     assert((await execute("autosell.add", { instanceId: extra.id })).ok);
   }
   assert(game.GameState.data.autoSell.rules.length > 8, "Auto-sell registrations must have no fixed limit");
 
   const hero = require("./helpers").createCharacter(game, "売却確認", "warrior");
-  const identical = Array.from({ length: 3 }, () => game.Items.createInstance("wooden_sword", { qualityId: "standard", modifiers: { hp: 31, attack: 0, defense: 0 }, equipmentSkills: [] }));
+  const identical = Array.from({ length: 3 }, () => game.Items.createInstance("wooden_sword", { qualityId: "standard", modifiers: { hp: 31, attack: 0, defense: 0 }, equipmentSkills: [], random: () => 1 }));
   identical[0].locked = true;
   assert(game.Items.equip(hero.id, identical[1].id).ok);
   const key = game.Items.stackKey(identical[0]);

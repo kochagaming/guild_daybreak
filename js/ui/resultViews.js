@@ -74,6 +74,16 @@
       attributeIds: [...(entry.explorationAttributeIds || [])],
       teamSurveyApplied: Boolean(entry.routeTeamSurveyApplied),
       teamSurveyMemberNames: [...(entry.routeTeamSurveyMemberNames || [])],
+      destinationFamiliarityApplied: Boolean(entry.routeDestinationFamiliarityApplied),
+      destinationFamiliarityMemberNames: [...(entry.routeDestinationFamiliarityMemberNames || [])],
+      mentorshipApplied: Boolean(entry.routeMentorshipApplied),
+      mentorshipInherited: Boolean(entry.routeMentorshipInherited),
+      lineageSupportApplied: Boolean(entry.routeLineageSupportApplied),
+      traditionApplied: Boolean(entry.routeTraditionApplied),
+      traditionFounderNames: [...(entry.routeTraditionFounderNames || [])],
+      lineagePredecessorName: entry.routeLineagePredecessorName || null,
+      mentorName: entry.routeMentorName || null,
+      apprenticeNames: [...(entry.routeApprenticeNames || [])],
       bondSupportApplied: Boolean(entry.routeBondSupportApplied),
       bondSupportMemberNames: [...(entry.routeBondSupportMemberNames || [])],
       bondSupportLabel: entry.routeBondSupportLabel || null,
@@ -89,7 +99,7 @@
     const definitions = window.GameData.config.characterGrowth?.attributes?.definitions || {};
     const aptitudeText = entry => entry.naturalAptitudeApplied && entry.actorName && entry.attributeIds.length
       ? `<small>導いた者：${escape(entry.actorName)}（${entry.attributeIds.map(id => escape(definitions[id]?.shortName || definitions[id]?.name || id)).join("・")}）</small>` : "";
-    return `<section class="result-route-events"><div><span class="label">JOURNEY DISCOVERY</span><strong>道中で起きたこと</strong></div>${entries.map(entry => `<article class="${entry.success ? "success" : "failure"} ${entry.rumorMatched ? "is-rumor-match" : ""}"><span aria-hidden="true">${entry.kind === "secret" ? "?" : entry.kind === "camp" ? "♨" : entry.kind === "lore" ? "文" : entry.kind === "gather" ? "採" : "!"}</span><div><strong>${entry.teamSurveyApplied ? "熟練者の連携探索 · " : ""}${entry.rumorMatched ? "噂と一致 · " : ""}${escape(entry.name)} · ${entry.success ? "成功" : "失敗"}${entry.naturalAptitudeApplied ? " · 基礎能力を活用" : ""}${entry.personalPracticeApplied ? " · 本人の経験を活用" : ""}${entry.masteryApplied ? " · 観察記録を活用" : ""}${entry.bondSupportApplied ? ` · ${escape(entry.bondSupportLabel || "旅仲間の連携")}` : ""}</strong>${aptitudeText(entry)}${entry.teamSurveyMemberNames?.length ? `<small>地図を重ねた者：${entry.teamSurveyMemberNames.map(escape).join("、")}</small>` : ""}${entry.bondSupportMemberNames?.length ? `<small>息を合わせた者：${entry.bondSupportMemberNames.map(escape).join("、")}</small>` : ""}<p>${escape(entry.text)}</p></div></article>`).join("")}<button class="button ghost" data-action="jump-result-section" data-target="result-battle-records">探索ログで確認</button></section>`;
+    return `<section class="result-route-events"><div><span class="label">JOURNEY DISCOVERY</span><strong>道中で起きたこと</strong></div>${entries.map(entry => `<article class="${entry.success ? "success" : "failure"} ${entry.rumorMatched ? "is-rumor-match" : ""} ${entry.mentorshipInherited ? "is-inherited-guide" : ""} ${entry.lineageSupportApplied ? "is-route-lineage" : ""} ${entry.traditionApplied ? "is-route-tradition" : ""}"><span aria-hidden="true">${entry.kind === "secret" ? "?" : entry.kind === "camp" ? "♨" : entry.kind === "lore" ? "文" : entry.kind === "gather" ? "採" : "!"}</span><div><strong>${entry.traditionApplied ? "ギルドの道標 · " : ""}${entry.mentorshipApplied ? entry.lineageSupportApplied ? "三代の道継ぎ · " : entry.mentorshipInherited ? "継承案内役の教え · " : "案内役の教え · " : ""}${entry.destinationFamiliarityApplied ? "土地勘を活用 · " : ""}${entry.teamSurveyApplied ? "熟練者の連携探索 · " : ""}${entry.rumorMatched ? "噂と一致 · " : ""}${escape(entry.name)} · ${entry.success ? "成功" : "失敗"}${entry.naturalAptitudeApplied ? " · 基礎能力を活用" : ""}${entry.personalPracticeApplied ? " · 本人の経験を活用" : ""}${entry.masteryApplied ? " · 観察記録を活用" : ""}${entry.bondSupportApplied ? ` · ${escape(entry.bondSupportLabel || "旅仲間の連携")}` : ""}</strong>${aptitudeText(entry)}${entry.traditionFounderNames.length === 3 ? `<small>道を残した三人：${entry.traditionFounderNames.map(escape).join("、")}</small>` : ""}${entry.lineageSupportApplied ? `<small>最初の案内役：${escape(entry.lineagePredecessorName)}／道を継いだ者：${escape(entry.mentorName)}／教わった者：${entry.apprenticeNames.map(escape).join("、")}</small>` : entry.mentorshipApplied ? `<small>道を教えた者：${escape(entry.mentorName)}／教わった者：${entry.apprenticeNames.map(escape).join("、")}</small>` : ""}${entry.destinationFamiliarityMemberNames?.length ? `<small>道を覚えていた者：${entry.destinationFamiliarityMemberNames.map(escape).join("、")}</small>` : ""}${entry.teamSurveyMemberNames?.length ? `<small>地図を重ねた者：${entry.teamSurveyMemberNames.map(escape).join("、")}</small>` : ""}${entry.bondSupportMemberNames?.length ? `<small>息を合わせた者：${entry.bondSupportMemberNames.map(escape).join("、")}</small>` : ""}<p>${escape(entry.text)}</p></div></article>`).join("")}<button class="button ghost" data-action="jump-result-section" data-target="result-battle-records">探索ログで確認</button></section>`;
   }
 
   function adventurerBondMomentPanel(result, context) {
@@ -105,6 +115,76 @@
     const entries = Array.isArray(result.newAdventurerBondTiers) ? result.newAdventurerBondTiers : [];
     if (!entries.length) return "";
     return `<section class="result-new-discoveries result-adventurer-bond-tiers"><span class="label">TRAVEL BOND DEEPENED</span><strong>旅を重ねた二人の呼吸が変わりました</strong><div>${entries.map(entry => `<article><span aria-hidden="true">結</span><p><b>${entry.memberNames.map(escape).join("と")}</b><small>同行${entry.sharedSorties}回</small>${entry.routeLabel ? `<em>道中 · ${escape(entry.routeLabel)}</em>` : ""}${entry.battleLabel ? `<em>戦列 · ${escape(entry.battleLabel)}</em>` : ""}</p></article>`).join("")}</div><button class="button secondary" data-action="open-adventurer-bonds">二人の記録を見る</button></section>`;
+  }
+
+  function destinationFamiliarityPanel(result, context) {
+    const { escape } = context;
+    const entries = Array.isArray(result.newDestinationFamiliarities) ? result.newDestinationFamiliarities : [];
+    if (!entries.length) return "";
+    const destination = window.DungeonDifficulty.variant(result.dungeonId, result.difficultyId || "normal");
+    const tiers = window.GameData.config.explorationEvents?.routeFamiliarity?.tiers || [];
+    const guideTierId = window.GameData.config.explorationEvents?.routeMentorship?.guideTierId || "route_guide";
+    const inheritedTeachers = entry => entry.tierId === guideTierId ? window.Characters.routeMentorships(window.Characters.get(entry.characterId))
+      .filter(record => record.role === "apprentice" && record.dungeonId === entry.dungeonId && record.difficultyId === entry.difficultyId)
+      .map(record => record.partnerName) : [];
+    const inherited = entries.some(entry => inheritedTeachers(entry).length);
+    return `<section class="result-new-discoveries result-destination-familiarities ${inherited ? "has-inherited-guide" : ""}"><span class="label">${inherited ? "ROUTE INHERITED" : "ROUTE FAMILIARITY"}</span><strong>${inherited ? "教わった帰り道が、次へ渡せる知恵になりました" : `${escape(destination.name)}の道が、冒険者の記憶になりました`}</strong><div>${entries.map(entry => {
+      const tier = tiers.find(candidate => candidate.id === entry.tierId);
+      const next = entry.nextTierLabel ? `次の「${escape(entry.nextTierLabel)}」まであと${entry.clearsUntilNext}回` : "この地を案内できるほど歩き込みました";
+      const teachers = inheritedTeachers(entry);
+      const mentor = teachers.length
+        ? `<small>${teachers.map(escape).join("・")}から教わった帰り道を、今度は誰かへ渡せる</small>`
+        : entry.mentorName ? `<small>${escape(entry.mentorName)}から帰り道の目印を教わった</small>` : "";
+      return `<article class="${teachers.length ? "is-inherited-guide" : ""}"><span aria-hidden="true">${teachers.length ? "継" : "路"}</span><p><b>${escape(entry.name)} · ${teachers.length ? "継承案内役" : escape(entry.tierLabel)}</b>${mentor}<small>攻略${entry.clears}回 · ${next}</small><em>${escape(tier?.growthText || "歩いた道が、次の遠征を助ける記憶になった。")}</em></p><button class="button ghost" data-action="open-adventurer-record" data-character="${escape(entry.characterId)}">足跡を見る</button></article>`;
+    }).join("")}</div></section>`;
+  }
+
+  function routeLineages(result) {
+    return (result.newDestinationFamiliarities || []).flatMap(growth => {
+      if (!growth?.mentorCharacterId || !growth?.characterId || !growth?.dungeonId) return [];
+      const mentor = window.Characters.get(growth.mentorCharacterId);
+      const apprentice = window.Characters.get(growth.characterId);
+      if (!mentor || !apprentice) return [];
+      const predecessorRecord = window.Characters.routeMentorships(mentor)
+        .find(entry => entry.role === "apprentice" && entry.dungeonId === growth.dungeonId && entry.difficultyId === (growth.difficultyId || "normal"));
+      const predecessor = predecessorRecord ? window.Characters.get(predecessorRecord.partnerCharacterId) : null;
+      return predecessor ? [{ predecessor, mentor, apprentice, dungeonId: growth.dungeonId, difficultyId: growth.difficultyId || "normal" }] : [];
+    });
+  }
+
+  function routeLineagePanel(result, context) {
+    const { escape } = context;
+    const entries = routeLineages(result);
+    if (!entries.length) return "";
+    return `<section class="result-route-lineages"><div><span class="label">ROUTE LINEAGE</span><strong>帰り道が、三人目へ渡りました</strong><small>教わった者が自分の言葉で道を伝え、ギルドに新しい系譜が残りました。</small></div>${entries.map(entry => { const destination = window.DungeonDifficulty.variant(entry.dungeonId, entry.difficultyId); return `<article><div class="route-lineage-names"><span>${escape(entry.predecessor.name)}</span><i aria-hidden="true">→</i><strong>${escape(entry.mentor.name)}</strong><i aria-hidden="true">→</i><span>${escape(entry.apprentice.name)}</span></div><p>${escape(entry.mentor.name)}は、かつて教わった目印に自分が迷った場所を一つ加え、${escape(entry.apprentice.name)}へ語り直した。</p><small>${escape(destination?.name || "探索地")} · 同じ帰り道の記録</small><button type="button" class="button ghost" data-action="open-adventurer-record" data-character="${escape(entry.mentor.id)}">道を継いだ足跡を見る</button></article>`; }).join("")}</section>`;
+  }
+
+  function routeTraditionPanel(result, context) {
+    const { escape } = context;
+    const entry = result.newRouteTradition;
+    const growth = result.routeTraditionGrowth;
+    if (!entry && !growth) return "";
+    if (growth) {
+      const destination = window.DungeonDifficulty.variant(growth.dungeonId, growth.difficultyId || "normal");
+      return `<section class="result-route-lineages result-route-tradition"><div><span class="label">GUILD ROUTE MATURED</span><strong>皆が歩いた道標が、「${escape(growth.tierLabel)}」へ育ちました</strong><small>${escape(growth.description)}</small></div><article><div class="route-lineage-names"><span>創設した三人</span><i aria-hidden="true">→</i><strong>後続 ${growth.assistedSorties}遠征</strong><i aria-hidden="true">→</i><span>${escape(growth.tierLabel)}</span></div><p>${escape(destination?.name || "この探索地")}から帰った隊の書き込みが重なり、次の一行をさらに確かな道へ導きます。</p><small>恒久効果 · 道中判定 +${Math.round(growth.successChanceBonus * 100)}%</small><button type="button" class="button ghost" data-action="open-route-atlas" data-dungeon="${escape(growth.dungeonId)}" data-difficulty="${escape(growth.difficultyId || "normal")}">育った道標を道標帳で見る</button></article></section>`;
+    }
+    const destination = window.DungeonDifficulty.variant(entry.dungeonId, entry.difficultyId || "normal");
+    return `<section class="result-route-lineages result-route-tradition"><div><span class="label">GUILD ROUTE ESTABLISHED</span><strong>三人の帰り道が、ギルドの道標になりました</strong><small>この目印は帰還簿へ書き残され、これから同じ地へ向かう全てのパーティを支えます。</small></div><article><div class="route-lineage-names">${entry.memberNames.map((name, index) => `${index ? '<i aria-hidden="true">→</i>' : ""}<${index === 1 ? "strong" : "span"}>${escape(name)}</${index === 1 ? "strong" : "span"}>`).join("")}</div><p>次の出発から、${escape(destination?.name || "この探索地")}の道中判定にギルドの道標が加わります。</p><small>恒久効果 · 道中判定 +1%</small><button type="button" class="button ghost" data-action="open-route-atlas" data-dungeon="${escape(entry.dungeonId)}" data-difficulty="${escape(entry.difficultyId || "normal")}">道標帳に刻まれた頁を見る</button></article></section>`;
+  }
+
+  function retryPreparationPanel(result, context) {
+    const preparation = result.retryPreparation;
+    const growth = result.retryPreparationGrowth;
+    if (!preparation?.failures && !growth?.failures) return "";
+    if (result.success && preparation?.failures) {
+      const percent = Math.round(preparation.damageReduction * 100);
+      return `<section class="result-retry-preparation is-overcome"><span aria-hidden="true">越</span><div><small>RETRY PREPARATION · 撤退記録を活用</small><strong>以前の撤退を、攻略の備えに変えました</strong><p>${preparation.failures}度の記録から危険な動きを見直し、戦闘で受けるダメージを${percent}%抑えました。攻略できたため、この備えは一区切りになります。</p></div></section>`;
+    }
+    const previous = Math.max(0, Number(growth?.previousFailures) || 0);
+    const failures = Math.max(previous, Number(growth?.failures) || Number(preparation?.failures) || 0);
+    const percent = Math.round((Number(growth?.damageReduction) || Number(preparation?.damageReduction) || 0) * 100);
+    const progress = previous < failures ? `${previous}度から${failures}度へ増え` : `${failures}度分で最大まで整い`;
+    return `<section class="result-retry-preparation is-learning"><span aria-hidden="true">備</span><div><small>NEXT RETRY · 撤退は次の備えになる</small><strong>次の同じ探索では、さらに傷を減らせます</strong><p>撤退記録が${progress}、次回は戦闘で受けるダメージを${percent}%抑えます。${growth?.atMaximum ? "備えは最大です。" : "攻略すると一区切りになります。"}</p></div></section>`;
   }
 
   function namedHuntRecognitionScene(entry, monster, item, epithet, context) {
@@ -360,6 +440,49 @@
       });
       return `装備${number(equipment)}・素材${number(materials)}`;
     };
+    const targetYield = (() => {
+      const itemId = result.trackedItemId;
+      const item = itemId ? window.GameData.items[itemId] : null;
+      if (!item) return "";
+      const quantity = record => [...(record.equipment || []), ...(record.materials || [])]
+        .filter(entry => entry.itemId === itemId)
+        .reduce((total, entry) => total + (Number(entry.quantity) || 0), 0);
+      const beforeQuantity = quantity(previous);
+      const currentQuantity = Math.max(0, Number(result.trackedItemQuantity) || 0);
+      const previousBestRecord = (window.GameState.data.partyHistory || []).flatMap((entries, index) => (entries || [])
+        .filter(entry => entry.id !== result.id && entry.dungeonId === result.dungeonId
+          && (entry.difficultyId || "normal") === difficultyId && (entry.timeMultiplier || 1) === timeMultiplier)
+        .map(entry => ({ entry, partyIndex: index, quantity: quantity(entry) })))
+        .filter(entry => entry.quantity > 0)
+        .sort((left, right) => right.quantity - left.quantity || (right.entry.completedAt || 0) - (left.entry.completedAt || 0))[0] || null;
+      const previousBest = previousBestRecord?.quantity || 0;
+      const recordHolder = previousBestRecord ? window.Party.name(previousBestRecord.partyIndex) : "";
+      const difference = currentQuantity - beforeQuantity;
+      const tone = difference > 0 ? "is-improved" : difference < 0 || currentQuantity === 0 ? "is-missed" : "is-steady";
+      const observation = difference > 0
+        ? `前回より${number(difference)}個多く持ち帰れました。`
+        : difference < 0
+          ? `前回より${number(Math.abs(difference))}個少ない収穫でした。`
+          : currentQuantity > 0
+            ? "前回と同じ数を持ち帰りました。"
+            : "二度の探索とも、まだ見つけられていません。";
+      const best = currentQuantity > previousBest
+        ? `<em class="target-yield-best is-new">NEW BEST · ${previousBest ? `${escape(recordHolder)}の${number(previousBest)}個を越え、` : ""}この条件の最高収穫を${number(currentQuantity)}個へ更新</em>`
+        : currentQuantity > 0 && currentQuantity === previousBest
+          ? `<em class="target-yield-best is-tied">BEST TIE · ${escape(recordHolder)}の最高${number(previousBest)}個に並びました</em>`
+          : previousBest > 0
+            ? `<em class="target-yield-best">これまでの最高 ${number(previousBest)}個（${escape(recordHolder)}） · あと${number(previousBest - currentQuantity)}個</em>`
+            : `<em class="target-yield-best">この条件では、まだ収穫記録がありません</em>`;
+      const challengeTarget = Math.min(999, Math.max(previousBest, currentQuantity) + 1);
+      const originalPartyReady = partyIndex < window.Party.limit() && !window.Party.expedition(partyIndex);
+      const retryPartyIndex = originalPartyReady
+        ? partyIndex
+        : Array.from({ length: window.Party.limit() }, (_, index) => index).find(index => !window.Party.expedition(index));
+      const waiting = retryPartyIndex == null;
+      const retryLabel = waiting ? "待機隊の帰還待ち" : retryPartyIndex === partyIndex ? `次は${number(challengeTarget)}個へ` : `第${retryPartyIndex + 1}隊で${number(challengeTarget)}個へ`;
+      const retryAction = `<button type="button" class="target-yield-retry" data-action="retrace-history-item" data-party="${waiting ? partyIndex : retryPartyIndex}" data-dungeon="${escape(result.dungeonId)}" data-difficulty="${escape(difficultyId)}" data-time="${timeMultiplier}" data-item="${escape(itemId)}" data-target="${challengeTarget}" ${waiting ? "disabled" : ""}>${retryLabel}</button>`;
+      return `<section class="attempt-target-yield ${tone}"><span aria-hidden="true">${escape(item.icon || "◇")}</span><div><small>探索目標の収穫</small><strong>${escape(item.name)}</strong><p>${escape(observation)}</p>${best}</div><div><small>前回</small><b>${number(beforeQuantity)}個</b><i aria-hidden="true">→</i><small>今回</small><b>${number(currentQuantity)}個</b></div><div class="attempt-target-actions"><button type="button" class="text-button" data-action="open-item-codex" data-item="${escape(itemId)}">品の記録を見る</button>${retryAction}</div></section>`;
+    })();
     const setupChanges = (() => {
       if (!Array.isArray(previous.partySetup) || !Array.isArray(result.partySetup)) return [];
       const beforeMembers = new Map(previous.partySetup.map(member => [member.id, member]));
@@ -463,7 +586,7 @@
       ? `<details class="attempt-setup-changes attempt-member-changes"><summary><span><small>MEMBER RESULTS</small><strong>冒険者ごとの働き</strong></span><b>${memberChanges.length ? `${memberChanges.length}人` : "変化なし"}</b><i aria-hidden="true">›</i></summary><div>${memberChanges.length ? `<ul>${memberChanges.map(entry => `<li><strong>${escape(entry.member.name)}</strong><span>${memberChangeFacts(entry).map(escape).join("・")}</span></li>`).join("")}</ul>` : `<p>同じ冒険者の与ダメージ・被ダメージ・回復・状態異常成功・残HPに変化はありません。</p>`}</div></details>` : "";
     const skills = before.skillUses && current.skillUses
       ? `<details class="attempt-setup-changes attempt-skill-changes"><summary><span><small>SKILL RESULTS</small><strong>技能の働きの変化</strong></span><b>${skillChanges.length ? `${skillChanges.length}種` : "変化なし"}</b><i aria-hidden="true">›</i></summary><div>${skillChanges.length ? `<ul>${skillChanges.slice(0, 12).map(entry => `<li><strong>${escape(entry.skill.name)}</strong><span>${skillChangeFacts(entry).map(escape).join("・")}</span></li>`).join("")}</ul>` : `<p>発動回数・与ダメージ・回復・状態異常成功に変化はありません。</p>`}</div></details>` : "";
-    return `<section class="attempt-comparison"><div><span class="label">PREVIOUS ATTEMPT</span><h4>同じ探索条件の前回記録</h4><p>前回と今回に起きた事実だけを並べています。</p></div><div class="attempt-comparison-grid">${rows.map(([label, oldValue, newValue]) => `<div class="attempt-comparison-row"><span>${label}</span><small>前回</small><strong>${oldValue}</strong><i aria-hidden="true">→</i><small>今回</small><strong>${newValue}</strong></div>`).join("")}</div>${damage}${memberPerformance}${setup}${skills}</section>`;
+    return `<section class="attempt-comparison"><div><span class="label">PREVIOUS ATTEMPT</span><h4>同じ探索条件の前回記録</h4><p>前回と今回に起きた事実だけを並べています。</p></div>${targetYield}<div class="attempt-comparison-grid">${rows.map(([label, oldValue, newValue]) => `<div class="attempt-comparison-row"><span>${label}</span><small>前回</small><strong>${oldValue}</strong><i aria-hidden="true">→</i><small>今回</small><strong>${newValue}</strong></div>`).join("")}</div>${damage}${memberPerformance}${setup}${skills}</section>`;
   }
 
   function tacticalReport(result, context) {
@@ -559,5 +682,5 @@
     return `<article class="companion-growth-result"><strong>${escape(companion?.name || "人物")}が「${escape(stage?.name || "新たな段階")}」へ成長しました</strong>${changes.length ? `<div class="companion-growth-skills">${changes.join("")}</div>` : ""}<p>人物録または装備画面で現在の固有スキルを確認できます。</p></article>`;
   }
 
-  window.GameUIViews.results = { adventurerBondMomentPanel, adventurerBondTierPanel, sharedHuntLedgerTierPanel, sharedHuntLedgerProgressPanel, namedHuntSupportPanel, adventurerReputationPanel, targetedHarvestPracticePanel, targetedHarvestPersistencePanel, partyReputationMomentPanel, partyReturnMomentPanel, lootReactionPanel, attemptComparison, bondFormationPanel, bossRivalryPanel, companionGrowthSummary, damageTakenPanel, growthPanel, highlights, lootPanel, memberHighlightPanel, memberReport, monsterFirstDefeatPanel, monsterHabitatPanel, monsterHuntMarkPanel, monsterInsightPanel, routeEvents, routeEventPanel, signatureSkillPanel, skillUsagePanel, tacticalReport, treasurePanel };
+  window.GameUIViews.results = { adventurerBondMomentPanel, adventurerBondTierPanel, destinationFamiliarityPanel, routeLineages, routeLineagePanel, routeTraditionPanel, retryPreparationPanel, sharedHuntLedgerTierPanel, sharedHuntLedgerProgressPanel, namedHuntSupportPanel, adventurerReputationPanel, targetedHarvestPracticePanel, targetedHarvestPersistencePanel, partyReputationMomentPanel, partyReturnMomentPanel, lootReactionPanel, attemptComparison, bondFormationPanel, bossRivalryPanel, companionGrowthSummary, damageTakenPanel, growthPanel, highlights, lootPanel, memberHighlightPanel, memberReport, monsterFirstDefeatPanel, monsterHabitatPanel, monsterHuntMarkPanel, monsterInsightPanel, routeEvents, routeEventPanel, signatureSkillPanel, skillUsagePanel, tacticalReport, treasurePanel };
 })();

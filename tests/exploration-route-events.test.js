@@ -10,6 +10,20 @@ const routeEventIds = game.GameData.config.explorationEvents.routeEvents.map(eve
 const ordinaryParty = [{ name: "術師", jobId: "mage", raceId: "human", birthId: "common" }];
 const naturallyGiftedParty = [{ ...ordinaryParty[0], name: "道を見る術師", level: 1, primaryAttributes: { vitality: 20, strength: 20, fortitude: 20, intelligence: 20, spirit: 20, dexterity: 20, agility: 20, luck: 20 } }];
 const practicedParty = [{ ...ordinaryParty[0], name: "旅慣れた術師", routeEventSuccesses: Object.fromEntries(routeEventIds.map(id => [id, game.GameData.config.explorationEvents.personalPractice.successes])) }];
+const familiarParty = Array.from({ length: 4 }, (_, index) => ({ ...ordinaryParty[0], id: `route-veteran-${index + 1}`, name: `道を知る術師${index + 1}`, destinationClearExperience: true, destinationClearCount: 10 }));
+const mentorParty = [
+  { ...ordinaryParty[0], id: "route-guide", name: "古道の案内役", destinationClearExperience: true, destinationClearCount: 10 },
+  { ...ordinaryParty[0], id: "route-apprentice", name: "初めて歩く術師", destinationClearExperience: false, destinationClearCount: 0 }
+];
+const inheritedMentorParty = [
+  { ...ordinaryParty[0], id: "inherited-route-guide", name: "継承した案内役", destinationClearExperience: true, destinationClearCount: 10, inheritedRouteGuide: true },
+  ...Array.from({ length: 3 }, (_, index) => ({ ...ordinaryParty[0], id: `inherited-route-apprentice-${index + 1}`, name: `初めて歩く仲間${index + 1}`, destinationClearExperience: false, destinationClearCount: 0 }))
+];
+const lineageParty = [
+  { ...ordinaryParty[0], id: "first-route-guide", name: "最初の案内役", destinationClearExperience: true, destinationClearCount: 10 },
+  { ...ordinaryParty[0], id: "inherited-route-guide", name: "道を継いだ案内役", destinationClearExperience: true, destinationClearCount: 10, inheritedRouteGuide: true, routeMentorIds: ["first-route-guide"] },
+  { ...ordinaryParty[0], id: "third-route-apprentice", name: "三人目の新人", destinationClearExperience: false, destinationClearCount: 0 }
+];
 const teamSurveyParty = [
   { id: "pathfinder-a", name: "道探し", jobId: "thief", raceId: "human", birthId: "common", routeEventSuccesses: Object.fromEntries(routeEventIds.slice(0, 2).map(id => [id, game.GameData.config.explorationEvents.personalPractice.successes])) },
   { id: "pathfinder-b", name: "記録係", jobId: "mage", raceId: "human", birthId: "common", routeEventSuccesses: { [routeEventIds[2]]: game.GameData.config.explorationEvents.personalPractice.successes } }
@@ -25,7 +39,7 @@ const specialistParty = [
   { name: "盾役", jobId: "warrior", raceId: "dwarf", birthId: "guard" },
   { name: "碑文読み", jobId: "mage", raceId: "elf", birthId: "scholar" }
 ];
-const ordinarySuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, giftedSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, practicedSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, masteredSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, originSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, specialistSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, seenKinds = new Set(), seenRouteIds = new Set();
+const ordinarySuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, familiarSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, giftedSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, practicedSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, masteredSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, originSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, specialistSuccesses = { secret: 0, camp: 0, hazard: 0, lore: 0, gather: 0 }, seenKinds = new Set(), seenRouteIds = new Set();
 let meadowRumorMatches = 0;
 
 for (const [environmentId, environment] of Object.entries(game.GameData.config.explorationEvents.environments)) {
@@ -78,12 +92,66 @@ function routeRecord(seed, party, targetDungeon = dungeon) {
   return record;
 }
 
+const mentorshipRecord = routeRecord(7919, mentorParty).entry;
+assert.strictEqual(mentorshipRecord.routeMentorshipApplied, true, "An established guide teaches the exact route to a newcomer during field events");
+assert.strictEqual(mentorshipRecord.routeMentorName, "古道の案内役");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(mentorshipRecord.routeApprenticeNames)), ["初めて歩く術師"]);
+assert(mentorshipRecord.text.includes("帰り道の目印を教えた"), "Route mentorship appears as an in-world scene rather than a bare system bonus");
+const mentorshipPanel = game.GameUIViews.results.routeEventPanel({ battleLog: [mentorshipRecord] }, { escape: value => String(value) });
+assert(mentorshipPanel.includes("案内役の教え") && mentorshipPanel.includes("道を教えた者：古道の案内役") && mentorshipPanel.includes("教わった者：初めて歩く術師"), "The return report names both sides of route mentorship");
+const inheritedMentorshipRecord = routeRecord(7919, inheritedMentorParty).entry;
+assert.strictEqual(inheritedMentorshipRecord.routeMentorshipInherited, true, "A guide who once learned this exact route retains inherited teaching in the departure snapshot");
+assert.strictEqual(inheritedMentorshipRecord.routeMentorshipBonus, .03, "Inherited teaching slightly strengthens non-combat route support");
+assert.strictEqual(inheritedMentorshipRecord.routeApprenticeNames.length, 3, "An inherited guide can look after one more newcomer than an ordinary guide");
+assert(inheritedMentorshipRecord.text.includes("かつて教わった目印") && inheritedMentorshipRecord.text.includes("自分の工夫"), "Inherited guidance is narrated as knowledge that changed while being passed onward");
+const inheritedMentorshipPanel = game.GameUIViews.results.routeEventPanel({ battleLog: [inheritedMentorshipRecord] }, { escape: value => String(value) });
+assert(inheritedMentorshipPanel.includes("継承案内役の教え") && inheritedMentorshipPanel.includes("初めて歩く仲間1、初めて歩く仲間2、初めて歩く仲間3"), "The return report distinguishes inherited guidance and credits every newcomer");
+const lineageRecord = routeRecord(7919, lineageParty).entry;
+assert.strictEqual(lineageRecord.routeLineageSupportApplied, true, "A first guide, inherited guide and newcomer can carry one exact route together");
+assert.strictEqual(lineageRecord.routeLineagePredecessorName, "最初の案内役");
+assert.strictEqual(lineageRecord.routeMentorshipBonus, .04, "Bringing the prior mentor gives the three-generation party one additional bounded route bonus");
+assert(lineageRecord.text.includes("最初の目印") && lineageRecord.text.includes("三人目の帰り道"), "Three-generation guidance receives its own journey narration");
+const lineageJourneyPanel = game.GameUIViews.results.routeEventPanel({ battleLog: [lineageRecord] }, { escape: value => String(value) });
+assert(lineageJourneyPanel.includes("三代の道継ぎ") && lineageJourneyPanel.includes("最初の案内役：最初の案内役") && lineageJourneyPanel.includes("道を継いだ者：道を継いだ案内役") && lineageJourneyPanel.includes("教わった者：三人目の新人"), "The return report makes every role in a three-generation route party readable");
+const traditionJourney = game.Exploration.journey(dungeon, 1, 7919, undefined, lineageParty, [], [], [], true);
+const traditionRecord = traditionJourney.flatMap(floor => floor.entries).find(entry => entry.routeEventId);
+assert.strictEqual(traditionRecord.routeTraditionApplied, true, "An established guild route marker is snapshotted into the exact route event");
+assert(traditionRecord.text.includes("三代の案内役") && traditionRecord.text.includes("帰還簿"), "Guild route knowledge is narrated as an inherited field marker rather than a naked probability bonus");
+const traditionFounderNames = ["最初の案内役", "道を継いだ案内役", "三人目の新人"];
+const founderTraditionRecord = game.Exploration.journey(dungeon, 1, 7919, undefined, lineageParty, [], [], [], { tierId: "worn_route", founderNames: traditionFounderNames }).flatMap(floor => floor.entries).find(entry => entry.routeEventId);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(founderTraditionRecord.routeTraditionFounderNames)), traditionFounderNames, "A later expedition carries the route marker founders into its factual journey log");
+assert(founderTraditionRecord.text.includes("最初の案内役、道を継いだ案内役、三人目の新人が残した"), "The field narration credits the named adventurers whose judgment made the route safer");
+const founderTraditionPanel = game.GameUIViews.results.routeEventPanel({ battleLog: [founderTraditionRecord] }, { escape: value => String(value) });
+assert(founderTraditionPanel.includes("道を残した三人：最初の案内役、道を継いだ案内役、三人目の新人"), "The return report keeps the founders readable after another party uses their route");
+assert.strictEqual(game.Exploration.routeTraditionTier(0).id, "ledger_marker", "A newly established route begins as a ledger marker");
+assert.strictEqual(game.Exploration.routeTraditionTier(3).id, "worn_route", "Three later returns turn the marker into a worn route");
+assert.strictEqual(game.Exploration.routeTraditionTier(10).id, "guild_road", "Ten later returns establish the guild road's final tier");
+const matureTraditionRecord = game.Exploration.journey(dungeon, 1, 7919, undefined, lineageParty, [], [], [], "guild_road").flatMap(floor => floor.entries).find(entry => entry.routeEventId);
+assert(matureTraditionRecord.text.includes("ギルドの街道"), "A matured marker names its current shared route tier during exploration");
+let maturationBenefitObserved = false;
+for (let seed = 1; seed <= 1000 && !maturationBenefitObserved; seed += 1) {
+  const ledger = game.Exploration.journey(dungeon, 1, seed * 3571, undefined, ordinaryParty, [], [], [], "ledger_marker").flatMap(floor => floor.entries).find(entry => entry.routeEventId);
+  const road = game.Exploration.journey(dungeon, 1, seed * 3571, undefined, ordinaryParty, [], [], [], "guild_road").flatMap(floor => floor.entries).find(entry => entry.routeEventId);
+  maturationBenefitObserved = !ledger.routeEventSuccess && road.routeEventSuccess;
+}
+assert(maturationBenefitObserved, "A matured guild road can turn a route failure into a success with the same deterministic departure conditions");
+const traditionJourneyPanel = game.GameUIViews.results.routeEventPanel({ battleLog: [traditionRecord] }, { escape: value => String(value) });
+assert(traditionJourneyPanel.includes("ギルドの道標"), "The return report identifies when shared guild route knowledge supported the expedition");
+const traditionGrowthPanel = game.GameUIViews.results.routeTraditionPanel({ routeTraditionGrowth: { dungeonId: "meadow", difficultyId: "normal", assistedSorties: 3, tierId: "worn_route", tierLabel: "踏み固められた道", successChanceBonus: .02, description: "幾度もの帰還で足跡そのものが案内になった。" } }, { escape: value => String(value) });
+assert(traditionGrowthPanel.includes("踏み固められた道") && traditionGrowthPanel.includes("後続 3遠征") && traditionGrowthPanel.includes("道中判定 +2%") && traditionGrowthPanel.includes("育った道標を道標帳で見る"), "The return report celebrates a route marker that matured through later expeditions");
+const traditionResultPanel = game.GameUIViews.results.routeTraditionPanel({ newRouteTradition: { dungeonId: "meadow", difficultyId: "normal", memberNames: ["最初の案内役", "道を継いだ案内役", "三人目の新人"] } }, { escape: value => String(value) });
+assert(traditionResultPanel.includes('data-action="open-route-atlas"') && traditionResultPanel.includes('data-dungeon="meadow"') && traditionResultPanel.includes("道標帳に刻まれた頁を見る"), "A newly established route links directly to its permanent atlas entry");
+assert(traditionResultPanel.includes("三人の帰り道") && traditionResultPanel.includes("道中判定 +1%"), "The first establishment explains the permanent benefit and credits all three guides");
+
 for (let sample = 1; sample <= 600; sample += 1) {
   const seed = sample * 7919;
-  const ordinary = routeRecord(seed, ordinaryParty), gifted = routeRecord(seed, naturallyGiftedParty), practiced = routeRecord(seed, practicedParty), origin = routeRecord(seed, originParty), specialist = routeRecord(seed, specialistParty);
+  const ordinary = routeRecord(seed, ordinaryParty), familiar = routeRecord(seed, familiarParty), gifted = routeRecord(seed, naturallyGiftedParty), practiced = routeRecord(seed, practicedParty), origin = routeRecord(seed, originParty), specialist = routeRecord(seed, specialistParty);
   const masteredFloors = game.Exploration.journey(dungeon, 1, seed, undefined, ordinaryParty, [], game.GameData.config.explorationEvents.routeEvents.map(event => event.id));
   const mastered = masteredFloors.flatMap((floor, floorIndex) => floor.entries.filter(entry => eventKinds.has(entry.kind)).map(entry => ({ entry, floor, floorIndex })))[0];
   assert.strictEqual(specialist.entry.routeEventId, ordinary.entry.routeEventId, "Party composition changes the outcome, not which scene was rolled");
+  assert.strictEqual(familiar.entry.routeEventId, ordinary.entry.routeEventId, "Destination familiarity changes the outcome, not which scene was rolled");
+  assert.strictEqual(familiar.entry.routeDestinationFamiliarityApplied, true, "Adventurers who cleared this exact route bring their destination familiarity on departure");
+  assert.strictEqual(familiar.entry.routeDestinationFamiliarityMemberNames.length, familiarParty.length, "The factual route log credits every current adventurer who remembers clearing the route");
   assert.strictEqual(practiced.entry.routeEventId, ordinary.entry.routeEventId, "Personal experience changes the outcome, not which scene was rolled");
   assert.strictEqual(gifted.entry.routeEventId, ordinary.entry.routeEventId, "Primary attributes change the outcome, not which scene was rolled");
   assert.strictEqual(gifted.entry.routeNaturalAptitudeApplied, true, "A guide using above-average primary attributes is identified in the factual route log");
@@ -99,6 +167,7 @@ for (let sample = 1; sample <= 600; sample += 1) {
   seenRouteIds.add(ordinary.entry.routeEventId);
   if (ordinary.entry.routeRumorMatched) meadowRumorMatches += 1;
   if (ordinary.entry.routeEventSuccess) ordinarySuccesses[ordinary.entry.kind] += 1;
+  if (familiar.entry.routeEventSuccess) familiarSuccesses[familiar.entry.kind] += 1;
   if (gifted.entry.routeEventSuccess) giftedSuccesses[gifted.entry.kind] += 1;
   if (practiced.entry.routeEventSuccess) practicedSuccesses[practiced.entry.kind] += 1;
   if (mastered.entry.routeEventSuccess) masteredSuccesses[mastered.entry.kind] += 1;
@@ -110,6 +179,10 @@ assert.deepStrictEqual([...seenKinds].sort(), ["camp", "gather", "hazard", "lore
 assert(seenRouteIds.has("ancient_ward"), "The expanded route pool can produce an ancient ward scene");
 assert(seenRouteIds.has("enemy_tracks"), "The expanded route pool can produce a monster-tracking scene");
 assert(meadowRumorMatches > 180, "The destination rumor meaningfully favors its matching route event without guaranteeing it");
+assert(Object.keys(ordinarySuccesses).every(kind => familiarSuccesses[kind] >= ordinarySuccesses[kind]) && Object.values(familiarSuccesses).reduce((sum, count) => sum + count, 0) > Object.values(ordinarySuccesses).reduce((sum, count) => sum + count, 0), "A party that has cleared the exact destination gains a small, bounded advantage across its non-combat route checks");
+const familiarPanelRecord = routeRecord(7919, familiarParty).entry;
+const familiarPanel = game.GameUIViews.results.routeEventPanel({ battleLog: [familiarPanelRecord] }, { escape: value => String(value) });
+assert(familiarPanel.includes("土地勘を活用") && familiarPanel.includes("道を覚えていた者"), "The return report explains that remembered terrain helped without exposing a hidden numeric rate");
 const giftedCluePanelRecord = routeRecord(7919, naturallyGiftedParty).entry;
 const giftedCluePanel = game.GameUIViews.results.routeEventPanel({ battleLog: [giftedCluePanelRecord] }, { escape: value => String(value) });
 assert(giftedCluePanel.includes("導いた者：道を見る術師") && giftedCluePanel.includes("基礎能力を活用"), "The return report connects a non-combat success to the adventurer and attributes that helped");

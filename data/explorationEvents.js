@@ -25,6 +25,28 @@
       ]
     },
     routeMastery: { successes: 3, successChanceBonus: .08 },
+    routeFamiliarity: {
+      maximumBonus: .08,
+      tiers: [
+        { id: "known_route", minimumClears: 1, successChanceBonus: .01, label: "道を知る", growthText: "帰り道で、足取りに迷いがなくなった。" },
+        { id: "seasoned_route", minimumClears: 3, successChanceBonus: .02, label: "歩き慣れた", growthText: "分かれ道ごとの風向きまで覚え始めた。" },
+        { id: "route_guide", minimumClears: 10, successChanceBonus: .03, label: "案内役", growthText: "仲間が足を止める前に、進むべき道を示せるようになった。" }
+      ]
+    },
+    routeMentorship: { guideTierId: "route_guide", apprenticeMaximumClears: 0, maximumApprentices: 2, successChanceBonus: .02, inheritedAdditionalApprentices: 1, inheritedSuccessChanceBonus: .01, lineageSuccessChanceBonus: .01 },
+    routeTradition: {
+      tiers: [
+        { id: "ledger_marker", minimumAssists: 0, successChanceBonus: .01, label: "帰還簿の道標", description: "三人が残した目印を、後続の一行が頼りにし始めた。" },
+        { id: "worn_route", minimumAssists: 3, successChanceBonus: .02, label: "踏み固められた道", description: "幾度もの帰還で迷いやすい場所が書き足され、足跡そのものが案内になった。" },
+        { id: "guild_road", minimumAssists: 10, successChanceBonus: .03, label: "ギルドの街道", description: "誰もが帰れる道として町に知られ、遠征者どうしの知恵が絶えず継ぎ足されている。" }
+      ]
+    },
+    retryPreparation: {
+      maximumFailures: 3,
+      damageReductionPerFailure: .03,
+      label: "再挑戦の備え",
+      description: "同じ探索地と難易度での撤退記録を読み返し、戦闘で受けるダメージを抑える。攻略すると備えは一区切りになる。"
+    },
     personalPractice: { successes: 5, successChanceBonus: .05 },
     attributeAptitude: { maximumBonus: .1, bonusPerSurplusRatio: .15 },
     treasurePersonalPractice: { openings: 10, successChanceBonus: .05 },
@@ -85,6 +107,7 @@
     ],
     adventurerBondMoments: [
       { id: "shared_hunt_ledger", title: "二人で綴じた狩り帳", minimumSharedSorties: 1, trigger: "targetedHarvestConsultation", text: "{left}は持ち帰れた手順を頁の左へ、{right}は空振りで消えた跡を右へ書いた。二人は異なる記録を重ね、次の狩りへ持ち出す一冊に綴じた。" },
+      { id: "route_mentorship_reunion", title: "教わった道を、並んで歩く", minimumSharedSorties: 1, trigger: "routeMentorshipReunion", text: "{left}「あの目印、まだ覚えている？」　{right}「教わった道ですから」――二人は以前より短い言葉で、同じ分かれ道を選んだ。" },
       { id: "shared_rest", title: "先回りした休息", minimumSharedSorties: 5, text: "{left}が足を止めるより先に、{right}はいつもの休憩場所を見つけて荷を下ろした。二人の間では、合図より先に歩調が揃っていた。" },
       { id: "shared_crossroad", title: "相談のいらない分かれ道", minimumSharedSorties: 5, text: "分かれ道で{left}が地図を開くと、{right}は迷わず片方の道を指した。何度も同じ景色を見た二人には、相談の前から答えが分かっていた。" },
       { id: "shared_maintenance", title: "旅支度の順番", minimumSharedSorties: 5, text: "{right}が装具の緩みに気づき、{left}へ無言で留め具を渡した。小さな手入れの順番まで、いつの間にか旅支度の一部になっていた。" },

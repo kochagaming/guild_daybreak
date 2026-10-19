@@ -18,8 +18,12 @@ game.Party.toggle(created.id);
 game.Party.toggle(fellow.id);
 game.Characters.setActionRates(created.id, { attack: 10, technique: 10, spell: 10, healing: 70 });
 assert(game.Dungeon.start("meadow").ok);
+assert.strictEqual(game.GameState.data.expeditions[0].retryPreparationFailures, 0, "A first departure snapshots an empty retry preparation");
+assert.strictEqual(game.GameState.data.expeditions[0].retryPreparationDamageReduction, 0);
 const clone = () => JSON.parse(JSON.stringify(game.GameState.data));
 const snapshot = clone();
+snapshot.story.facts.routeLineageSorties = 1;
+snapshot.story.facts.routeTraditions = ["meadow:normal"];
 { const parsed = transfer.parse(JSON.stringify(snapshot)); assert(parsed.ok, parsed.message); }
 assert(transfer.parse("\uFEFF" + JSON.stringify(snapshot)).ok);
 game.GameState.data.gold = 12345;
@@ -27,6 +31,8 @@ game.GameState.save();
 const previous = JSON.stringify(game.GameState.data);
 assert(transfer.restore(snapshot).ok);
 assert.strictEqual(game.GameState.data.gold, snapshot.gold);
+assert.strictEqual(game.GameState.data.story.facts.routeLineageSorties, 1, "Three-generation route returns survive save restoration");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameState.data.story.facts.routeTraditions)), ["meadow:normal"], "Established guild route markers survive save restoration");
 assert.strictEqual(storage.get(transfer.backupKey), previous);
 assert.strictEqual(game.GameState.data.expeditions[0].partySnapshot[0].actionRates.healing, 70);
 assert.strictEqual(Object.keys(game.GameState.data.expeditions[0].partySnapshot[0].routeEventSuccesses).length, 0, "A departure snapshots personal route experience");
@@ -44,6 +50,9 @@ function invalid(change) {
 }
 invalid(state => state.version = 99);
 invalid(state => state.gold = -1);
+invalid(state => state.achievementRewards.claimed = ["missing-achievement"]);
+invalid(state => state.achievementRewards.trackedId = "missing-achievement");
+invalid(state => state.encyclopedia.craftingTargetId = "missing-recipe");
 invalid(state => state.characters[0].exp = Number.MAX_SAFE_INTEGER);
 invalid(state => state.inventory.equipment.push(state.inventory.equipment[0]));
 invalid(state => state.characters[0].equipment.push("item-999"));
@@ -54,10 +63,16 @@ invalid(state => state.expeditions[0].partySnapshot[0].stats.attack = "<script>"
 invalid(state => state.expeditions[0].partySnapshot[0].birthId = "missing-birth");
 invalid(state => state.expeditions[0].partySnapshot[0].skillIds = ["invalid"]);
 invalid(state => state.expeditions[0].partySnapshot[0].routeEventSuccesses = { "missing-route-event": 5 });
+invalid(state => state.expeditions[0].partySnapshot[0].destinationClearExperience = "yes");
+invalid(state => state.expeditions[0].partySnapshot[0].destinationClearCount = -1);
+invalid(state => state.expeditions[0].retryPreparationDamageReduction = .9);
+invalid(state => state.expeditions[0].partySnapshot[0].routeMentorIds = ["missing-adventurer"]);
+invalid(state => state.story.facts.routeTraditions = ["missing-dungeon:normal"]);
 invalid(state => { delete state.expeditions[0].partySnapshot[0].primaryAttributes.luck; });
 invalid(state => { state.expeditions[0].partySnapshot[0].equipmentSetBonuses = [{ setId: "missing-set", count: 2, skillIds: ["set_windtrail_2"] }]; });
 invalid(state => state.expeditions[0].knownCompanionMomentKeys = ["missing-moment:0"]);
 invalid(state => state.expeditions[0].trackedItemId = "missing-item");
+invalid(state => { state.expeditions[0].trackedItemProgressAtDeparture = -1; });
 invalid(state => { state.partyPlans[0] = { dungeonId: "missing", difficultyId: "normal", timeMultiplier: 1 }; });
 invalid(state => { state.partyNames[0] = " "; });
 assert(!transfer.parse("{broken").ok);
@@ -71,21 +86,48 @@ for (const key of [transfer.backupKey, game.SaveSystem.exportKey]) {
   assert.strictEqual(storage.get(game.SaveSystem.exportKey), persisted);
   failKey = null;
 }
+function guaranteeVictory() {
+  game.GameState.data.expeditions[0].partySnapshot.forEach(member => {
+    Object.assign(member.stats, { hp: 99999, attack: 99999, defense: 99999, magicAttack: 99999, magicDefense: 99999, magicHealing: 99999, speed: 99999 });
+  });
+}
+guaranteeVictory();
+const guideSnapshot = game.GameState.data.expeditions[0].partySnapshot.find(member => member.id === created.id);
+guideSnapshot.destinationClearExperience = true;
+guideSnapshot.destinationClearCount = 10;
 game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 game.Dungeon.completeIfReady();
+assert.strictEqual(game.GameState.data.lastResult.newDestinationFamiliarities?.[0]?.tierLabel, "道を知る", "The first successful return announces a new personal route familiarity");
+assert.strictEqual(game.GameState.data.lastResult.newDestinationFamiliarities[0].clears, 1);
+assert.strictEqual(game.GameState.data.lastResult.newDestinationFamiliarities[0].mentorCharacterId, created.id, "A guide is credited when the newcomer gains their first exact-route familiarity");
+assert.strictEqual(game.Characters.routeMentorships(game.Characters.get(created.id))[0].partnerCharacterId, fellow.id, "The guide permanently remembers the newcomer they taught");
+assert.strictEqual(game.Characters.routeMentorships(game.Characters.get(fellow.id))[0].role, "apprentice", "The newcomer permanently remembers who taught the route");
+assert.strictEqual(game.GameState.data.partyHistory[0][0].newDestinationFamiliarities?.[0]?.tierId, "known_route", "Route-familiarity growth is retained in expedition history");
 const completedParse = transfer.parse(JSON.stringify(game.GameState.data));
 assert(completedParse.ok, `戦績とドロップを含む完了データも読み込めること: ${completedParse.message || "unknown"}`);
+{ const parsed = transfer.parse(JSON.stringify(game.GameState.data)); assert(parsed.ok, `Paired route-mentorship memories survive save validation: ${parsed.message}`); }
+invalid(state => { state.characters[0].expeditionRecord.routeMentorships[0].partnerCharacterId = "missing-adventurer"; });
 const reputationLogSave = clone();
 for (const result of [reputationLogSave.lastResult, reputationLogSave.partyResults[0]]) result.battleLog.push({ kind: "reputation", text: "先陣と撹乱役は、短く手順を確かめた。", encounter: 0, round: 0 });
 assert(transfer.parse(JSON.stringify(reputationLogSave)).ok, "Departure reputation scenes survive save validation");
 reputationLogSave.lastResult.battleLog.at(-1).kind = "unknown-reputation-scene";
 assert(!transfer.parse(JSON.stringify(reputationLogSave)).ok, "Unknown departure-log kinds remain rejected");
+const invalidMapGuidanceLog = clone();
+invalidMapGuidanceLog.lastResult.battleLog[0].chapterMapGuidance = true;
+assert(!transfer.parse(JSON.stringify(invalidMapGuidanceLog)).ok, "A chapter-map guidance marker cannot be forged without a snapshotted map benefit");
+const invalidAcquiredItemLog = clone();
+invalidAcquiredItemLog.lastResult.battleLog[0].acquiredItemId = "missing-item";
+invalidAcquiredItemLog.lastResult.battleLog[0].acquiredItemQuantity = 1;
+assert(!transfer.parse(JSON.stringify(invalidAcquiredItemLog)).ok, "Live item-find metadata must reference a real item and positive quantity");
 const sharedPairKey = [created.id, fellow.id].sort().join("::");
 assert.strictEqual(game.GameState.data.adventurerBonds.pairs[sharedPairKey], 1, "A completed expedition persists one shared-sortie record for the pair");
 game.GameState.data.adventurerBonds.pairs[sharedPairKey] = 4;
 assert(game.Dungeon.start("meadow").ok);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameState.data.expeditions[0].partySnapshot.find(member => member.id === fellow.id).routeMentorIds)), [created.id], "A return to the exact route snapshots the apprentice's present mentor for deterministic offline storytelling");
+guaranteeVictory();
 game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 game.Dungeon.completeIfReady();
+assert.strictEqual(game.GameState.data.lastResult.newDestinationFamiliarities.length, 0, "A non-threshold clear does not repeat a route-familiarity announcement");
 assert.strictEqual(game.GameState.data.lastResult.newAdventurerBondTiers?.[0]?.sharedSorties, 5, "A return announces the exact expedition that deepened a travel relationship");
 assert.strictEqual(game.GameState.data.lastResult.newAdventurerBondTiers[0].routeLabel, "歩調の合う支え");
 assert.strictEqual(game.GameState.data.lastResult.newAdventurerBondTiers[0].battleLabel, "合図の通る間合い");
@@ -93,13 +135,40 @@ assert.strictEqual(game.GameState.data.partyHistory[0][0].newAdventurerBondTiers
 { const parsed = transfer.parse(JSON.stringify(game.GameState.data)); assert(parsed.ok, `Relationship growth survives save validation: ${parsed.message}`); }
 game.GameState.data.adventurerBonds.pairs[sharedPairKey] = 20;
 assert(game.Dungeon.start("meadow").ok);
+guaranteeVictory();
 game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
 game.Dungeon.completeIfReady();
+assert.strictEqual(game.GameState.data.lastResult.newDestinationFamiliarities?.[0]?.tierLabel, "歩き慣れた", "The third clear announces the next route-familiarity rank");
+assert.strictEqual(game.GameState.data.lastResult.newDestinationFamiliarities[0].previousTierId, "known_route");
 assert.strictEqual(game.GameState.data.lastResult.bondFormations?.[0]?.label, "背中を預ける布陣", "Applied formation bonds reach the actual return result");
 assert.strictEqual(game.GameState.data.partyHistory[0][0].bondFormations?.[0]?.sharedSorties, 20, "Applied formation bonds are preserved in expedition history");
 const bondedRouteLog = game.GameState.data.lastResult.battleLog.find(entry => entry.routeEventId);
 assert(bondedRouteLog?.routeBondSupportApplied && bondedRouteLog.routeBondSupportMemberIds.length === 2 && bondedRouteLog.routeBondSupportMemberNames.length === 2, "Actual return logs preserve both members of route support");
 { const parsed = transfer.parse(JSON.stringify(game.GameState.data)); assert(parsed.ok, `A real bonded return and its history survive save validation: ${parsed.message}`); }
+const validLineageResult = clone();
+validLineageResult.story.facts.routeTraditions = ["meadow:normal"];
+const lineageMentorName = game.Characters.get(created.id).name, lineageApprenticeName = game.Characters.get(fellow.id).name;
+for (const result of [validLineageResult.lastResult, validLineageResult.partyResults[0]]) {
+  const routeLog = result.battleLog.find(entry => entry.routeEventId);
+  Object.assign(routeLog, { routeMentorshipApplied: true, routeMentorshipInherited: true, routeLineageSupportApplied: true, routeLineagePredecessorId: "former-route-guide", routeLineagePredecessorName: "最初の案内役", routeMentorId: created.id, routeMentorName: lineageMentorName, routeApprenticeIds: [fellow.id], routeApprenticeNames: [lineageApprenticeName], routeMentorshipBonus: game.GameData.config.explorationEvents.routeMentorship.successChanceBonus + game.GameData.config.explorationEvents.routeMentorship.inheritedSuccessChanceBonus + game.GameData.config.explorationEvents.routeMentorship.lineageSuccessChanceBonus, routeTraditionApplied: true });
+}
+Object.assign(validLineageResult.partyHistory[0][0].routeEvents[0], { mentorshipApplied: true, mentorshipInherited: true, lineageSupportApplied: true, lineagePredecessorName: "最初の案内役", mentorName: lineageMentorName, apprenticeNames: [lineageApprenticeName], mentorshipBonus: game.GameData.config.explorationEvents.routeMentorship.successChanceBonus + game.GameData.config.explorationEvents.routeMentorship.inheritedSuccessChanceBonus + game.GameData.config.explorationEvents.routeMentorship.lineageSuccessChanceBonus, traditionApplied: true });
+{ const parsed = transfer.parse(JSON.stringify(validLineageResult)); assert(parsed.ok, `Three-generation route logs and an established guild marker survive save validation: ${parsed.message}`); }
+const invalidRouteAtlas = JSON.parse(JSON.stringify(validLineageResult));
+invalidRouteAtlas.story.facts.routeTraditionRecords = { "meadow:normal": { dungeonId: "meadow", difficultyId: "normal", memberIds: [created.id, fellow.id], memberNames: ["二人だけ", "不足"], establishedAt: Date.now() } };
+assert(!transfer.parse(JSON.stringify(invalidRouteAtlas)).ok, "Incomplete founder chains in the guild route atlas are rejected");
+validLineageResult.partyHistory[0][0].routeEvents[0].mentorshipBonus = 9;
+assert(!transfer.parse(JSON.stringify(validLineageResult)).ok, "Altered three-generation route bonuses are rejected");
+const validMentorshipResult = clone();
+const mentorshipMentor = game.Characters.get(created.id), mentorshipApprentice = game.Characters.get(fellow.id);
+for (const result of [validMentorshipResult.lastResult, validMentorshipResult.partyResults[0]]) {
+  const routeLog = result.battleLog.find(entry => entry.routeEventId);
+  Object.assign(routeLog, { routeMentorshipApplied: true, routeMentorId: created.id, routeMentorName: mentorshipMentor.name, routeApprenticeIds: [fellow.id], routeApprenticeNames: [mentorshipApprentice.name], routeMentorshipBonus: game.GameData.config.explorationEvents.routeMentorship.successChanceBonus });
+}
+Object.assign(validMentorshipResult.partyHistory[0][0].routeEvents[0], { mentorshipApplied: true, mentorName: mentorshipMentor.name, apprenticeNames: [mentorshipApprentice.name], mentorshipBonus: game.GameData.config.explorationEvents.routeMentorship.successChanceBonus });
+{ const parsed = transfer.parse(JSON.stringify(validMentorshipResult)); assert(parsed.ok, `Guide-to-newcomer route mentorship survives result and history validation: ${parsed.message}`); }
+validMentorshipResult.lastResult.battleLog.find(entry => entry.routeEventId).routeMentorshipBonus = 9;
+assert(!transfer.parse(JSON.stringify(validMentorshipResult)).ok, "Altered route-mentorship bonuses are rejected");
 const invalidBond = clone();
 invalidBond.adventurerBonds.pairs[`${created.id}::adventurer-999`] = 1;
 assert(!transfer.parse(JSON.stringify(invalidBond)).ok, "Shared-sortie records cannot refer to an unknown adventurer");
@@ -131,6 +200,9 @@ assert(!transfer.parse(JSON.stringify(invalidHistorySetup)).ok, "Invalid expedit
 const invalidHistoryStory = clone();
 invalidHistoryStory.partyHistory[0][0].storyMoments = [{ kind: "discovery", dungeonId: "meadow", sceneId: "missing-scene" }];
 assert(!transfer.parse(JSON.stringify(invalidHistoryStory)).ok, "Unknown expedition-history story scenes must be rejected");
+const invalidHistoryAchievement = clone();
+invalidHistoryAchievement.partyHistory[0][0].newAchievementIds = ["missing-achievement"];
+assert(!transfer.parse(JSON.stringify(invalidHistoryAchievement)).ok, "Unknown expedition-history achievements must be rejected");
 const invalidHistoryRoute = clone();
 invalidHistoryRoute.partyHistory[0][0].routeEvents = [{ id: "missing-route-event", kind: "route", success: true, masteryApplied: false, text: "見知らぬ道中記録" }];
 assert(!transfer.parse(JSON.stringify(invalidHistoryRoute)).ok, "Unknown expedition-history route events must be rejected");
@@ -218,6 +290,9 @@ assert(!transfer.parse(JSON.stringify(validBattleBondResult)).ok, "Altered battl
 const invalidBondTierResult = clone();
 invalidBondTierResult.lastResult.newAdventurerBondTiers = [{ memberIds: [created.id, fellow.id], memberNames: [created.name, fellow.name], sharedSorties: 5, routeLabel: "存在しない支え", battleLabel: "合図の通る間合い" }];
 assert(!transfer.parse(JSON.stringify(invalidBondTierResult)).ok, "Altered travel-bond growth tiers are rejected");
+const invalidFamiliarityResult = clone();
+invalidFamiliarityResult.lastResult.newDestinationFamiliarities[0].tierId = "missing-route-tier";
+assert(!transfer.parse(JSON.stringify(invalidFamiliarityResult)).ok, "Unknown route-familiarity ranks are rejected");
 const invalidUltraResult = clone();
 invalidUltraResult.lastResult.drops.push({ itemId: "wooden_sword", quantity: 1, displayName: "未知の称号付き木の剣", qualityId: "standard", ultraRareTitleId: "missing-title" });
 assert(!transfer.parse(JSON.stringify(invalidUltraResult)).ok, "Unknown ultra-rare result titles must be rejected");
@@ -226,6 +301,55 @@ invalidTrackedResult.lastResult.trackedItemId = "missing-item";
 invalidTrackedResult.lastResult.trackedItemQuantity = 1;
 assert(!transfer.parse(JSON.stringify(invalidTrackedResult)).ok, "Unknown tracked result items must be rejected");
 const completed = clone();
+game.GameState.data.story.facts.routeTraditions = [];
+const routeNewcomer = require("./helpers").createCharacter(game, "道を継ぐ新人", "mage", "human", "scholar");
+assert(game.Party.toggle(routeNewcomer.id).ok);
+assert(game.Dungeon.start("meadow").ok);
+const traditionSnapshot = game.GameState.data.expeditions[0].partySnapshot;
+Object.assign(traditionSnapshot.find(member => member.id === created.id), { destinationClearExperience: true, destinationClearCount: 10 });
+Object.assign(traditionSnapshot.find(member => member.id === fellow.id), { destinationClearExperience: true, destinationClearCount: 10, inheritedRouteGuide: true, routeMentorIds: [created.id] });
+Object.assign(traditionSnapshot.find(member => member.id === routeNewcomer.id), { destinationClearExperience: false, destinationClearCount: 0 });
+guaranteeVictory();
+game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
+game.Dungeon.completeIfReady();
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameState.data.story.facts.routeTraditions)), ["meadow:normal"], "A successful three-generation expedition establishes one permanent guild route marker");
+assert.strictEqual(game.GameState.data.lastResult.newRouteTradition?.memberNames.length, 3, "The first route-marker report credits the full three-generation chain");
+assert.deepStrictEqual(game.GameState.data.story.facts.routeTraditionRecords["meadow:normal"].memberNames, game.GameState.data.lastResult.newRouteTradition.memberNames, "The guild route atlas permanently keeps all three founders after the short return history changes");
+assert.strictEqual(game.GameState.data.story.facts.routeTraditionRecords["meadow:normal"].establishedAt, game.GameState.data.lastResult.newRouteTradition.establishedAt, "The route atlas keeps the exact establishment date");
+assert.strictEqual(game.GameState.data.story.facts.routeTraditionRecords["meadow:normal"].assistedSorties, 0, "A newly established marker starts before it has guided a later expedition");
+assert.strictEqual(game.GameState.data.partyHistory[0][0].newRouteTradition?.difficultyId, "normal", "The route marker's origin remains visible in expedition history");
+assert.strictEqual(game.Party.routeExperience("meadow", "normal", 0).traditionEstablished, true, "Later destination planning recognizes the shared route marker");
+game.GameState.data.story.facts.routeTraditionRecords["meadow:normal"].assistedSorties = 2;
+assert(game.Dungeon.start("meadow").ok);
+const routeFounderNames = JSON.parse(JSON.stringify(game.GameState.data.story.facts.routeTraditionRecords["meadow:normal"].memberNames));
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameState.data.expeditions[0].guildRouteTraditionFounderNames)), routeFounderNames, "Departure snapshots the names of the three adventurers whose marker will guide this party");
+guaranteeVictory();
+game.GameState.data.expeditions[0].endsAt = Date.now() - 1;
+const assistedAt = game.GameState.data.expeditions[0].endsAt;
+game.Dungeon.completeIfReady();
+assert.strictEqual(game.GameState.data.story.facts.routeTraditionRecords["meadow:normal"].assistedSorties, 3, "A later expedition permanently records that it relied on the founders' marker");
+assert.strictEqual(game.GameState.data.story.facts.routeTraditionRecords["meadow:normal"].lastAssistedAt, assistedAt, "The route atlas remembers when its guidance was last used");
+assert.strictEqual(game.GameState.data.lastResult.routeTraditionGrowth?.tierId, "worn_route", "The return that reaches a shared-use threshold announces the marker's new route tier");
+assert.strictEqual(game.GameState.data.partyHistory[0][0].routeTraditionGrowth?.successChanceBonus, .02, "A route-tier milestone remains readable in expedition history");
+const assistedRouteLog = game.GameState.data.lastResult.battleLog.find(entry => entry.routeTraditionApplied);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(assistedRouteLog.routeTraditionFounderNames)), routeFounderNames, "The completed expedition log credits the route marker's three founders");
+const assistedHistoryEvent = game.GameState.data.partyHistory[0][0].routeEvents.find(event => event.traditionApplied);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(assistedHistoryEvent.traditionFounderNames)), routeFounderNames, "Condensed expedition history preserves the route marker founders");
+const invalidRouteGrowth = clone();
+invalidRouteGrowth.lastResult.routeTraditionGrowth.successChanceBonus = .9;
+assert(!transfer.parse(JSON.stringify(invalidRouteGrowth)).ok, "Altered route-marker growth rewards are rejected");
+const invalidRouteLegacy = JSON.parse(JSON.stringify(game.GameState.data));
+invalidRouteLegacy.story.facts.routeTraditionRecords["meadow:normal"].assistedSorties = -1;
+assert(!transfer.parse(JSON.stringify(invalidRouteLegacy)).ok, "Negative route-marker assistance counts are rejected");
+assert(game.Dungeon.start("meadow").ok);
+assert.strictEqual(game.GameState.data.expeditions[0].guildRouteTraditionTierId, "worn_route", "Departure snapshots the route tier earned by earlier returning parties");
+assert.deepStrictEqual(JSON.parse(JSON.stringify(game.GameState.data.expeditions[0].guildRouteTraditionFounderNames)), routeFounderNames, "Every later departure preserves the original three route founders");
+const invalidRouteTier = clone();
+invalidRouteTier.expeditions[0].guildRouteTraditionTierId = "invented-road";
+assert(!transfer.parse(JSON.stringify(invalidRouteTier)).ok, "Unknown route-marker tiers are rejected during save validation");
+const invalidRouteFounder = clone();
+invalidRouteFounder.expeditions[0].guildRouteTraditionFounderNames[1] = "別の冒険者";
+assert(!transfer.parse(JSON.stringify(invalidRouteFounder)).ok, "Altered route-marker founder snapshots are rejected during save validation");
 game.GameState.reset();
 assert(transfer.restore(completed).ok);
 assert(game.GameState.data.lastResult.memberReports.length === 2);

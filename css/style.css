@@ -225,8 +225,35 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-tracked-achievement strong, .result-tracked-achievement p, .result-tracked-achievement small { display: block; margin: .16rem 0; }
 .result-tracked-achievement p { font-size: .9rem; font-weight: 800; }
 .result-tracked-achievement small { color: #567064; }
-.result-tracked-actions { display: flex; justify-content: flex-end; margin-top: .5rem; }
+.result-tracked-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .35rem; margin-top: .5rem; }
 .result-tracked-actions .button { min-height: 38px; padding: .35rem .7rem; font-size: .72rem; }
+.result-craft-path { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .65rem; align-items: center; margin-top: .65rem; padding: .65rem; border: 1px solid rgba(171, 130, 57, .28); border-radius: 12px; background: rgba(255, 250, 236, .72); }
+.result-craft-path > span { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; color: #7a5721; background: rgba(205, 167, 92, .18); }
+.result-craft-path small, .result-craft-path strong, .result-craft-path p { display: block; }
+.result-craft-path small { color: #856c44; letter-spacing: .05em; }
+.result-craft-path strong { margin-top: .08rem; }
+.result-craft-path p { margin: .12rem 0 0; color: var(--muted); font-size: .82rem; }
+.result-craft-path.is-ready { border-color: rgba(76, 134, 91, .34); background: rgba(238, 249, 239, .76); }
+.result-craft-actions { display: grid; gap: .35rem; min-width: 8.5rem; }
+.result-craft-actions .button { min-height: 36px; padding: .35rem .55rem; font-size: .7rem; }
+@media (max-width: 560px) { .result-craft-path { grid-template-columns: auto minmax(0, 1fr); } .result-craft-path > button, .result-craft-actions { grid-column: 1 / -1; width: 100%; } .result-craft-actions { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+.forge-shop-card.is-crafting-target { border-color: #72927b; box-shadow: inset 4px 0 #72927b; }
+.recipe-craft-actions { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); gap: .45rem; margin-top: .65rem; }
+.recipe-craft-actions .button { width: 100%; }
+@media (max-width: 520px) { .recipe-craft-actions { grid-template-columns: 1fr; } }
+.result-tracked-milestone { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: .65rem; margin-top: .7rem; padding: .72rem; border: 1px solid #b5a277; border-left: 4px solid #887042; border-radius: 5px; background: linear-gradient(135deg,#f7f2e5,#fffdf7); }
+.result-tracked-milestone > span { display: grid; place-items: center; width: 36px; height: 36px; color: #f0d18a; border-radius: 50%; background: #344343; font-size: 1rem; }
+.result-tracked-milestone > div { min-width: 0; }
+.result-tracked-milestone small, .result-tracked-milestone strong, .result-tracked-milestone p, .result-tracked-milestone em { display: block; }
+.result-tracked-milestone small { color: #806c43; font-size: .58rem; font-weight: 900; letter-spacing: .06em; }
+.result-tracked-milestone strong { margin-top: .12rem; font-size: .8rem; }
+.result-tracked-milestone p { margin: .12rem 0 .35rem; color: var(--muted); font-size: .66rem; }
+.result-tracked-milestone > div > div { height: 5px; overflow: hidden; border-radius: 999px; background: #e2d9c6; }
+.result-tracked-milestone > div > div i { display: block; height: 100%; border-radius: inherit; background: #9d7f3e; }
+.result-tracked-milestone em { margin-top: .2rem; color: #735d31; font-size: .62rem; font-style: normal; font-weight: 900; }
+.result-tracked-milestone > button { padding: .3rem .4rem; color: #70592e; border: 0; background: transparent; font: inherit; font-size: .64rem; font-weight: 900; cursor: pointer; white-space: nowrap; }
+.result-tracked-milestone.is-complete { border-color: #789b7e; border-left-color: var(--green); background: linear-gradient(135deg,#edf7ef,#fffdf7); }
+.result-tracked-milestone.is-complete > div > div i { background: var(--green); }
 .codex-quality-record { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .35rem .5rem; border: 1px solid #ddd2e5; border-radius: 4px; background: #faf6fc; }
 .codex-quality-record span { color: #6e6473; font-size: .72rem; }
 .level-up { margin-top: 10px !important; color: var(--gold) !important; font-weight: 700; }
@@ -297,6 +324,14 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .battle-log-entry.enemy-skill p, .battle-log-entry.enemy-skill .battle-log-icon { color: #efa4b2; font-weight: 700; }
 .battle-log-entry.status p, .battle-log-entry.status .battle-log-icon { color: #efbd75; font-weight: 600; }
 .battle-log-entry.formation p, .battle-log-entry.formation .battle-log-icon { color: #8eacc6; }
+.battle-log-entry.chapter-map-guidance { border-color: #c7ad67; background: linear-gradient(100deg,#fff7d9,#f4ecd6); }
+.battle-log-entry.chapter-map-guidance p { color: #665126; }
+.battle-log-entry.chapter-map-guidance .battle-log-icon { color: #fff8df; border-color: #98762f; background: #98762f; font-family: Georgia,"Yu Mincho",serif; font-weight: 900; }
+.battle-log-entry.target-item-acquired { grid-template-columns: 24px minmax(0,1fr) auto; border-color: #91b29d; background: linear-gradient(100deg,#e7f3eb,#f8fcf9); }
+.battle-log-entry.target-item-acquired p { color: #345a47; font-weight: 700; }
+.battle-log-entry.target-item-acquired .battle-log-icon { color: #effaf3; border-color: #4f8066; background: #4f8066; font-weight: 900; }
+.battle-log-target-badge,.journey-target-item-badge { align-self: center; padding: .12rem .34rem; color: #f2fff7; border: 0; border-radius: 999px; background: #4f8066; font: inherit; font-size: .54rem; font-weight: 900; white-space: nowrap; cursor: pointer; }
+.battle-log-target-badge:active,.journey-target-item-badge:active { transform: translateY(1px); }
 .battle-log-entry.reputation { margin: 4px 0; padding: 7px 6px; background: rgba(185,139,62,.08); border-left: 2px solid rgba(210,172,91,.75); }
 .battle-log-entry.reputation p, .battle-log-entry.reputation .battle-log-icon { color: #dfc784; font-weight: 600; }
 .journey-discovery.companion { background: linear-gradient(90deg,rgba(185,139,62,.14),rgba(255,255,255,.72)); border-left-color: #b98b3e; }
@@ -637,6 +672,25 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .attempt-comparison > div:first-child { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .7rem; margin-bottom: .65rem; }
 .attempt-comparison h4, .attempt-comparison p { margin: 0; }
 .attempt-comparison p { margin-left: auto; color: #68717a; font-size: .72rem; }
+.attempt-target-yield { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: .45rem .65rem; margin: 0 0 .65rem; padding: .65rem; border: 1px solid rgba(117,94,60,.24); border-left: 4px solid #8b734a; border-radius: 6px; background: rgba(255,255,255,.76); }
+.attempt-target-yield.is-improved { border-left-color: #4f8565; background: #edf6ed; }
+.attempt-target-yield.is-missed { border-left-color: #a36f63; background: #f8eeea; }
+.attempt-target-yield > span { font-size: 1.4rem; }
+.attempt-target-yield > div:nth-of-type(1) small, .attempt-target-yield > div:nth-of-type(1) strong, .attempt-target-yield > div:nth-of-type(1) p { display: block; margin: 0; }
+.attempt-target-yield > div:nth-of-type(1) small { color: #8b734a; font-size: .58rem; font-weight: 900; letter-spacing: .06em; }
+.attempt-target-yield > div:nth-of-type(1) strong { margin-top: .08rem; font-size: .8rem; }
+.attempt-target-yield > div:nth-of-type(1) p { margin-top: .12rem; color: #68717a; font-size: .66rem; }
+.attempt-target-yield .target-yield-best { display: inline-block; margin-top: .28rem; padding: .12rem .32rem; border-radius: 3px; color: #755e3c; background: #eee4cb; font-size: .58rem; font-style: normal; font-weight: 900; letter-spacing: .02em; }
+.attempt-target-yield .target-yield-best.is-new { color: #315e43; background: #dcebdc; }
+.attempt-target-yield .target-yield-best.is-tied { color: #5c5375; background: #e9e3f1; }
+.attempt-target-yield > div:nth-of-type(2) { display: grid; grid-template-columns: auto auto auto auto auto; align-items: center; gap: .28rem; white-space: nowrap; }
+.attempt-target-yield > div:nth-of-type(2) small { color: #7a7f83; font-size: .58rem; }
+.attempt-target-yield > div:nth-of-type(2) b { font-size: .78rem; font-variant-numeric: tabular-nums; }
+.attempt-target-yield > div:nth-of-type(2) i { color: #9a7a35; font-style: normal; }
+.attempt-target-yield .attempt-target-actions { display: grid; gap: .28rem; justify-items: stretch; }
+.attempt-target-yield .text-button { color: #755e3c; font-size: .66rem; white-space: nowrap; }
+.attempt-target-yield .target-yield-retry { padding: .3rem .45rem; border: 1px solid #6d8b73; border-radius: 4px; color: #315e43; background: #f3faf4; font-size: .62rem; font-weight: 900; white-space: nowrap; }
+.attempt-target-yield .target-yield-retry:disabled { color: #8a948d; border-color: #c3ccc6; background: #eff2f0; cursor: default; }
 .attempt-comparison-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .35rem; }
 .attempt-comparison-row { display: grid; grid-template-columns: minmax(4.5rem, 1fr) auto minmax(3rem, auto) auto auto minmax(3rem, auto); align-items: center; gap: .25rem; min-width: 0; padding: .45rem .5rem; border-radius: 5px; background: rgba(255,255,255,.68); }
 .attempt-comparison-row span { font-size: .72rem; font-weight: 900; }
@@ -702,6 +756,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .attempt-comparison-grid { grid-template-columns: 1fr; }
   .attempt-comparison > div:first-child { display: block; }
   .attempt-comparison p { margin-top: .2rem; }
+  .attempt-target-yield { grid-template-columns: auto minmax(0,1fr); }
+  .attempt-target-yield > div:nth-of-type(2), .attempt-target-yield .attempt-target-actions { grid-column: 2; justify-self: start; }
   .failure-evidence-links { display: grid; grid-template-columns: 1fr 1fr; }
   .failure-evidence-links > span, .failure-evidence-links .button:last-child { grid-column: 1 / -1; }
   .monster-expedition-context { grid-template-columns: 1fr; }
@@ -808,6 +864,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .report-party-navigation .button { min-height: 36px; padding: .3rem .5rem; font-size: .7rem; }
 .report-repeat-departure { margin-top: .8rem; padding: .7rem; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .7rem; border: 1px solid #c9b77f; border-left: 4px solid var(--gold); border-radius: 6px; background: #fffaf0; }
 .report-repeat-departure.is-active { border-color: #8caf9b; border-left-color: var(--green); background: #edf6f0; }
+.report-repeat-departure.has-retry-preparation { border-color: #c79c79; border-left-color: #8a6044; background: linear-gradient(105deg,#faeddf,#fffaf0); }
 .report-repeat-departure > div:first-child { min-width: 0; display: grid; gap: .12rem; }
 .report-repeat-departure > div:first-child > span { color: var(--gold-dark); font-size: .62rem; font-weight: 900; letter-spacing: .08em; }
 .report-repeat-departure > div:first-child > strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1460,7 +1517,58 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .story-guild-whisper.is-developing { border-style: dashed; background: linear-gradient(145deg,rgba(246,248,240,.94),rgba(224,232,216,.64)); }
 .story-guild-whisper.is-developing header > span:first-child { color: #536957; border-color: #758a78; }
 .story-guild-whisper.is-developing header strong,.story-guild-whisper.is-developing p b { color: #49604d; }
+.story-guild-whisper.is-achievement { border-color: rgba(171,126,37,.44); background: linear-gradient(145deg,rgba(255,249,225,.96),rgba(238,221,174,.64)); box-shadow: inset 4px 0 #b78a35,0 8px 20px rgba(98,69,19,.08); }
+.story-guild-whisper.is-achievement header > span:first-child { color: #f3d891; border-color: #a47829; background: #34413e; }
+.story-guild-whisper.is-achievement header strong,.story-guild-whisper.is-achievement p b { color: #78591e; }
+.story-route-tradition-whisper { margin: .75rem 0; overflow: hidden; border: 1px solid rgba(74,108,78,.34); border-radius: 10px; background: linear-gradient(145deg,rgba(245,249,238,.96),rgba(221,232,209,.7)); box-shadow: inset 4px 0 #71866a,0 8px 20px rgba(48,73,51,.06); }
+.story-route-tradition-whisper > summary { display: grid; grid-template-columns: 2rem minmax(0,1fr) 1rem; gap: .55rem; align-items: center; min-height: 54px; padding: .62rem .7rem; cursor: pointer; list-style: none; }
+.story-route-tradition-whisper > summary::-webkit-details-marker { display: none; }
+.story-route-tradition-whisper > summary > span:first-child { display: grid; place-items: center; width: 2rem; height: 2rem; color: #e9d594; border: 1px solid #7d936f; border-radius: 50%; background: #3d5144; font-family: Georgia,"Yu Mincho",serif; font-weight: 900; }
+.story-route-tradition-whisper > summary > span:nth-child(2) { display: grid; min-width: 0; }
+.story-route-tradition-whisper > summary small { color: #6f8068; font-size: .54rem; font-weight: 800; letter-spacing: .08em; }
+.story-route-tradition-whisper > summary strong { margin-top: .04rem; color: #3f5844; font-family: Georgia,"Yu Mincho",serif; font-size: .73rem; }
+.story-route-tradition-whisper > summary em { overflow: hidden; margin-top: .08rem; color: #7c7865; font-size: .58rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.story-route-tradition-whisper > summary > i { color: #71866a; font-style: normal; transition: transform .18s ease; }
+.story-route-tradition-whisper[open] > summary > i { transform: rotate(90deg); }
+.story-route-tradition-whisper > div { padding: 0 .75rem .75rem 3.25rem; border-top: 1px solid rgba(74,108,78,.13); }
+.story-route-tradition-whisper p { margin: .5rem 0; color: #485247; font-family: Georgia,"Yu Mincho",serif; font-size: .67rem; line-height: 1.65; }
+.story-route-tradition-whisper p b { margin-right: .35rem; color: #48614c; font-family: inherit; }
+.story-retreat-council { margin: .75rem 0; overflow: hidden; border: 1px solid rgba(130,74,58,.34); border-radius: 10px; background: linear-gradient(145deg,rgba(255,247,236,.97),rgba(235,218,202,.72)); box-shadow: inset 4px 0 #9d654f,0 8px 20px rgba(91,49,37,.07); }
+.story-retreat-council > summary { display: grid; grid-template-columns: 2rem minmax(0,1fr) 1rem; gap: .55rem; align-items: center; min-height: 54px; padding: .62rem .7rem; cursor: pointer; list-style: none; }
+.story-retreat-council > summary::-webkit-details-marker { display: none; }
+.story-retreat-council > summary > span:first-child { display: grid; place-items: center; width: 2rem; height: 2rem; color: #f1d3aa; border: 1px solid #aa725b; border-radius: 50%; background: #553f39; font-family: Georgia,"Yu Mincho",serif; font-weight: 900; }
+.story-retreat-council > summary > span:nth-child(2) { display: grid; min-width: 0; }
+.story-retreat-council > summary small { color: #95705f; font-size: .54rem; font-weight: 800; letter-spacing: .08em; }
+.story-retreat-council > summary strong { margin-top: .04rem; color: #664438; font-family: Georgia,"Yu Mincho",serif; font-size: .73rem; }
+.story-retreat-council > summary em { overflow: hidden; margin-top: .08rem; color: #7c6c62; font-size: .58rem; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.story-retreat-council > summary > i { color: #9d654f; font-style: normal; transition: transform .18s ease; }
+.story-retreat-council[open] > summary > i { transform: rotate(90deg); }
+.story-retreat-council > div { padding: 0 .75rem .75rem 3.25rem; border-top: 1px solid rgba(130,74,58,.14); }
+.story-retreat-council p { margin: .5rem 0; color: #544943; font-family: Georgia,"Yu Mincho",serif; font-size: .67rem; line-height: 1.65; }
+.story-retreat-council p b { margin-right: .35rem; color: #7b4f3f; font-family: inherit; }
+.story-retreat-council nav { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .65rem; }
+.story-retreat-council nav .button { min-height: 34px; padding: .35rem .55rem; font-size: .61rem; }
+.story-retreat-council.is-overcome { border-color: rgba(96,118,69,.4); background: linear-gradient(145deg,rgba(250,250,231,.98),rgba(218,230,197,.74)); box-shadow: inset 4px 0 #738856,0 8px 20px rgba(61,82,41,.07); }
+.story-retreat-council.is-overcome > summary > span:first-child { color: #f1dda0; border-color: #839762; background: #43543a; }
+.story-retreat-council.is-overcome > summary small,.story-retreat-council.is-overcome > summary > i { color: #71805b; }
+.story-retreat-council.is-overcome > summary strong,.story-retreat-council.is-overcome p b { color: #4d623f; }
+.story-achievement-target { margin: .75rem 0; padding: .65rem .7rem; display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: .55rem; border: 1px solid #aebba8; border-radius: 8px; background: linear-gradient(120deg,#eef4ea,#fffaf0); }
+.story-achievement-target > span { width: 36px; height: 36px; display: grid; place-items: center; color: #f0d18a; border-radius: 50%; background: #32413d; }
+.story-achievement-target > div { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .05rem .45rem; }
+.story-achievement-target small,.story-achievement-target strong,.story-achievement-target p,.story-achievement-target > div > div { grid-column: 1 / -1; }
+.story-achievement-target small { color: #6d806e; font-size: .54rem; font-weight: 900; letter-spacing: .08em; }
+.story-achievement-target strong { font-family: Georgia,"Yu Mincho",serif; font-size: .8rem; }
+.story-achievement-target p { margin: .08rem 0; color: var(--muted); font-size: .64rem; line-height: 1.45; }
+.story-achievement-target > div > div { height: 4px; overflow: hidden; border-radius: 4px; background: #d4ddd1; }
+.story-achievement-target > div > div i { display: block; height: 100%; background: linear-gradient(90deg,#607d68,#d1a94d); }
+.story-achievement-target em { color: #80652c; font-size: .58rem; font-style: normal; font-weight: 800; }
+.story-achievement-target > nav { display: grid; gap: .25rem; }
+.story-achievement-target > nav button { min-height: 32px; padding: .25rem .45rem; color: #58695f; border: 1px solid #bcc6bb; border-radius: 4px; background: rgba(255,255,255,.66); font: inherit; font-size: .6rem; font-weight: 800; cursor: pointer; }
+.story-achievement-target > nav button:first-child { color: #fffdf5; border-color: #536c5b; background: #607a67; }
 @media (max-width: 560px) { .story-guild-whisper > div,.story-guild-whisper .text-button { margin-left: 0; } }
+@media (max-width: 560px) { .story-route-tradition-whisper > div { padding-left: .75rem; } }
+@media (max-width: 560px) { .story-retreat-council > div { padding-left: .75rem; }.story-retreat-council nav .button { flex: 1 1 30%; } }
+@media (max-width: 560px) { .story-achievement-target { grid-template-columns: 34px minmax(0,1fr); }.story-achievement-target > nav { grid-column: 2; display: flex; flex-wrap: wrap; } }
 .story-character-archive { margin: .7rem 0 1rem; border-block: 1px solid var(--line); }
 .story-character-archive > summary { display: flex; align-items: center; justify-content: space-between; gap: .65rem; min-height: 48px; padding: .55rem 0; cursor: pointer; list-style: none; }
 .story-character-archive > summary > span:first-child { display: grid; }
@@ -1494,6 +1602,22 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-story-moments article + article { margin-top: .2rem; }
 .result-story-moments small { color: #8a6428; }
 .result-story-moments p { margin: .15rem 0 0; line-height: 1.7; }
+.result-story-continuation { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .75rem; margin: 1rem 0; padding: .85rem; color: #f7edcf; border: 1px solid #9f824c; border-radius: 9px; background: linear-gradient(120deg,#1c2b32,#263a38); box-shadow: 0 8px 18px rgba(23,37,42,.13); }
+.result-story-continuation > span { display: grid; place-items: center; width: 2.6rem; height: 2.6rem; color: #223238; border-radius: 50%; background: #dcc88f; font-weight: 900; }
+.result-story-continuation > div { display: grid; gap: .15rem; min-width: 0; }
+.result-story-continuation small { color: #ceb77b; font-size: .68rem; font-weight: 900; letter-spacing: .08em; }
+.result-story-continuation strong { color: #fff8e2; }
+.result-story-continuation p { margin: 0; color: #d8ddd6; font-size: .82rem; line-height: 1.55; }
+.result-story-continuation .button { white-space: nowrap; }
+.result-story-continuation.is-route-ready { color: #edf7e8; border-color: #718d65; background: linear-gradient(120deg,#24382c,#304c36); }
+.result-story-continuation.is-route-ready > span { color: #29402e; background: #c8d9a7; }
+.result-story-continuation.is-route-ready small { color: #bace9e; }
+.result-story-continuation.is-difficulty-ready { color: #fff1dd; border-color: #9b6a4e; background: linear-gradient(120deg,#302426,#533328); }
+.result-story-continuation.is-difficulty-ready > span { color: #4b2d22; background: #e5bb82; }
+.result-story-continuation.is-difficulty-ready small { color: #e6bd87; }
+.result-difficulty-actions { display: grid; gap: .35rem; }
+.result-difficulty-actions .button { min-height: 38px; }
+@media (max-width: 600px) { .result-story-continuation { grid-template-columns: auto minmax(0,1fr); }.result-story-continuation > .button,.result-story-continuation > .result-difficulty-actions { grid-column: 1 / -1; width: 100%; }.result-difficulty-actions .button { width: 100%; } }
 .result-mystery-progress { display: grid; gap: .5rem; margin: 1rem 0; padding: .85rem; color: #eee7d5; border: 1px solid #786c53; border-left: 4px solid #c9a45f; border-radius: 8px; background: linear-gradient(145deg,#293238,#182126); }
 .result-mystery-progress > .label { color: #d6b670; }
 .result-mystery-progress > strong { font-family: Georgia,"Yu Mincho",serif; font-size: .86rem; }
@@ -1515,6 +1639,24 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-new-discoveries .label, .result-new-discoveries strong, .result-new-discoveries p { grid-column: 1; }
 .result-new-discoveries p { margin: .1rem 0 0; color: #735b27; font-size: .78rem; }
 .result-new-discoveries .button { grid-column: 2; grid-row: 1 / 4; min-height: 42px; }
+.result-achievement-unlocks { overflow: hidden; position: relative; background: linear-gradient(115deg,#fff6d7,#fffdf6 58%,#f4e5b7); }
+.achievement-unlock-list { grid-column: 1; display: grid; gap: .38rem; margin-top: .3rem; }
+.achievement-unlock-list article { position: relative; min-height: 58px; padding: .45rem 4.8rem .45rem .5rem; display: grid; grid-template-columns: 38px minmax(0,1fr); align-items: center; gap: .5rem; overflow: hidden; border: 1px solid #d9bd73; border-radius: 5px; background: #fffdf8cc; box-shadow: inset 3px 0 #bd8c2d; }
+.achievement-unlock-list article > span { width: 36px; height: 36px; display: grid; place-items: center; color: #f3d995; border: 1px solid #a97e32; border-radius: 50%; background: #293738; font-size: .9rem; }
+.achievement-unlock-list article > div { min-width: 0; display: grid; gap: .02rem; }
+.achievement-unlock-list article small { color: #94702d; font-size: .58rem; font-weight: 900; letter-spacing: .04em; }
+.achievement-unlock-list article strong { grid-column: auto; color: #303638; font-family: Georgia,"Yu Mincho",serif; font-size: .82rem; }
+.achievement-unlock-list article p { grid-column: auto; margin: .04rem 0 0; color: #6f6754; font-size: .66rem; line-height: 1.35; }
+.achievement-unlock-reward { justify-self: start; min-height: 28px; margin-top: .22rem; padding: .2rem .38rem; color: #684e18; border: 1px solid #c7a454; border-radius: 4px; background: #fff3c9; font: inherit; font-size: .57rem; font-weight: 800; cursor: pointer; }
+.achievement-unlock-reward:hover { border-color: #977020; background: #ffe8a3; }
+.achievement-unlock-reward.is-claimed { color: #5f7466; border-color: #b8c5b9; background: #edf4ee; cursor: default; }
+.achievement-unlock-continuation { margin-top: .25rem; padding: .3rem .4rem; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .02rem .35rem; border-left: 2px solid #b79042; background: #f5ecd4; }
+.achievement-unlock-continuation > span { grid-column: 1 / -1; color: #866726; font-size: .52rem; font-weight: 900; letter-spacing: .05em; }
+.achievement-unlock-continuation > b { overflow: hidden; color: #4e452f; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
+.achievement-unlock-continuation > small { align-self: center; color: #75684d; font-size: .55rem; white-space: nowrap; }
+.achievement-unlock-continuation.is-active { border-left-color: #60866b; background: #eaf2e8; }
+.achievement-unlock-continuation.is-active > span { color: #4f7459; }
+.achievement-unlock-list article > em { position: absolute; right: .45rem; top: 50%; padding: .14rem .25rem; color: #9a732d; border: 1px solid #bb9144; transform: translateY(-50%) rotate(-4deg); font-size: .5rem; font-style: normal; font-weight: 900; letter-spacing: .08em; opacity: .72; }
 .result-adventurer-reputations > div { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap: .4rem; margin-top: .35rem; }
 .result-adventurer-reputations article { display: grid; grid-template-columns: 1.7rem minmax(0,1fr) auto; align-items: center; gap: .45rem; padding: .5rem; border: 1px solid rgba(153,115,37,.3); border-radius: 5px; background: rgba(255,255,255,.7); }
 .result-adventurer-reputations article > span { display: grid; place-items: center; width: 1.55rem; height: 1.55rem; color: #fff; border-radius: 50%; background: #6e805f; font-size: .62rem; font-weight: 900; }
@@ -1588,6 +1730,27 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-first-clear { display: grid; gap: .2rem; margin: 1rem 0; padding: .85rem .9rem; color: #49391f; border: 1px solid #c9a34b; border-left: 4px solid #9c7321; border-radius: 6px; background: linear-gradient(110deg,#f9e8aa,#fffaf0 75%); }
 .result-first-clear .label { color: #8b651c; }
 .result-first-clear p { margin: .1rem 0 0; color: #674f21; }
+.result-difficulty-chapter-complete { margin: 1rem 0; padding: .8rem .9rem; display: grid; grid-template-columns: 44px minmax(0,1fr) auto; align-items: center; gap: .7rem; color: #fff5da; border: 1px solid #b38e4e; border-radius: 7px; background: linear-gradient(125deg,#263c38,#182d31 72%); box-shadow: inset 0 0 24px rgba(226,185,92,.09); }
+.result-difficulty-chapter-complete > span { width: 42px; height: 42px; display: grid; place-items: center; color: #273936; border: 1px solid #efd38b; border-radius: 50%; background: #e9ca7b; font-family: Georgia,"Yu Mincho",serif; font-weight: 900; }
+.result-difficulty-chapter-complete > div { min-width: 0; display: grid; gap: .08rem; }
+.result-difficulty-chapter-complete small { color: #d5b66b; font-size: .58rem; font-weight: 900; letter-spacing: .08em; }
+.result-difficulty-chapter-complete strong { color: #fff8e7; font-family: Georgia,"Yu Mincho",serif; font-size: .9rem; }
+.result-difficulty-chapter-complete p { margin: .08rem 0 0; color: #d7ddd4; font-size: .7rem; line-height: 1.45; }
+.result-difficulty-chapter-complete .result-chapter-map-benefit { margin-top: .35rem; padding: .32rem .5rem; color: #fff2c9; border: 1px solid rgba(239,211,139,.4); border-radius: 5px; background: rgba(239,211,139,.08); }
+.result-chapter-map-benefit b { margin-right: .45rem; color: #efd38b; }
+.result-difficulty-chapter-complete .button { min-height: 40px; color: #322b1d; border-color: #e1c477; background: #f2d995; }
+.result-difficulty-chapter-actions { display: grid; gap: .35rem; }
+.result-difficulty-chapter-complete .result-difficulty-chapter-actions .button.ghost { color: #f2ddb0; background: transparent; }
+.result-chapter-map-conversation { margin-top: .45rem; border-top: 1px solid rgba(226,185,92,.25); }
+.result-chapter-map-conversation > summary { padding-top: .4rem; display: grid; grid-template-columns: auto minmax(0,1fr) 14px; align-items: center; gap: .45rem; cursor: pointer; list-style: none; }
+.result-chapter-map-conversation > summary::-webkit-details-marker { display: none; }
+.result-chapter-map-conversation > summary span { color: #bfa870; font-size: .5rem; font-weight: 900; letter-spacing: .08em; }
+.result-chapter-map-conversation > summary strong { color: #f0e3c1; font-size: .67rem; }
+.result-chapter-map-conversation > summary i { color: #d5b66b; font-style: normal; transition: transform .18s ease; }
+.result-chapter-map-conversation[open] > summary i { transform: rotate(90deg); }
+.result-chapter-map-conversation > div { padding-top: .2rem; }
+.result-difficulty-chapter-complete .result-chapter-map-conversation p { margin: .28rem 0; color: #dbe0d8; font-family: Georgia,"Yu Mincho",serif; font-size: .65rem; line-height: 1.55; }
+.result-chapter-map-conversation p b { margin-right: .35rem; color: #efd38b; font-family: inherit; }
 @keyframes discovery-glow { from { box-shadow: 0 0 18px rgba(211,165,54,.45); transform: translateY(-2px); } to { box-shadow: none; transform: none; } }
 @media (max-width: 720px) {
   .result-level-ups > article { grid-template-columns: 1fr; }
@@ -1597,6 +1760,11 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .result-observation-unlock .button { grid-column: 1; grid-row: auto; margin-top: .35rem; }
   .result-new-discoveries { grid-template-columns: 1fr; }
   .result-new-discoveries .button { grid-column: 1; grid-row: auto; margin-top: .35rem; }
+  .result-difficulty-chapter-complete { grid-template-columns: 38px minmax(0,1fr); padding: .7rem; }
+  .result-difficulty-chapter-complete > span { width: 36px; height: 36px; }
+  .result-difficulty-chapter-actions { grid-column: 1 / -1; width: 100%; }
+  .result-difficulty-chapter-complete .button { width: 100%; }
+  .achievement-unlock-list article { padding-right: 4rem; }
   .result-adventurer-milestones article,.result-personal-bests article { grid-template-columns: minmax(0,1fr) auto; }
   .result-adventurer-milestones article > span,.result-personal-bests article > span { grid-column: 1; }
   .result-adventurer-milestones article p,.result-personal-bests article p { grid-column: 1; }
@@ -1642,6 +1810,18 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-target-strip.harvest-target { border-color: #9f8b4d; background: linear-gradient(100deg,#edf3e8,#fffaf0); }
 .fleet-target-strip.harvest-target .fleet-target-icon { background: #55623f; }
 .fleet-target-strip.harvest-target > div > small { color: #69733e; }
+.fleet-target-strip.achievement-target { border-color: #8fad96; background: linear-gradient(100deg,#ebf4ec,#fffdf8); }
+.fleet-target-strip.achievement-target .fleet-target-icon { color: #e5f2e3; background: #496756; }
+.fleet-target-strip.achievement-target > div > small { color: #4f7459; }
+.fleet-target-strip.crafting-target { border-color: #9d7f4a; background: linear-gradient(100deg,#f3ead9,#fffaf1); }
+.fleet-target-strip.crafting-target .fleet-target-icon { color: #fff0c4; background: #71552d; }
+.fleet-target-strip.crafting-target > div > small { color: #7b5d29; }
+.fleet-crafting-materials { display: flex; flex-wrap: wrap; gap: .24rem; margin-top: .2rem; }
+.fleet-crafting-materials > span { padding: .14rem .34rem; color: #745f36; border: 1px solid #d7c7a6; border-radius: 999px; background: rgba(255,255,255,.72); font-size: .61rem; white-space: nowrap; }
+.fleet-crafting-materials > span.is-met { color: #47705a; border-color: #a8c2af; background: #edf6ef; }
+.fleet-crafting-materials b { font-variant-numeric: tabular-nums; }
+.fleet-achievement-assignment { width: fit-content; padding: .12rem .3rem; color: #4f7459; border-radius: 3px; background: #e4efe3; font-size: .61rem; font-weight: 800; }
+.fleet-achievement-assignment.is-active { color: #e8f5e7; background: #4f7459; }
 .fleet-target-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #283944; color: #f4d791; font-size: 1rem; }
 .fleet-target-strip > div { min-width: 0; display: grid; gap: .12rem; }
 .fleet-target-strip > div > small { color: var(--gold); font-size: .64rem; font-weight: 800; letter-spacing: .07em; }
@@ -1651,6 +1831,10 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-target-strip > div > i > b { display: block; height: 100%; background: var(--green); }
 .fleet-target-strip > div:last-child { display: flex; gap: .35rem; }
 .fleet-target-strip .button { min-height: 38px; padding: .35rem .6rem; font-size: .7rem; }
+.fleet-target-craft-guide { display: flex; flex-wrap: wrap; align-items: baseline; gap: .18rem .45rem; margin: .35rem 0 0; padding: .38rem .48rem; border-left: 3px solid #9c793c; background: rgba(255,255,255,.56); }
+.fleet-target-craft-guide > span { color: #85631f; font-size: .61rem; font-weight: 800; }
+.fleet-target-craft-guide > strong { font-size: .72rem; }
+.fleet-target-craft-guide > small { flex-basis: 100%; color: var(--muted); font-size: .64rem; }
 .harvest-target-progress { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .5rem; margin-top: .16rem; }
 .harvest-target-progress > span { display: grid; grid-template-columns: auto minmax(40px,1fr); align-items: center; gap: .35rem; color: var(--muted); font-size: .66rem; font-weight: 700; white-space: nowrap; }
 .harvest-target-progress i { height: 4px; overflow: hidden; border-radius: 999px; background: #d8d1c2; }
@@ -1658,6 +1842,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-target-routes { display: flex; gap: .3rem; min-width: 0; margin-top: .25rem; overflow-x: auto; scrollbar-width: none; }
 .fleet-target-routes::-webkit-scrollbar { display: none; }
 .fleet-target-route { flex: 0 0 auto; min-height: 30px; padding: .22rem .48rem; color: #3f5360; border: 1px solid #b9c8d2; border-radius: 4px; background: #f1f5f7; font-size: .64rem; font-weight: 800; white-space: nowrap; }
+.fleet-target-route small { margin-left: .3rem; color: #886d2f; font-size: .56rem; }
 .fleet-target-route:disabled { color: #8b8b83; border-color: #d5d1c9; background: #eeece7; }
 .fleet-target-routes > span, .fleet-target-no-route { color: var(--muted); font-size: .64rem; line-height: 1.4; }
 .journey-hunt-progress { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .6rem; margin: .65rem 0; padding: .55rem .65rem; border: 1px solid #9daeb5; border-radius: 6px; background: linear-gradient(100deg,#e9f0f2,#fbfdfd); }
@@ -1670,6 +1855,35 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .journey-hunt-progress em { color: var(--muted); font-size: .68rem; font-style: normal; white-space: nowrap; }
 .journey-hunt-progress.is-complete { border-color: #85ad98; background: linear-gradient(100deg,#e6f2eb,#f9fcfa); }
 .journey-hunt-progress.is-complete i b { background: var(--green); }
+.journey-item-progress { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .6rem; margin: .65rem 0; padding: .55rem .65rem; border: 1px solid #b1a56b; border-radius: 6px; background: linear-gradient(100deg,#f3f0df,#fffdf7); }
+.journey-item-progress > span { display: grid; place-items: center; width: 32px; height: 32px; color: #fff3be; border-radius: 50%; background: #6f6539; font-size: .68rem; font-weight: 900; }
+.journey-item-progress > div { display: grid; gap: .08rem; min-width: 0; }
+.journey-item-progress small { color: #776c38; font-size: .62rem; font-weight: 800; }
+.journey-item-progress strong { overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.journey-item-progress i { height: 4px; overflow: hidden; border-radius: 999px; background: #ded8bb; }
+.journey-item-progress i b { display: block; height: 100%; background: #9b8840; }
+.journey-item-progress em { color: #776c38; font-size: .68rem; font-style: normal; font-weight: 800; white-space: nowrap; }
+.journey-item-progress.is-complete { border-color: #85ad98; background: linear-gradient(100deg,#e6f2eb,#f9fcfa); }
+.journey-item-progress.is-complete i b { background: var(--green); }
+.journey-discovery.target-item-acquired { border-color: #70a488; box-shadow: inset 3px 0 #4f8066; }
+.journey-discovery.target-item-acquired .journey-discovery-marker { color: #effaf3; background: #4f8066; }
+.journey-target-item-badge { display: inline-block; margin-left: .35rem; vertical-align: middle; letter-spacing: 0; }
+.item-codex-group.is-focused-group > summary { background: linear-gradient(90deg,#eaf4ee,#f8fbf9); }
+.codex-card.is-focused-item { border-color: #4f8066; box-shadow: 0 0 0 3px rgba(79,128,102,.16), 0 12px 30px rgba(57,92,72,.12); animation: codex-item-focus 1.1s ease-out both; }
+@keyframes codex-item-focus { 0% { transform: scale(.985); background: #dcefe3; } 100% { transform: scale(1); } }
+.journey-aftermath-log { margin-left: 1rem; overflow: hidden; border: 1px solid #2d3b4a; border-radius: 6px; }
+.journey-aftermath-log + .journey-aftermath-log { margin-top: -.35rem; }
+.journey-aftermath-log .battle-log-entry { border-bottom: 0; }
+.journey-milestone-progress { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: .6rem; margin: .65rem 0; padding: .55rem .65rem; border: 1px solid #bdad83; border-radius: 6px; background: linear-gradient(100deg,#f7f1e4,#fffdf8); }
+.journey-milestone-progress > span { display: grid; place-items: center; width: 32px; height: 32px; color: #f4d791; border-radius: 50%; background: #3d4b4b; }
+.journey-milestone-progress > div { display: grid; gap: .08rem; min-width: 0; }
+.journey-milestone-progress small { color: #806b3f; font-size: .62rem; font-weight: 800; }
+.journey-milestone-progress strong { overflow: hidden; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.journey-milestone-progress i { height: 4px; overflow: hidden; border-radius: 999px; background: #ded5c1; }
+.journey-milestone-progress i b { display: block; height: 100%; background: #9a7b39; }
+.journey-milestone-progress em { color: #796743; font-size: .68rem; font-style: normal; font-weight: 800; white-space: nowrap; }
+.journey-milestone-progress.has-progress { border-color: #8eae95; background: linear-gradient(100deg,#eaf4ec,#fbfdfb); }
+.journey-milestone-progress.has-progress i b { background: var(--green); }
 .journey-encounter.has-hunt-target { border-color: #879fa8; box-shadow: inset 3px 0 #526c76; }
 .journey-hunt-target-badge { padding: .16rem .38rem; color: #fff; border-radius: 999px; background: #526c76; font-size: .58rem; font-weight: 800; white-space: nowrap; }
 .target-party-modal { width: min(430px, calc(100vw - 2rem)); }
@@ -1678,6 +1892,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .target-party-choice > span { display: grid; gap: .1rem; min-width: 0; }
 .target-party-choice strong, .target-party-choice small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .target-party-choice small { color: var(--muted); font-size: .7rem; }
+.target-party-choice em { width: fit-content; margin-top: .12rem; padding: .08rem .3rem; border-radius: 999px; font-size: .61rem; font-style: normal; font-weight: 800; }
+.target-party-choice em.is-ready { color: #426c52; background: #e1efe5; }
+.target-party-choice em.is-blocked { color: #8b4642; background: #f3dfdc; white-space: normal; }
+.target-party-choice em.route-experience { color: #706c63; background: #ece9e1; }
+.target-party-choice em.route-experience.is-attempted { color: #725f34; background: #f4ead0; }
+.target-party-choice em.route-experience.is-success { color: #426c52; background: #e1efe5; }
+.target-party-choice.is-blocked { color: #77736c; border-color: #d6d0c5; background: #f0eee9; }
 .target-party-choice i { color: var(--gold-dark); font-size: 1.2rem; font-style: normal; }
 .recipe-focus-summary { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .4rem; }
 .recipe-focus-summary span { padding: .2rem .45rem; border-radius: 999px; font-size: .68rem; font-weight: 800; }
@@ -1713,6 +1934,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-party-meta::-webkit-scrollbar { display: none; }
 .fleet-party-meta > span, .fleet-preset-link, .fleet-named-hunt-link, .fleet-developing-hunt-link { flex: 0 0 auto; min-height: 22px; padding: .18rem .4rem; color: #5c6468; background: #ece9e1; border: 1px solid #d6d0c1; border-radius: 999px; font-size: .65rem; line-height: 1.2; white-space: nowrap; }
 .fleet-party-meta > .fleet-bond-status { color: #6f5120; background: #fff4d8; border-color: #d8b867; }
+.fleet-party-meta > .fleet-lineage-status { color: #3d6071; background: #edf7fa; border-color: #9cbcc7; }
+.fleet-party-meta > .fleet-lineage-status.is-active { color: #72551c; background: #fff4d8; border-color: #d8b867; }
 .fleet-preset-link { color: #526c5c; background: #e6efe9; border-color: #b9cdbf; font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer; }
 .fleet-named-hunt-link { color: #74501b; background: linear-gradient(100deg,#fff4d8,#f0e3c2); border-color: #c9a755; font: inherit; font-size: .65rem; font-weight: 900; cursor: pointer; }
 .fleet-named-hunt-link:hover { border-color: #9f772c; }
@@ -1738,7 +1961,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-result-mark.success { color: #205c3d; background: #d8eadf; }
 .fleet-result-mark.failure { color: #7b302d; background: #f2d9d6; }
 .fleet-result-loot { display: flex; flex-wrap: wrap; gap: .28rem; min-width: 0; }
-.fleet-result-loot > span, .fleet-loot-breakdown > summary { min-width: 0; padding: .18rem .4rem; overflow: hidden; color: #46525a; border: 1px solid #d6d0c1; border-radius: 3px; background: rgba(255,255,255,.72); font-size: .72rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.fleet-result-loot > span, .fleet-result-loot > button, .fleet-loot-breakdown > summary { min-width: 0; padding: .18rem .4rem; overflow: hidden; color: #46525a; border: 1px solid #d6d0c1; border-radius: 3px; background: rgba(255,255,255,.72); font: inherit; font-size: .72rem; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.fleet-result-loot > button { cursor: pointer; }
 .fleet-result-loot .gold { color: #76561b; border-color: #d4bd82; background: #fff7df; font-weight: 800; }
 .fleet-result-loot .experience { color: #654d78; border-color: #cbbbd5; background: #f6f0fa; font-weight: 800; }
 .fleet-result-loot > span.equipment, .fleet-loot-breakdown.equipment > summary { color: #344c60; border-color: #b9c8d2; background: #f0f5f7; }
@@ -1749,6 +1973,9 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-result-loot .ultra-rare { color: #fff0c9; border-color: #d78445; background: linear-gradient(135deg,#591621,#8e2630); font-weight: 900; }
 .fleet-result-loot .ultra-title { color: #704213; border-color: #d8a24e; background: #fff0c6; font-weight: 900; }
 .fleet-result-loot .tracked { color: #225641; border-color: #8ab5a3; background: #e8f6ef; font-weight: 900; }
+.fleet-result-loot .target-record { color: #fff5d3; border-color: #9b7a38; background: linear-gradient(110deg,#6c5426,#3f5d47); font-weight: 900; }
+.fleet-result-loot .target-record-next { color: #285b43; border-color: #84aa93; background: #edf7f0; font-weight: 900; }
+.fleet-result-loot .target-record-next:disabled { color: #7d877f; border-color: #c5ccc7; background: #f0f2f0; cursor: default; }
 .fleet-result-loot .companion-growth { color: #704213; border-color: #d0a052; background: #fff0c6; font-weight: 900; }
 .result-companion-bonds p { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .1rem .5rem; align-items: center; }
 .result-companion-bonds p small { grid-column: 1; color: var(--muted); }
@@ -1760,6 +1987,29 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .result-adventurer-bond-tiers article b { width: 100%; color: #604813; }
 .result-adventurer-bond-tiers article small { color: var(--muted); }
 .result-adventurer-bond-tiers article em { color: #76581b; font-size: .68rem; font-style: normal; font-weight: 800; }
+.result-destination-familiarities > div { display: grid; gap: .4rem; margin: .55rem 0; }
+.result-destination-familiarities article { display: grid; grid-template-columns: 30px minmax(0,1fr) auto; gap: .5rem; align-items: center; padding: .5rem; border: 1px solid #d9c184; border-radius: 6px; background: #fff9e8; }
+.result-destination-familiarities article > span { display: grid; place-items: center; width: 30px; height: 30px; color: #fff9e7; border-radius: 50%; background: #49697a; font-weight: 900; }
+.result-destination-familiarities article p { display: grid; gap: .12rem; margin: 0; }
+.result-destination-familiarities article b { color: #604813; }
+.result-destination-familiarities article small { color: var(--muted); }
+.result-destination-familiarities article em { color: #53656e; font-size: .68rem; font-style: normal; }
+.result-destination-familiarities.has-inherited-guide { border-color: #cda64d; border-left-color: #9e6d16; background: linear-gradient(110deg,#ffedb6,#fffaf0 72%); }
+.result-destination-familiarities article.is-inherited-guide > span { background: #8a621b; }
+.result-route-lineages { margin-top: .8rem; padding: .85rem; border: 1px solid #d8bd75; border-radius: 14px; background: linear-gradient(145deg, #fffaf0, #f4e8c9); }
+.result-route-lineages > div > small { display: block; margin-top: .2rem; color: #6e624e; }
+.result-route-lineages article { margin-top: .65rem; padding: .75rem; border: 1px solid rgba(138, 98, 27, .25); border-radius: 12px; background: rgba(255, 255, 255, .6); }
+.result-route-lineages article p { margin: .5rem 0; line-height: 1.7; }
+.result-route-lineages article > small { display: block; color: #765f32; }
+.result-route-tradition { border-color: #8daea5; border-left: 4px solid #46796d; background: linear-gradient(145deg, #edf7f3, #fff8e7); }
+.result-route-tradition .label,.result-route-tradition article > small { color: #37675d; }
+.route-lineage-names { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) auto minmax(0, 1fr); gap: .35rem; align-items: center; text-align: center; }
+.route-lineage-names span, .route-lineage-names strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-lineage-names strong { color: #765619; }
+@media (max-width: 620px) {
+  .result-destination-familiarities article { grid-template-columns: 30px minmax(0,1fr); }
+  .result-destination-familiarities article .button { grid-column: 1 / -1; grid-row: auto; width: 100%; }
+}
 .result-hunt-ledger-story { margin: -.1rem 0 .55rem !important; color: #5d553f !important; font-family: Georgia,"Yu Mincho",serif; font-size: .65rem !important; line-height: 1.6; }
 .result-hunt-ledger-epithet { margin: -.25rem 0 .55rem !important; color: #765b20 !important; font-size: .65rem !important; font-weight: 900; }
 .result-hunt-recognition-scene { display: grid !important; gap: .28rem !important; margin: -.2rem 0 .58rem !important; padding: .55rem .62rem; border: 1px solid rgba(122,94,42,.28); border-radius: 6px; background: linear-gradient(135deg,rgba(255,252,238,.94),rgba(233,226,203,.72)); }
@@ -1799,6 +2049,15 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-result-loot .route-event.success { color: #285f3e; border-color: #9cbca8; background: #e8f4ec; }
 .fleet-result-loot .route-event.failure { color: #7c3e35; border-color: #d0aaa2; background: #f8ece9; }
 .fleet-result-loot .field-knowledge { color: #f8e8b5; border-color: #b88b3e; background: #294a3b; font-weight: 900; }
+.fleet-result-loot .retry-preparation { color: #793f31; border-color: #c79b89; background: #f9ebe4; font-weight: 900; }
+.fleet-result-loot .retry-preparation.is-overcome { color: #425d35; border-color: #9fb38b; background: #edf5e5; }
+.fleet-result-loot .achievement { color: #664d18; border-color: #d1af59; background: #fff3c9; font-weight: 900; }
+.fleet-result-loot .observation { color: #315768; border-color: #9bb9c3; background: #eaf4f5; font-weight: 900; }
+.fleet-result-loot .story-continuation { color: #fff2c6; border-color: #8e774c; background: linear-gradient(105deg,#31484a,#243338); font-weight: 900; }
+.fleet-result-loot .story-next-route { color: #eaf5df; border-color: #77906c; background: linear-gradient(105deg,#47604b,#304737); font-weight: 900; }
+.fleet-result-loot .difficulty-next-route { color: #fff1dd; border-color: #9b6a4e; background: linear-gradient(105deg,#6a4231,#422a2b); font-weight: 900; }
+.fleet-result-loot .difficulty-chapter-map { color: #fff3cc; border-color: #a88b50; background: linear-gradient(105deg,#315046,#233b3b); font-weight: 900; }
+.fleet-result-loot .difficulty-chapter-map.is-guidance { color: #70531f; border-color: #d4b96e; background: #fff0bf; }
 @media (max-width: 560px) { .ultra-title-grid { grid-template-columns: 1fr; } }
 .fleet-loot-breakdown { min-width: 0; max-width: 100%; }
 .fleet-loot-breakdown > summary { display: flex; align-items: center; gap: .35rem; cursor: pointer; }
@@ -1848,6 +2107,15 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-character-focus p b, .party-history-character-focus p em { color: var(--ink); font-size: .61rem; font-style: normal; white-space: nowrap; }
 .party-history-character-focus p em { color: #705a28; }
 .party-history-character-focus .text-button { justify-self: start; margin-top: .12rem; padding: .1rem 0; font-size: .6rem; }
+.party-history-item-focus { display: grid; grid-template-columns: 2rem minmax(0,1fr); gap: .55rem; align-items: start; margin: 0 0 .65rem; padding: .55rem .65rem; border: 1px solid #a8c1ae; border-radius: 6px; background: #f2f8f3; }
+.party-history-item-focus > span { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; color: #edf7f0; border-radius: 50%; background: #587461; font-weight: 900; }
+.party-history-item-focus > div { display: grid; gap: .14rem; min-width: 0; }
+.party-history-item-focus small { color: #607b68; font-size: .58rem; }
+.party-history-item-focus strong { color: #314d3a; font-size: .75rem; }
+.party-history-item-focus p { margin: .12rem 0 0 !important; color: #53645a !important; font-size: .61rem !important; line-height: 1.5; }
+.party-history-item-focus nav { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .65rem; margin-top: .18rem; }
+.party-history-item-focus nav .button { min-height: 34px; padding: .3rem .55rem; font-size: .6rem; }
+.party-history-item-focus .text-button { justify-self: start; padding: .1rem 0; font-size: .6rem; }
 .party-history-battle { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .3rem; }
 .party-history-battle span { display: grid; gap: .1rem; padding: .4rem; border-radius: 4px; background: #fff; color: var(--muted); font-size: .65rem; }
 .party-history-battle strong { color: var(--ink); font-size: .78rem; }
@@ -1899,6 +2167,20 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-story article small { color: #8b7441; font-size: .62rem; font-weight: 800; }
 .party-history-story article strong { font-size: .76rem; }
 .party-history-story article p { margin: 0; color: var(--muted); font-size: .68rem; line-height: 1.55; }
+.party-history-route-lineage { border-color: #d2b460; background: linear-gradient(135deg,#fffaf0,#f6ecd3); }
+.party-history-route-lineage > summary { color: #765619; }
+.party-history-route-lineage article strong { color: #765619; font-family: Georgia,"Yu Mincho",serif; }
+.party-history-route-lineage article .text-button { justify-self: start; margin-top: .18rem; }
+.party-history-achievements { border-color: #cbb06a; background: #fff9e8; }
+.party-history-achievements > summary { color: #77581e; }
+.party-history-achievements article { grid-template-columns: 32px minmax(0,1fr); align-items: center; gap: .5rem; }
+.party-history-achievements article > span { width: 30px; height: 30px; display: grid; place-items: center; color: #f0d18a; border-radius: 50%; background: #2d3b3b; font-size: .72rem; }
+.party-history-achievements article > div { min-width: 0; display: grid; gap: .05rem; }
+.party-history-achievements article strong { font-family: Georgia,"Yu Mincho",serif; }
+.party-history-tracked-achievement { border-color: #9db59f; background: #f3f8f2; }
+.party-history-tracked-achievement > summary { color: #3d6848; }
+.party-history-tracked-achievement article { box-shadow: inset 3px 0 #6e9676; }
+.party-history-tracked-achievement article p { color: #456c4e; font-weight: 900; }
 .party-history-witnesses { margin: 0; padding: .42rem .55rem; color: #6f654c; font-size: .64rem; }
 .party-history-journey { margin-top: .5rem; border: 1px solid #9eb4a4; border-radius: 4px; background: #f3f8f4; }
 .party-history-journey > summary { display: flex; justify-content: space-between; gap: .5rem; padding: .45rem .55rem; color: #355b44; cursor: pointer; font-size: .72rem; font-weight: 900; }
@@ -1952,6 +2234,21 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-loot-reaction small { color: #8a7345; font-size: .53rem; font-weight: 800; }
 .party-history-loot-reaction strong { font-size: .68rem; }
 .party-history-loot-reaction p { margin: .12rem 0 0 !important; color: #625a48 !important; font-family: Georgia,"Yu Mincho",serif; font-size: .62rem !important; line-height: 1.55; }
+.party-history-retry-preparation,.result-retry-preparation { display: grid; grid-template-columns: 1.75rem minmax(0,1fr); gap: .45rem; padding: .52rem .65rem; color: #604535; border-block: 1px solid #dbc6aa; background: linear-gradient(110deg,#faeddf,#fff9e9); }
+.party-history-retry-preparation > span,.result-retry-preparation > span { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; color: #fff4df; border-radius: 50%; background: #8a6044; font-family: Georgia,"Yu Mincho",serif; font-size: .68rem; font-weight: 900; }
+.party-history-retry-preparation > div,.result-retry-preparation > div { display: grid; min-width: 0; gap: .03rem; }
+.party-history-retry-preparation small,.result-retry-preparation small { color: #9a7149; font-size: .5rem; font-weight: 900; letter-spacing: .05em; }
+.party-history-retry-preparation strong,.result-retry-preparation strong { font-size: .69rem; }
+.party-history-retry-preparation p,.result-retry-preparation p { margin: .1rem 0 0 !important; color: #675b4d !important; font-size: .59rem !important; line-height: 1.5; }
+.party-history-map-guidance,.result-chapter-map-guidance { display: grid; grid-template-columns: 1.75rem minmax(0,1fr); gap: .45rem; padding: .52rem .65rem; color: #50442b; border-block: 1px solid #ddc681; background: linear-gradient(110deg,#fff3c9,#f8f2df); }
+.party-history-map-guidance > span,.result-chapter-map-guidance > span { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; color: #fff8df; border-radius: 50%; background: #94752f; font-family: Georgia,"Yu Mincho",serif; font-size: .68rem; font-weight: 900; }
+.party-history-map-guidance > div,.result-chapter-map-guidance > div { display: grid; min-width: 0; gap: .03rem; }
+.party-history-map-guidance small,.result-chapter-map-guidance small { color: #98772e; font-size: .5rem; font-weight: 900; letter-spacing: .05em; }
+.party-history-map-guidance strong,.result-chapter-map-guidance strong { font-size: .69rem; }
+.party-history-map-guidance p,.result-chapter-map-guidance p { margin: .1rem 0 0 !important; color: #665d47 !important; font-size: .59rem !important; line-height: 1.5; }
+.result-retry-preparation { margin: .6rem 0; border: 1px solid #dbc6aa; border-radius: .55rem; }
+.result-retry-preparation.is-overcome { border-color: #a9bea7; background: linear-gradient(110deg,#edf5e9,#fff8e7); }
+.result-retry-preparation.is-overcome > span { background: #59775e; }
 .party-history-shared-hunt-ledger { display: grid; grid-template-columns: 1.75rem minmax(0,1fr) auto; align-items: center; gap: .45rem; padding: .5rem .65rem; color: #3f5148; border-block: 1px solid #cfd7ca; background: linear-gradient(105deg,#eef4e9,#fbf5e4); }
 .party-history-shared-hunt-ledger > span { display: grid; place-items: center; width: 1.65rem; height: 1.65rem; color: #f8edc7; border-radius: 50%; background: #4d6358; font-family: Georgia,"Yu Mincho",serif; font-size: .68rem; font-weight: 900; }
 .party-history-shared-hunt-ledger > div { display: grid; min-width: 0; gap: .03rem; }
@@ -2035,7 +2332,12 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .party-history-loot { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .5rem; }
 .party-history-loot section { padding: .45rem; border-radius: 4px; background: #fff; }
 .party-history-loot ul { margin: .25rem 0 0; padding: 0; list-style: none; }
-.party-history-loot li { display: flex; justify-content: space-between; gap: .5rem; padding: .15rem 0; color: var(--muted); font-size: .68rem; }
+.party-history-loot li { color: var(--muted); font-size: .68rem; }
+.party-history-loot li > button { width: 100%; min-height: 32px; display: grid; grid-template-columns: minmax(0,1fr) auto 10px; align-items: center; gap: .4rem; padding: .15rem .2rem; color: inherit; border: 0; border-radius: 3px; background: transparent; text-align: left; cursor: pointer; }
+.party-history-loot li > button:hover,.party-history-loot li > button:focus-visible { color: var(--ink); background: #f3f5f1; outline: none; }
+.party-history-loot li > button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.party-history-loot li > button i { color: #86948a; font-style: normal; }
+.party-history-loot li.is-focused-loot > button { color: #31543e; background: #e8f2ea; box-shadow: inset 3px 0 #63836d; font-weight: 800; }
 .party-history-loot li strong { color: var(--ink); white-space: nowrap; }
 .party-history-reuse { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-top: .5rem; padding: .5rem; border: 1px solid #c8b784; border-radius: 5px; background: #fffaf0; }
 .party-history-reuse > span { display: grid; gap: .1rem; min-width: 0; }
@@ -2047,6 +2349,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .fleet-actions { display: flex; flex-wrap: wrap; gap: .375rem; }
 .fleet-actions .button { min-height: 44px; font-size: .875rem; padding-inline: .75rem; }
 .fleet-actions .button.has-notice { color: #6d4b13; border-color: #c49a3d; background: #fff4cf; font-weight: 800; }
+.fleet-actions .button.retry-departure { border-color: #885d40; background: linear-gradient(105deg,#8d6246,#5e4438); box-shadow: 0 3px 9px rgba(86,55,39,.2); }
+.fleet-actions .button.revisit-departure { border-color: #56745d; background: linear-gradient(105deg,#66836d,#45614e); }
 .party-operation-title { margin-bottom: .75rem; font-size: 1rem; }
 @media (max-width: 980px) {
   .party-overview-row { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
@@ -2218,6 +2522,97 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .named-hunt-ledger > summary b,.named-hunt-ledger button > b { color: #765b20; }
 .named-hunt-ledger > div { border-top-color: #d7cda8; background: #d7cda8; }
 .named-hunt-ledger button > i:first-child { display: grid; place-items: center; width: 28px; height: 28px; color: #f7edc9; border-radius: 50%; background: #58634a; font-size: .59rem; font-weight: 900; }
+.route-lineage-ledger { border-color: #9aaf9f; background: linear-gradient(145deg,#edf5ef,#fffdf7); }
+.route-lineage-ledger > summary small { color: #667d6c; }
+.route-lineage-ledger > summary strong { color: #385242; }
+.route-lineage-ledger > summary b,.route-lineage-ledger button > b { color: #477052; }
+.route-lineage-ledger > div { border-top-color: #c9d8cc; background: #c9d8cc; }
+.route-lineage-ledger button > i:first-child { display: grid; place-items: center; width: 28px; height: 28px; color: #edf7ef; border-radius: 50%; background: #52705a; font-size: .59rem; font-weight: 900; }
+.route-tradition-ledger { border-color: #9e8952; background: linear-gradient(145deg,#f7f0db,#fffdf7); }
+.route-tradition-ledger > summary small { color: #88733e; }
+.route-tradition-ledger > summary strong { color: #56451f; }
+.route-tradition-ledger > summary b { color: #735b21; }
+.route-tradition-ledger > div { grid-template-columns: repeat(2,minmax(0,1fr)); border-top-color: #ddcfaa; background: #ddcfaa; }
+.route-tradition-ledger article { min-width: 0; display: grid; grid-template-columns: 34px minmax(0,1fr); align-items: center; gap: .5rem; padding: .52rem; background: rgba(255,255,255,.94); }
+.route-tradition-ledger article > i { display: grid; place-items: center; width: 29px; height: 29px; color: #fff9e4; border-radius: 50%; background: #806c37; font-size: .58rem; font-style: normal; font-weight: 900; }
+.route-tradition-ledger article > span { display: grid; min-width: 0; gap: .06rem; }
+.route-tradition-ledger article strong,.route-tradition-ledger article small,.route-tradition-ledger article em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-tradition-ledger article strong { color: #4d3f20; font-size: .7rem; }
+.route-tradition-ledger article small { color: var(--muted); font-size: .56rem; }
+.route-tradition-ledger article em { color: #826a2c; font-size: .55rem; font-style: normal; font-weight: 700; }
+.route-tradition-ledger > div > section { grid-column: 1 / -1; padding: .7rem; background: #fffdf7; text-align: center; }
+.route-tradition-ledger > div > section strong { color: #56451f; font-size: .72rem; }
+.route-tradition-ledger > div > section p { margin: .25rem auto 0; max-width: 520px; color: var(--muted); font-size: .61rem; line-height: 1.7; }
+.route-tradition-ledger > div > .route-atlas-chapter { padding: 0; background: #f7f2e5; text-align: left; }
+.route-atlas-chapter > header { min-height: 40px; padding: .38rem .55rem; display: flex; align-items: center; justify-content: space-between; gap: .55rem; border-bottom: 1px solid #ded2b5; background: linear-gradient(90deg,#f7f0df,#fffaf0); }
+.route-atlas-chapter > header > span { min-width: 0; display: grid; }
+.route-atlas-chapter > header small { color: #9a7a36; font-size: .45rem; font-weight: 800; letter-spacing: .11em; }
+.route-atlas-chapter > header strong { overflow: hidden; color: #56451f; font-size: .67rem; text-overflow: ellipsis; white-space: nowrap; }
+.route-atlas-chapter > header > b { flex: 0 0 auto; color: #816424; font-size: .62rem; }
+.route-atlas-chapter.is-complete > header > b::before { content: "完成 · "; color: #54714a; }
+.route-atlas-chapter > div { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px; background: #ded2b5; }
+.route-atlas-chapter article,.route-atlas-chapter button { min-width: 0; min-height: 52px; padding: .42rem .5rem; display: grid; grid-template-columns: 28px minmax(0,1fr) auto 10px; align-items: center; gap: .4rem; border: 0; background: rgba(255,255,255,.94); text-align: left; }
+.route-atlas-chapter article { grid-template-columns: 28px minmax(0,1fr); }
+.route-atlas-chapter button { color: var(--ink); cursor: pointer; }
+.route-atlas-chapter button:hover { background: #fffaf0; }
+.route-atlas-chapter article > i,.route-atlas-chapter button > i:first-child { width: 26px; height: 26px; display: grid; place-items: center; color: #8b6b29; border: 1px solid #cfb879; border-radius: 50%; background: #fff9e9; font-size: .58rem; font-style: normal; font-weight: 800; }
+.route-atlas-chapter .route-atlas-empty > i:first-child { color: #958d7b; border-style: dashed; border-color: #c8bfaa; background: #faf8f2; }
+.route-atlas-chapter article > span,.route-atlas-chapter button > span { min-width: 0; display: grid; gap: .05rem; }
+.route-atlas-chapter article strong,.route-atlas-chapter button strong { overflow: hidden; font-size: .66rem; text-overflow: ellipsis; white-space: nowrap; }
+.route-atlas-chapter article small,.route-atlas-chapter button small { overflow: hidden; color: var(--muted); font-size: .52rem; text-overflow: ellipsis; white-space: nowrap; }
+.route-atlas-chapter article em { color: #826a2c; font-size: .5rem; font-style: normal; font-weight: 700; }
+.route-atlas-chapter.is-focused-chapter > header { background: linear-gradient(90deg,#e7efe2,#fff8df); box-shadow: inset 4px 0 #668063; }
+.route-atlas-chapter article.is-focused { position: relative; z-index: 1; background: linear-gradient(110deg,#e9f4e5,#fff7d8); box-shadow: inset 0 0 0 2px #779272; }
+.route-atlas-chapter article.is-focused > i { color: #fff5cc; border-color: #526d56; background: #526d56; }
+.route-atlas-chapter article.is-focused em { color: #48634b; }
+.route-atlas-chapter button > b { color: #806329; font-size: .56rem; }
+.route-atlas-chapter button > i:last-child { color: #a38c5c; font-style: normal; }
+.route-tradition-readiness { display: block; color: #8c7250; font-size: .57rem; font-style: normal; line-height: 1.35; }
+.route-tradition-readiness.is-ready { color: #4f7747; font-weight: 800; }
+.route-tradition-candidates { margin: .65rem 0; overflow: hidden; border: 1px solid #c8b071; border-radius: 6px; background: #fffaf0; text-align: left; }
+.route-tradition-candidates > header { padding: .45rem .55rem; display: flex; align-items: end; justify-content: space-between; gap: .5rem; border-bottom: 1px solid #dfd0a9; }
+.route-tradition-candidates > header > span { display: grid; }
+.route-tradition-candidates > header small { color: #927432; font-size: .46rem; font-weight: 800; letter-spacing: .1em; }
+.route-tradition-candidates > header strong { color: #57451f; font-size: .7rem; }
+.route-tradition-candidates > header > b { color: #806225; font-size: .6rem; }
+.route-tradition-candidates > div { display: grid; gap: 1px; background: #e3d6b7; }
+.route-tradition-candidates > div > button { width: 100%; padding: .42rem .5rem; display: grid; grid-template-columns: 26px minmax(0,1fr) auto; align-items: center; gap: .45rem; border: 0; background: rgba(255,255,255,.92); text-align: left; }
+.route-tradition-candidates > div > button > span { width: 25px; height: 25px; display: grid; place-items: center; color: #8d702f; border: 1px solid #ccb77e; border-radius: 50%; font-size: .55rem; font-weight: 800; }
+.route-tradition-candidates > div > button > div { min-width: 0; display: grid; }
+.route-tradition-candidates > div > button strong { overflow: hidden; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+.route-tradition-candidates > div > button small { color: var(--muted); font-size: .53rem; }
+.route-tradition-candidates > div > button > b { color: #806225; font-size: .54rem; }
+.route-tradition-candidates > div > button.is-ready { background: #f3faef; }
+.route-tradition-candidates > div > button.is-ready small { color: #4f7747; font-weight: 800; }
+.route-tradition-candidates > div > button.is-busy { background: #f6f3ed; opacity: .78; }
+.route-tradition-formation-guide { margin: .65rem 0; overflow: hidden; border: 1px solid #bda665; border-radius: 8px; background: linear-gradient(145deg,#fffaf0,#f3f8f2); }
+.route-tradition-formation-guide > header { padding: .5rem .6rem; display: flex; align-items: end; justify-content: space-between; gap: .5rem; border-bottom: 1px solid #ded0a7; }
+.route-tradition-formation-guide > header > span { display: grid; }
+.route-tradition-formation-guide > header small { color: #8a6d2d; font-size: .48rem; font-weight: 900; letter-spacing: .1em; }
+.route-tradition-formation-guide > header strong { color: #51411f; font-size: .72rem; }
+.route-tradition-formation-guide > header b { color: #755d25; font-size: .66rem; }
+.route-tradition-formation-guide > div { display: grid; gap: 1px; background: #e1d5b8; }
+.route-tradition-formation-guide article { min-width: 0; padding: .4rem .5rem; display: grid; grid-template-columns: 22px 34px minmax(0,1fr) auto; align-items: center; gap: .4rem; background: rgba(255,255,255,.94); }
+.route-tradition-formation-guide article > i { width: 21px; height: 21px; display: grid; place-items: center; color: #fff; border-radius: 50%; background: #947735; font-size: .52rem; font-style: normal; font-weight: 900; }
+.route-tradition-formation-guide article > .portrait { width: 32px; height: 38px; }
+.route-tradition-formation-guide article > span { min-width: 0; display: grid; }
+.route-tradition-formation-guide article strong { overflow: hidden; font-size: .64rem; text-overflow: ellipsis; white-space: nowrap; }
+.route-tradition-formation-guide article small { color: var(--muted); font-size: .52rem; }
+.route-tradition-formation-guide article > b { color: #4f7747; font-size: .58rem; }
+.route-tradition-formation-guide article.is-ready { background: #f2faef; }
+.route-tradition-formation-guide article.is-busy { opacity: .72; }
+.route-tradition-formation-guide article .button { min-height: 28px; padding: .25rem .45rem; font-size: .53rem; }
+.route-tradition-formation-guide > p { margin: 0; padding: .42rem .55rem; color: #6b6048; font-size: .55rem; line-height: 1.55; }
+.route-tradition-candidates > small { display: block; padding: .35rem .5rem; color: var(--muted); font-size: .53rem; text-align: center; }
+.route-tradition-candidates.is-empty { padding-bottom: .5rem; }
+.route-tradition-candidates.is-empty p { margin: .45rem .55rem 0; color: var(--muted); font-size: .58rem; line-height: 1.65; }
+.route-tradition-ledger footer { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0,1fr) minmax(90px,180px) auto; align-items: center; gap: .65rem; padding: .48rem .6rem; background: #fffaf0; }
+.route-tradition-ledger footer > span { display: grid; }
+.route-tradition-ledger footer small { color: #88733e; font-size: .48rem; letter-spacing: .1em; }
+.route-tradition-ledger footer strong { color: #56451f; font-size: .65rem; }
+.route-tradition-ledger footer > div { height: 5px; overflow: hidden; border-radius: 999px; background: #e7dcc0; }
+.route-tradition-ledger footer > div > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#9a803e,#d5b55c); }
+.route-tradition-ledger footer > b { color: #735b21; font-size: .62rem; }
 .named-hunt-next-ledgers { grid-column: 1 / -1; padding: .55rem; background: #fffdf7; }
 .named-hunt-next-ledgers > header { display: flex; align-items: end; justify-content: space-between; gap: .6rem; margin-bottom: .45rem; }
 .named-hunt-next-ledgers > header > span { display: grid; }
@@ -2275,6 +2670,45 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .item-acquisition li strong, .item-acquisition li span { min-width: 0; overflow-wrap: anywhere; }
 .item-acquisition li span { color: var(--muted); }
 .item-acquisition li b { color: #7b5b22; font-weight: 700; }
+.item-acquisition li.has-action { grid-template-columns: minmax(78px,.7fr) minmax(0,1.25fr) auto; align-items: center; }
+.item-source-action { min-height: 28px; padding: .25rem .38rem; color: #fffaf0; border: 1px solid #8c6b31; border-radius: 4px; background: #9a783a; font: inherit; font-size: .56rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.item-source-hunt { color: #f7fff9; border-color: #456f59; background: #527b65; }
+.item-source-action:disabled { color: #4f6959; border-color: #a9b9ad; background: #dce7df; cursor: default; }
+@media (max-width: 560px) { .item-acquisition li.has-action { grid-template-columns: minmax(72px,.7fr) minmax(0,1.3fr); }.item-source-action { grid-column: 2; justify-self: start; } }
+.item-return-history { margin: .7rem 0; overflow: hidden; border: 1px solid #cbd6cf; border-radius: 5px; background: #f5f8f5; }
+.item-return-history > summary { min-height: 38px; padding: .4rem .5rem; display: flex; align-items: center; justify-content: space-between; color: #45604f; font-size: .68rem; font-weight: 800; cursor: pointer; list-style: none; }
+.item-return-history > summary::-webkit-details-marker { display: none; }
+.item-return-history > summary b { color: #718276; font-size: .58rem; }
+.item-return-history > div { display: grid; border-top: 1px solid #d9e2dc; }
+.item-return-history button { display: grid; grid-template-columns: minmax(0,1fr) auto 10px; gap: .35rem; align-items: center; min-height: 44px; padding: .4rem .5rem; color: inherit; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.item-return-history button + button { border-top: 1px solid #dfe7e1; }
+.item-return-history button span { display: grid; min-width: 0; }
+.item-return-history button strong,.item-return-history button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-return-history button strong { font-size: .66rem; }.item-return-history button small { color: var(--muted); font-size: .56rem; }
+.item-return-history button em { font-size: .56rem; font-style: normal; font-weight: 800; white-space: nowrap; }.item-return-history button em.success { color: #48705a; }.item-return-history button em.failure { color: #95604f; }
+.item-return-history button > i { color: #6f8274; font-style: normal; }
+.item-return-history .item-return-best { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: stretch; background: linear-gradient(90deg, #eef5ef, #f9f6e9); border-left: 4px solid #5f876c; }
+.item-return-history .item-return-best-record { min-height: 54px; }
+.item-return-history .item-return-best-record span small, .item-return-history .item-return-best-record span strong, .item-return-history .item-return-best-record span em { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item-return-history .item-return-best-record span small { color: #587762; font-size: .54rem; font-weight: 900; letter-spacing: .05em; }
+.item-return-history .item-return-best-record span strong { margin-top: .08rem; font-size: .68rem; }
+.item-return-history .item-return-best-record span em { margin-top: .08rem; color: var(--muted); font-size: .56rem; font-style: normal; }
+.item-return-history .item-return-best-record > b { color: #48705a; font-size: .84rem; font-variant-numeric: tabular-nums; }
+.item-return-history .item-return-best-retrace { display: block; min-height: 40px; margin: .38rem .42rem .38rem 0; padding: .3rem .48rem; border: 1px solid #789582; border-radius: 4px; color: #3e654b; background: #f8fbf8; font-size: .58rem; font-weight: 900; text-align: center; white-space: nowrap; }
+.item-return-history .item-return-best-retrace:disabled { color: #8a948d; border-color: #c3ccc6; background: #eff2f0; cursor: default; }
+.item-route-records { display: grid; background: #edf3ef; border-top: 1px solid #d1ddd5; border-bottom: 1px solid #d1ddd5; }
+.item-route-records > header { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .06rem .4rem; padding: .42rem .5rem .28rem; }
+.item-route-records > header span { grid-column: 1; color: #688072; font-size: .5rem; font-weight: 900; letter-spacing: .08em; }
+.item-route-records > header strong { grid-column: 1; font-size: .66rem; }.item-route-records > header small { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: #6f8274; font-size: .56rem; }
+.item-route-records > div { display: grid; padding: 0 .35rem .35rem; gap: .25rem; }
+.item-route-records article { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: stretch; overflow: hidden; border: 1px solid #d0ddd4; border-radius: 4px; background: rgba(255,255,255,.7); }
+.item-return-history .item-route-records .item-route-record-open { min-height: 42px; padding: .32rem .4rem; }
+.item-return-history .item-route-records .item-route-record-open > b { color: #48705a; font-size: .7rem; }
+.item-return-history .item-route-records .item-route-record-retrace { display: block; min-height: 34px; margin: .3rem .3rem .3rem 0; padding: .2rem .4rem; color: #3e654b; border: 1px solid #91aa99; border-radius: 3px; background: #f8fbf8; font-size: .55rem; font-weight: 900; text-align: center; white-space: nowrap; }
+.item-return-history .item-route-records .item-route-record-retrace:disabled { color: #8a948d; border-color: #c3ccc6; background: #eff2f0; cursor: default; }
+.item-route-records > small { padding: 0 .5rem .35rem; color: var(--muted); font-size: .52rem; }
+.item-return-recent-label { display: block; padding: .35rem .5rem .18rem; color: #718276; background: #f8faf8; font-size: .52rem; font-weight: 900; letter-spacing: .06em; }
+@media (max-width: 480px) { .item-return-history .item-return-best { grid-template-columns: 1fr; }.item-return-history .item-return-best-retrace { margin: 0 .5rem .45rem; } }
 .monster-dungeon-group { margin-top: .75rem; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: rgba(255,255,255,.36); }
 .monster-dungeon-group > summary { min-height: 62px; padding: .65rem .8rem; display: grid; grid-template-columns: minmax(0,1fr) auto 18px; align-items: center; gap: .7rem; color: #f7ecd5; background: var(--night-2); list-style: none; cursor: pointer; }
 .monster-dungeon-group > summary::-webkit-details-marker { display: none; }
@@ -2554,6 +2988,14 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .character-first-discoveries > div strong, .character-first-discoveries > div small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .character-first-discoveries > div strong { font-size: .64rem; }
 .character-first-discoveries > div small { color: var(--muted); font-size: .54rem; }
+.character-achievement-witnesses > div { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.character-achievement-witnesses > div > button { width: 100%; min-width: 0; padding: .38rem .42rem; display: grid; grid-template-columns: 1.3rem minmax(0,1fr) auto; align-items: center; gap: .4rem; color: inherit; border: 1px solid #d8c78e; border-radius: 4px; background: linear-gradient(105deg,#fff9e6,#fffdf7); text-align: left; cursor: pointer; }
+.character-achievement-witnesses > div > button > i { color: #b4872f; font-size: .9rem; font-style: normal; text-align: center; }
+.character-achievement-witnesses > div > button > span { min-width: 0; display: grid; gap: .05rem; }
+.character-achievement-witnesses > div > button strong,.character-achievement-witnesses > div > button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character-achievement-witnesses > div > button strong { font-size: .64rem; }
+.character-achievement-witnesses > div > button small { color: var(--muted); font-size: .54rem; }
+.character-achievement-witnesses > div > button > em { color: #9a7a35; font-size: .8rem; font-style: normal; }
 .character-shared-hunt-ledgers > div { grid-template-columns: 1fr; }
 .character-shared-hunt-ledgers > div > button { width: 100%; min-width: 0; padding: .38rem .42rem; display: grid; grid-template-columns: 1.3rem minmax(0,1fr) auto; align-items: center; gap: .4rem; border: 1px solid #ddd1b0; border-radius: 4px; color: inherit; background: linear-gradient(105deg,#f2f5ec,#fffaf0); text-align: left; }
 .character-shared-hunt-ledgers > div > button > i { font-size: .9rem; font-style: normal; text-align: center; }
@@ -2572,6 +3014,9 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .character-route-experience span { display: flex; align-items: center; gap: .3rem; padding: .25rem .42rem; color: #4f5358; background: #f3eee2; border: 1px solid #ddd1b0; border-radius: 999px; }
 .character-route-experience small { font-size: .6rem; }
 .character-route-experience b { color: #7c5d16; font-size: .64rem; white-space: nowrap; }
+.character-destination-experience span { flex: 1 1 13rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; border-radius: .55rem; }
+.character-destination-experience span small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.character-destination-experience span em { grid-column: 1 / -1; color: #81765f; font-size: .55rem; font-style: normal; }
 .character-travel-companions > button { margin-top: .45rem; color: #765817; font-size: .64rem; }
 .character-signature-skills { padding: .55rem .65rem; border-top: 1px solid #ded2ae; background: #f8f3e6; }
 .character-signature-skills > header { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; margin-bottom: .38rem; }
@@ -2657,8 +3102,11 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .route-chapter-tab { min-width: 116px; min-height: 48px; padding: .4rem .55rem; display: grid; gap: .08rem; flex: 0 0 auto; color: #675b48; background: #ece8de; border: 1px solid #c9c0ad; border-radius: 5px; text-align: left; scroll-snap-align: start; }
 .route-chapter-tab strong { font-size: .75rem; }
 .route-chapter-tab span { color: var(--muted); font-size: .6rem; }
+.route-chapter-tab span b { margin-left: .25rem; padding: .06rem .2rem; color: #4f7459; border-radius: 3px; background: #dceadb; font-size: .52rem; white-space: nowrap; }
+.route-chapter-tab.has-achievement-route:not(.is-active) { box-shadow: inset 3px 0 #6f9278; }
 .route-chapter-tab.is-active { color: #fff4d5; background: #263844; border-color: var(--gold); box-shadow: inset 3px 0 var(--gold); }
 .route-chapter-tab.is-active span { color: #d6c8a9; }
+.route-chapter-tab.is-active span b { color: #e3f1df; background: #496756; }
 .route-chapter-tab.is-complete:not(.is-active) { color: #355842; background: #e2ebe2; border-color: #9eb09e; }
 .route-chapter-tab.is-locked:not(.is-active) { opacity: .65; }
 .route-chapter-browser { display: grid; gap: .5rem; }
@@ -2668,6 +3116,19 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .route-chapter-overview small { color: #d4ddd9; font-size: .67rem; white-space: nowrap; }
 .route-chapter-progress { height: 7px; overflow: hidden; background: #111b20; border-radius: 10px; }
 .route-chapter-progress i { height: 100%; display: block; background: linear-gradient(90deg,#9c7430,#e1bd66); border-radius: inherit; }
+.route-difficulty-progress { grid-column: 1 / -1; display: grid; grid-template-columns: auto repeat(2,minmax(130px,1fr)); align-items: center; gap: .4rem .65rem; padding-top: .45rem; border-top: 1px solid rgba(220,196,142,.18); }
+.route-difficulty-progress > strong { color: #e3cf9f; font-size: .68rem; white-space: nowrap; }
+.route-difficulty-progress > span { display: grid; grid-template-columns: auto minmax(38px,1fr) auto; align-items: center; gap: .4rem; color: #d8ddd9; }
+.route-difficulty-progress b { font-size: .67rem; white-space: nowrap; }
+.route-difficulty-progress small { color: #e0aa79; font-size: .6rem; }
+.route-difficulty-progress span.is-complete small { color: #a9d2ae; }
+.route-difficulty-progress span.is-locked { opacity: .58; }
+.route-difficulty-progress > span > i { height: 4px; overflow: hidden; background: rgba(9,14,18,.75); border-radius: 10px; }
+.route-difficulty-progress > span > i em { display: block; height: 100%; background: linear-gradient(90deg,#a65f43,#dfb068); border-radius: inherit; }
+.route-difficulty-progress button { min-width: 84px; min-height: 28px; padding: .2rem .35rem; display: flex; align-items: center; justify-content: space-between; gap: .25rem; color: #f3d89b; background: rgba(120,73,43,.55); border: 1px solid rgba(225,176,104,.5); border-radius: 3px; font: inherit; font-size: .62rem; white-space: nowrap; }
+.route-difficulty-progress button small { padding: .04rem .18rem; color: #f0d79d; background: rgba(15,23,27,.48); border-radius: 2px; font-size: .5rem; }
+.route-difficulty-progress button i { font-style: normal; font-size: .8rem; }
+.route-difficulty-progress button:hover { background: rgba(146,91,50,.72); }
 .route-group-heading { min-height: 32px; padding: .25rem .15rem 0; display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
 .route-group-heading strong { font-size: .8rem; }
 .route-group-heading span { overflow: hidden; color: var(--muted); font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
@@ -2731,6 +3192,19 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .dungeon-route-rumor-status.is-confirmed { color: #785914; font-weight: 700; }
 .dungeon-route-rumor-lead { display: inline-flex; width: max-content; margin: -.15rem .8rem .55rem; padding: .16rem .48rem; color: #745719; border: 1px solid #cfb76e; border-radius: 999px; background: #fff8dc; font-size: .65rem; font-weight: 700; }
 .dungeon-route-rumor-lead.is-confirmed { color: #4f6f57; border-color: #9eb5a2; background: #edf5ed; }
+.dungeon-route-experience { display: inline-flex; width: max-content; margin: -.15rem -.45rem .55rem .8rem; padding: .16rem .48rem; color: #725f34; border: 1px solid #d0b879; border-radius: 999px; background: #f4ead0; font-size: .65rem; font-weight: 800; }
+.dungeon-route-experience.is-success { color: #426c52; border-color: #9eb5a2; background: #e1efe5; }
+.dungeon-route-mentorship { display: inline-flex; width: max-content; max-width: calc(100% - 1.6rem); margin: -.35rem -.45rem .55rem .8rem; padding: .16rem .48rem; overflow: hidden; color: #65517d; border: 1px solid #b9a8c8; border-radius: 999px; background: #eee7f4; font-size: .65rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.dungeon-route-mentorship.is-inherited-guide { color: #765619; border-color: #d4b86d; background: #fff4d8; }
+.result-route-events article.is-inherited-guide { border-color: #d8bd75; background: linear-gradient(135deg, #fffaf0, #f6ecd3); }
+.dungeon-route-mentorship.is-route-lineage { color: #704c17; border-color: #bd9142; background: linear-gradient(90deg,#f9e5ae,#fff5db); box-shadow: inset 3px 0 #9e6d16; }
+.result-route-events article.is-route-lineage,.party-history-journey article.is-route-lineage { border-color: #c99c48; background: linear-gradient(135deg,#fff3cf,#f4e1ae); box-shadow: inset 3px 0 #9e6d16; }
+.dungeon-route-tradition { display: inline-flex; width: max-content; max-width: calc(100% - 1.6rem); margin: -.15rem -.45rem .55rem .8rem; padding: .16rem .48rem; overflow: hidden; color: #32665c; border: 1px solid #8eafa6; border-radius: 999px; background: linear-gradient(90deg,#e2f2ed,#fff6d9); font-size: .65rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.dungeon-chapter-map-benefit { display: inline-flex; width: max-content; max-width: calc(100% - 1.6rem); margin: -.15rem -.45rem .55rem .8rem; padding: .16rem .48rem; overflow: hidden; color: #6d5422; border: 1px solid #cfaf67; border-radius: 999px; background: linear-gradient(90deg,#fff2c7,#f6ead0); font-size: .65rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.dungeon-retry-preparation { display: inline-flex; width: max-content; max-width: calc(100% - 1.6rem); margin: -.15rem -.45rem .55rem .8rem; padding: .16rem .48rem; overflow: hidden; color: #7b4d31; border: 1px solid #c8a07c; border-radius: 999px; background: #f8eadb; font-size: .65rem; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
+.result-route-events article.is-route-tradition,.party-history-journey article.is-route-tradition { border-color: #8eafa6; box-shadow: inset 3px 0 #46796d; }
+.dungeon-route-reunion { display: inline-flex; width: max-content; max-width: calc(100% - 1.6rem); margin: -.35rem -.45rem .55rem .8rem; padding: .16rem .48rem; overflow: hidden; color: #3f6570; border: 1px solid #9ebdc2; border-radius: 999px; background: #e8f3f2; font-size: .65rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.target-party-choice .route-mentorship { color: #65517d; font-weight: 800; }
 .dungeon-route-locked { padding: .45rem .7rem; display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: #eeebe3; border-top: 1px solid var(--line); }
 .dungeon-route-locked p { min-height: 0; margin: 0; font-size: .68rem; }
 .dungeon-route-locked .button { min-height: 40px; flex: 0 0 auto; }
@@ -2861,6 +3335,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .slot-character small { color: var(--muted); font-size: .8125rem; line-height: 1.5; }
 .slot-character .slot-vitals { color: #46545e; font-variant-numeric: tabular-nums; }
 .slot-character .slot-vitals.is-near-limit { color: #9a4b30; font-weight: 700; }
+.slot-character .slot-route-mentorship { color: #426173; font-weight: 700; }
+.slot-character .slot-route-mentorship.is-inherited-guide { color: #87631d; }
 .slot-character .character-avatar { flex: 0 0 auto; }
 .formation-depart { width: 100%; min-height: 44px; }
 .formation-manager { display: grid; grid-template-columns: minmax(0,1fr) minmax(340px,.72fr); gap: 1rem; align-items: start; }
@@ -2913,6 +3389,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 @media (max-width:600px) {
   .current-harvest-party-state { align-items:flex-start; flex-direction:column; gap:.12rem; }
   .current-harvest-party-state i { margin-left:0; }
+  .current-destination-party-state { align-items:flex-start; flex-direction:column; gap:.12rem; }
 }
 .roster-quick-stats .roster-bond-specialty { color: #704f19; border-color: #d6c18a; background: #faf2dc; }
 .roster-quick-stats .roster-bond-specialty strong { color: #5f4718; }
@@ -2920,6 +3397,14 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .roster-quick-stats .roster-skill-specialty strong { color: #523168; }
 .roster-quick-stats .roster-recent-role { color: #365d6d; border-color: #9dbbc4; background: #eef7f8; }
 .roster-quick-stats .roster-recent-role strong { color: #294e5d; }
+.roster-quick-stats .roster-mentorship-specialty { color: #365d6d; border-color: #9dbbc4; background: #eef7f8; }
+.roster-quick-stats .roster-mentorship-specialty strong { color: #294e5d; }
+.roster-quick-stats .roster-mentorship-specialty.is-inherited-guide { color: #765619; border-color: #d4b86d; background: #fff4d8; }
+.roster-quick-stats .roster-mentorship-specialty.is-inherited-guide strong { color: #654612; }
+.current-destination-party-state { flex: 1 0 100%; display: flex; align-items: center; gap: .35rem .55rem; padding-top: .38rem; border-top: 1px solid rgba(75,103,119,.18); color: #4e6674; font-style: normal; }
+.current-destination-party-state b { font-size: .66rem; }
+.current-destination-party-state span { font-weight: 800; }
+.current-destination-party-state.is-reunion { color: #78581d; }
 .roster-position { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; font-size: .875rem; }
 .roster-quick-action { width: 42px; min-height: 44px; display: grid; place-items: center; color: white; background: var(--gold); border: 0; border-radius: 6px; font-size: 1.3rem; }
 .roster-quick-action.remove { color: #7b2c2c; background: #f0dddd; }
@@ -3084,11 +3569,14 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 @media (max-width: 600px) {
   .journey-timeline { padding-left: 0; }
   .journey-timeline::before { left: 28px; }
+  .journey-aftermath-log { margin-left: 0; }
   .journey-entry summary { grid-template-columns: 36px minmax(0,1fr) 18px; }
   .journey-status { grid-column: 2; justify-self: start; }
   .journey-entry summary .summary-chevron { grid-column: 3; grid-row: 1 / span 2; }
   .journey-live, .journey-conclusion { align-items: flex-start; flex-direction: column; }
   .journey-live small { margin-left: 0; }
+  .journey-item-progress, .journey-hunt-progress, .journey-milestone-progress { grid-template-columns: auto minmax(0,1fr); }
+  .journey-item-progress em, .journey-hunt-progress em, .journey-milestone-progress em { grid-column: 2; white-space: normal; }
 }
 
 /* v0.34 compact guild ledgers */
@@ -3602,6 +4090,11 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .route-chapter-overview { margin-inline: -.25rem; padding: .5rem; grid-template-columns: minmax(0,1fr) auto; gap: .35rem .55rem; }
   .route-chapter-progress { grid-column: 1 / -1; grid-row: 2; }
   .route-chapter-overview small { grid-column: 2; grid-row: 1; }
+  .route-difficulty-progress { grid-column: 1 / -1; grid-row: auto; grid-template-columns: 1fr 1fr; gap: .35rem .5rem; padding-top: .35rem; }
+  .route-difficulty-progress > strong { grid-column: 1 / -1; }
+  .route-difficulty-progress > span { grid-template-columns: auto minmax(28px,1fr); }
+  .route-difficulty-progress > span > small,
+  .route-difficulty-progress > span > button { grid-column: 1 / -1; width: 100%; }
   .route-group-heading { padding-inline: .1rem; }
   .dungeon-route-list { margin-inline: -.25rem; }
   .dungeon-route-summary { min-height: 68px; padding: .5rem; grid-template-columns: 42px minmax(0,1fr); gap: .5rem; }
@@ -3682,10 +4175,19 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .recurring-board-body { padding-top: .45rem; border-top: 1px solid var(--line); }
 .recurring-mission-toolbar { display: flex; align-items: center; justify-content: space-between; gap: .65rem; margin-bottom: .55rem; }
 .recurring-mission-toolbar .small-note { margin: 0; }
+.recurring-board-completion { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: .55rem; align-items: center; margin: 0 0 .55rem; padding: .55rem .65rem; color: #325c4e; border: 1px solid rgba(72,120,102,.35); border-radius: 6px; background: linear-gradient(135deg,rgba(231,244,237,.96),rgba(255,252,237,.94)); }
+.recurring-board-completion > span { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; border-radius: 50%; background: #4f806d; font-weight: 900; }
+.recurring-board-completion p { margin: 0; font-family: Georgia,"Yu Mincho",serif; font-size: .72rem; line-height: 1.55; }
+.recurring-board-completion small { display: block; color: #67877b; font-family: var(--sans); font-size: .5rem; font-weight: 800; letter-spacing: .08em; }
+.recurring-board-completion strong { margin-right: .35rem; color: #315447; }
 .recurring-mission-list { display: grid; gap: .38rem; }
-.recurring-mission-card { min-height: 72px; padding: .55rem .65rem; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .65rem; color: #202a32; border: 1px solid #d5cdbb; border-left: 4px solid #9da8ad; border-radius: 5px; background: rgba(255,255,255,.78); }
+.recurring-mission-card { min-height: 72px; padding: .55rem .65rem; display: grid; grid-template-columns: 42px minmax(0,1fr) auto; align-items: center; gap: .55rem; color: #202a32; border: 1px solid #d5cdbb; border-left: 4px solid #9da8ad; border-radius: 5px; background: rgba(255,255,255,.78); }
 .recurring-mission-card.is-ready { border-left-color: #b98427; background: #fffaf0; }
 .recurring-mission-card.is-claimed { opacity: .7; border-left-color: #638779; }
+.recurring-mission-person { display: grid; place-items: center; align-content: center; width: 42px; height: 52px; overflow: hidden; color: #725522; border: 1px solid #d3be86; border-radius: 50% 50% 45% 45%; background: radial-gradient(circle at 50% 35%,#fffdf4 0 32%,#eadfbd 72%); box-shadow: inset 0 0 0 2px rgba(255,255,255,.5); }
+.recurring-mission-person b { font-family: Georgia,"Yu Mincho",serif; font-size: 1rem; line-height: 1; }
+.recurring-mission-person small { max-width: 36px; margin-top: .2rem; overflow: hidden; font-size: .46rem; line-height: 1; text-overflow: ellipsis; white-space: nowrap; }
+.recurring-mission-card.is-ready .recurring-mission-person { color: #fffaf0; border-color: #b98427; background: linear-gradient(150deg,#b98a38,#725422); }
 .recurring-mission-card .card-heading { margin: 0 0 .12rem; }
 .recurring-mission-card h4, .recurring-mission-card p { margin: 0; }
 .recurring-mission-card p, .recurring-mission-card small { color: #59666e; font-size: .75rem; }
@@ -3735,6 +4237,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .observation-note > summary::-webkit-details-marker { display: none; }
 .observation-note-summary { min-height: 72px; padding: .65rem .75rem; display: grid; grid-template-columns: 40px minmax(0,1fr) 18px; align-items: center; gap: .65rem; }
 .observation-note.is-new .observation-note-summary { grid-template-columns: 40px minmax(0,1fr) auto 18px; box-shadow: inset 4px 0 #b98427; background: #fff9e9; }
+.observation-note.is-focused { position: relative; z-index: 1; box-shadow: inset 0 0 0 2px #7f966d, 0 3px 12px rgba(62,83,64,.14); }
+.observation-note.is-focused > summary { background: linear-gradient(90deg,#eef5e9,#fff9e9); }
 .observation-new-badge, .archive-tab-notice, .nav-notice { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 .3rem; color: #fff; border-radius: 999px; background: #a45c2b; font-size: .65rem; font-style: normal; font-weight: 800; line-height: 1; }
 .archive-tab-notice { margin-left: .35rem; vertical-align: middle; }
 .archive-tab-notice.request { background: #3f7b58; }
@@ -3769,27 +4273,112 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .field-practice-progress strong { justify-self: end; color: #6d5830; font-size: .66rem; }
 .field-practice-progress i { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 999px; background: #d6d2c8; }
 .field-practice-progress i b { display: block; height: 100%; background: linear-gradient(90deg,#718b77,#b89042); }
+.field-practice-route { width: min(300px,100%); margin-top: .35rem; padding: .32rem .45rem; border: 1px solid #b9aa89; border-radius: 4px; color: #66522d; background: #f5f0e4; font: inherit; font-size: .65rem; text-align: left; cursor: pointer; }
+.field-practice-route:hover { border-color: #9d7834; background: #fff8e6; }
+.observation-living-atlas { margin: .75rem 0; border: 1px solid #c6b78f; border-radius: 5px; background: #f6f1e5; }
+.observation-living-atlas > summary { padding: .55rem .65rem; display: grid; grid-template-columns: minmax(0,1fr) auto 16px; align-items: center; gap: .6rem; cursor: pointer; list-style: none; }
+.observation-living-atlas > summary::-webkit-details-marker { display: none; }
+.observation-living-atlas > summary > span { display: grid; }
+.observation-living-atlas > summary small { color: #8b6b32; font-size: .54rem; letter-spacing: .08em; }
+.observation-living-atlas > summary strong { color: #4d432f; font-size: .78rem; }
+.observation-living-atlas > summary > b { color: #805f24; font-size: .72rem; }
+.observation-living-atlas > summary > i { transition: transform .2s; }
+.observation-living-atlas[open] > summary > i { transform: rotate(90deg); }
+.observation-living-atlas > p { margin: 0; padding: 0 .65rem .5rem; color: #706956; font-size: .67rem; }
+.observation-living-atlas ol { margin: 0; padding: 0 .55rem .55rem; display: grid; gap: .35rem; list-style: none; }
+.observation-living-atlas li { padding: .42rem .5rem; display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; gap: .55rem; border: 1px solid #d8cfba; border-radius: 4px; background: rgba(255,255,255,.58); }
+.observation-living-atlas li > span:first-child { display: grid; gap: .02rem; }
+.observation-living-atlas li small { color: #86785d; font-size: .55rem; }
+.observation-living-atlas li strong { color: #433c2f; font-size: .72rem; }
+.observation-living-atlas li em { color: #71664e; font-size: .6rem; font-style: normal; }
+.observation-living-atlas li > b { color: #7f6128; font-size: .65rem; }
+.observation-living-atlas li > button { padding: .3rem .4rem; color: #6b5227; border: 1px solid #bea76d; border-radius: 4px; background: #fff8e4; font: inherit; font-size: .61rem; cursor: pointer; }
+.observation-living-atlas li.is-complete > button { grid-column: 3; white-space: nowrap; }
+.observation-map-use { grid-column: 1 / 3; display: grid; gap: .02rem; min-width: 0; padding-top: .3rem; border-top: 1px dashed #d7c9a8; }
+.observation-map-use strong { color: #6f572a !important; font-size: .66rem !important; }
+.observation-map-use em { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.observation-map-use em.is-target { margin-top: .14rem; color: #466a57; font-weight: 800; white-space: normal; }
+.observation-atlas-stitches { display: flex; gap: 3px; }
+.observation-atlas-stitches i { width: 8px; height: 8px; border: 1px solid #b7aa8c; border-radius: 50%; background: #e6dfcf; }
+.observation-atlas-stitches i.is-filled { border-color: #9d7530; background: #c79b42; box-shadow: 0 0 0 1px rgba(199,155,66,.15); }
 
 .achievement-ledger { display: grid; gap: .9rem; }
 .achievement-total { padding: .6rem .7rem; display: grid; grid-template-columns: auto minmax(80px,1fr) auto; align-items: center; gap: .7rem; color: #344149; border: 1px solid #cfc4aa; border-radius: 6px; background: #f7f2e6; font-size: .75rem; }
 .achievement-total > div { height: 6px; overflow: hidden; border-radius: 6px; background: #d8d1c3; }
 .achievement-total > div > i, .achievement-meter > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#9b6a24,#dfb85c); }
 .achievement-total > strong { color: #805e21; }
+.achievement-ready-rewards { padding: .6rem .7rem; display: flex; align-items: center; justify-content: space-between; gap: .7rem; border: 1px solid #bc9749; border-radius: 7px; background: linear-gradient(110deg,#fff7d9,#f8ecd0); box-shadow: inset 3px 0 #a77b25; }
+.achievement-ready-rewards > span { min-width: 0; display: grid; gap: .04rem; }
+.achievement-ready-rewards small { color: #977126; font-size: .53rem; font-weight: 900; letter-spacing: .1em; }
+.achievement-ready-rewards strong { color: #59451c; font-family: Georgia,"Yu Mincho",serif; font-size: .8rem; }
+.achievement-ready-rewards em { color: #80652c; font-size: .62rem; font-style: normal; }
+.achievement-ready-rewards .button { flex: 0 0 auto; }
+.achievement-next-goals { overflow: hidden; border: 1px solid #b9a677; border-radius: 7px; background: #f8f3e7; box-shadow: 0 5px 14px #4d3b1b12; }
+.achievement-next-goals > header { min-height: 48px; padding: .48rem .7rem; display: flex; align-items: center; justify-content: space-between; color: #f7ecd5; background: linear-gradient(135deg,#3d493e,#202e2a); }
+.achievement-next-goals > header > span { display: grid; gap: .04rem; }
+.achievement-next-goals > header small { color: #c9af73; font-size: .57rem; font-weight: 900; letter-spacing: .13em; }
+.achievement-next-goals > header strong { color: #fffaf0; font-family: Georgia,"Yu Mincho",serif; font-size: .92rem; }
+.achievement-next-goals > header b { color: #ecd18c; font-size: .7rem; }
+.achievement-next-goals > div { padding: .55rem; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .45rem; }
+.achievement-next-goals article { min-width: 0; padding: .5rem; display: grid; grid-template-columns: 34px minmax(0,1fr); align-items: start; gap: .45rem; border: 1px solid #d7cdb8; border-radius: 5px; background: #fffdf7; }
+.achievement-next-goals article > span { width: 32px; height: 32px; display: grid; place-items: center; color: #e1c67f; border-radius: 50%; background: #2b3938; font-size: .82rem; }
+.achievement-next-goals article > div { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .04rem .3rem; }
+.achievement-next-goals article small { color: #8b7244; font-size: .56rem; font-weight: 800; }
+.achievement-next-goals article strong { grid-column: 1 / -1; overflow: hidden; color: #303b3d; font-family: Georgia,"Yu Mincho",serif; font-size: .72rem; text-overflow: ellipsis; white-space: nowrap; }
+.achievement-next-goals article em { grid-column: 2; grid-row: 1; color: #8b6321; font-size: .6rem; font-style: normal; font-weight: 800; white-space: nowrap; }
+.achievement-next-goals article > div > div { grid-column: 1 / -1; height: 4px; margin-top: .18rem; overflow: hidden; border-radius: 4px; background: #d8d1c3; }
+.achievement-next-goals article > div > div > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#748d78,#d0a74c); }
+.achievement-goal-actions { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .3rem; }
+.achievement-next-goals article button { min-height: 30px; margin-top: .25rem; padding: .2rem .45rem; display: flex; align-items: center; justify-content: space-between; color: #58695f; border: 1px solid #c9c5b8; border-radius: 4px; background: #f5f2e9; font: inherit; font-size: .62rem; font-weight: 800; cursor: pointer; }
+.achievement-next-goals article button.track { color: #76591e; border-color: #c6aa70; background: #fff8e6; }
+.achievement-next-goals article.is-tracked { border-color: #9c7c3b; background: #fff9e9; box-shadow: inset 3px 0 #b88b35; }
+.achievement-next-goals article button:hover { color: #75551e; border-color: #b49355; background: #fffaf0; }
+.achievement-next-goals article button i { color: #a57a31; font-size: .9rem; font-style: normal; line-height: 1; }
+.achievement-next-goals.is-complete > header { background: linear-gradient(135deg,#4d493a,#282d29); }
 .achievement-group { overflow: hidden; border: 1px solid #cfc4aa; border-radius: 7px; background: #f7f2e6; }
-.achievement-group-heading { min-height: 46px; padding: .5rem .75rem; display: flex; align-items: center; justify-content: space-between; color: #f7ecd5; background: linear-gradient(135deg,#26353b,#17242b); }
+.achievement-group-heading { min-height: 46px; padding: .5rem .75rem; display: flex; align-items: center; justify-content: space-between; color: #f7ecd5; background: linear-gradient(135deg,#26353b,#17242b); cursor: pointer; list-style: none; }
+.achievement-group-heading::-webkit-details-marker { display: none; }
 .achievement-group-heading h4 { margin: 0; color: #fffaf0; font-family: Georgia,"Yu Mincho",serif; font-size: .95rem; }
+.achievement-group-heading > span { display: flex; align-items: center; gap: .55rem; }
+.achievement-group-heading small { color: #bfc7c1; font-size: .6rem; font-weight: 700; }
 .achievement-group-heading strong { color: #e4c77f; font-size: .75rem; }
+.achievement-group-heading i { color: #d3b66f; font-size: .85rem; font-style: normal; transition: transform .18s ease; }
+.achievement-group[open] .achievement-group-heading i { transform: rotate(180deg); }
+.achievement-group.is-complete .achievement-group-heading { background: linear-gradient(135deg,#3f4845,#28312f); }
+.achievement-group.is-complete .achievement-group-heading small { color: #d2c18f; }
 .achievement-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 1px; background: #d8cfbd; }
 .achievement-card { min-height: 96px; padding: .65rem; display: grid; grid-template-columns: 42px minmax(0,1fr); gap: .6rem; color: #677178; background: #f0eee8; }
 .achievement-card.is-complete { color: #273138; background: #fffdf7; box-shadow: inset 3px 0 #b48635; }
+.achievement-card.is-focused { position: relative; z-index: 1; box-shadow: inset 0 0 0 2px #7f966d, 0 3px 12px rgba(62,83,64,.14); background: linear-gradient(110deg,#eef5e9,#fff8de); }
 .achievement-icon { width: 40px; height: 40px; display: grid; place-items: center; color: #898b88; border: 1px solid #bab8b1; border-radius: 50%; background: #dddcd7; font-size: 1rem; }
 .achievement-card.is-complete .achievement-icon { color: #f3d996; border-color: #ad8741; background: #26353b; }
 .achievement-copy { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; align-content: start; gap: .08rem .45rem; }
 .achievement-copy small { color: #8a7144; font-size: .62rem; font-weight: 800; }
 .achievement-copy strong { grid-column: 1 / -1; color: inherit; font-family: Georgia,"Yu Mincho",serif; font-size: .88rem; }
 .achievement-copy p { grid-column: 1 / -1; margin: .15rem 0 .3rem; color: #68737a; font-size: .7rem; line-height: 1.4; }
+.achievement-copy .achievement-continuation { grid-column: 1 / -1; margin: -.08rem 0 .22rem; padding-left: .4rem; color: #80672f; border-left: 2px solid #c4a45c; font-size: .58rem; font-weight: 800; }
+.achievement-chapter-guide { grid-column: 1 / -1; margin: .05rem 0 .25rem; padding: .42rem .5rem; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: .28rem .5rem; border: 1px solid #c8b279; border-radius: 5px; background: linear-gradient(105deg,#f8f0d9,#fffaf0); }
+.achievement-chapter-guide > span { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: .02rem .4rem; }
+.achievement-chapter-guide > span small { grid-column: 1 / -1; color: #9b7428; font-size: .5rem; letter-spacing: .08em; }
+.achievement-chapter-guide > span b { overflow: hidden; color: #37443e; font-family: Georgia,"Yu Mincho",serif; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
+.achievement-chapter-guide > span em { color: #806224; font-size: .56rem; font-style: normal; font-weight: 800; white-space: nowrap; }
+.achievement-chapter-guide > i { grid-column: 1 / -1; height: 3px; overflow: hidden; border-radius: 999px; background: #ddd4c0; }
+.achievement-chapter-guide > i > b { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg,#657c6a,#c39a43); }
+.achievement-chapter-guide > button { grid-column: 1 / -1; min-height: 28px; padding: .18rem .4rem; overflow: hidden; color: #66501f; border: 1px solid #c5a664; border-radius: 4px; background: #fff9e9; font: inherit; font-size: .58rem; font-weight: 800; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.achievement-chapter-guide > button:hover { border-color: #957021; background: #ffefc2; }
+.achievement-provenance { grid-column: 1 / -1; min-height: 28px; margin: -.08rem 0 .22rem; padding: .18rem .35rem .18rem .4rem; display: flex; align-items: center; justify-content: space-between; gap: .4rem; color: #6d714f; border: 0; border-left: 2px solid #b58b3d; background: #f8f4e9; font: inherit; font-size: .6rem; line-height: 1.4; text-align: left; cursor: pointer; }
+.achievement-provenance:hover { color: #785716; background: #fff8e7; }
+.achievement-provenance > span { min-width: 0; display: grid; gap: .04rem; }
+.achievement-provenance b { overflow: hidden; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.achievement-provenance small { overflow: hidden; color: #817b69; font-size: .56rem; text-overflow: ellipsis; white-space: nowrap; }
+.achievement-provenance i { color: #9a722c; font-size: .58rem; font-style: normal; font-weight: 800; white-space: nowrap; }
 .achievement-meter { align-self: center; height: 4px; overflow: hidden; border-radius: 4px; background: #d8d1c3; }
 .achievement-copy em { color: #876a34; font-size: .65rem; font-style: normal; white-space: nowrap; }
+.achievement-claim-action,.achievement-reward-state { grid-column: 1 / -1; margin-top: .18rem; }
+.achievement-claim-action { min-height: 30px; padding: .25rem .4rem; color: #644b17; border: 1px solid #c9a754; border-radius: 4px; background: #fff5d2; font: inherit; font-size: .61rem; font-weight: 800; cursor: pointer; }
+.achievement-claim-action:hover { border-color: #997221; background: #ffefb9; }
+.achievement-reward-state { color: #758079; font-size: .58rem; }
+.achievement-reward-state.is-claimed::before { content: "✓ "; color: #4c795d; font-weight: 900; }
 
 @media (max-width: 720px) {
   .recruitment-requirement-preview { margin-inline: -.15rem; padding: .5rem; }
@@ -3801,6 +4390,8 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .recurring-mission-toolbar { align-items: stretch; flex-direction: column; }
   .recurring-mission-toolbar .button { min-height: 44px; }
   .recurring-mission-card { min-height: 78px; padding: .5rem; gap: .4rem; }
+  .recurring-mission-person { width: 36px; height: 46px; }
+  .recurring-mission-card { grid-template-columns: 36px minmax(0,1fr) auto; }
   .recurring-mission-card > .button { min-width: 58px; }
   .observation-ledger { margin-inline: -.25rem; }
   .observation-note-summary { min-height: 68px; padding: .55rem .6rem; grid-template-columns: 36px minmax(0,1fr) 16px; gap: .5rem; }
@@ -3810,8 +4401,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .observation-note.is-locked .observation-note-summary { grid-template-columns: 36px minmax(0,1fr) auto; }
   .auto-sell-panel { margin-inline: -.25rem; }
   .achievement-ledger { margin-inline: -.25rem; }
+  .achievement-next-goals > div { grid-template-columns: 1fr; gap: .35rem; }
+  .achievement-next-goals article { min-height: 54px; align-items: center; }
+  .achievement-ready-rewards { align-items: stretch; flex-direction: column; }
+  .achievement-ready-rewards .button { width: 100%; }
   .achievement-grid { grid-template-columns: 1fr; }
   .achievement-card { min-height: 88px; padding: .55rem; }
+  .achievement-chapter-guide > button { min-height: 36px; }
   .stack-bulk-sale { align-items: stretch; flex-direction: column; }
   .stack-bulk-sale > div { display: grid; grid-template-columns: 1fr 1fr; }
   .stack-bulk-sale .button { width: 100%; min-height: 44px; }
@@ -3966,6 +4562,7 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
   .archive-content { margin-top: .5rem; }
   .adventurer-record-boards { grid-template-columns: 1fr; gap: .45rem; margin-top: .5rem; }
   .adventurer-signature-ledger > div { grid-template-columns: 1fr; }
+  .route-atlas-chapter > div { grid-template-columns: 1fr; }
   .named-hunt-next-ledgers > div { grid-template-columns: 1fr; }
   .codex-grid { gap: .45rem; }
   .codex-card, .codex-card.codex-unknown-stack { min-height: 0; padding: .6rem; }
@@ -4048,6 +4645,17 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .codex-tracked-target.is-complete, .tracked-loot-guide.is-complete { border-color: color-mix(in srgb, var(--green) 65%, var(--line)); background: #edf6f0; }
 .tracked-loot-guide.tracked-harvest-guide { border-color: color-mix(in srgb, var(--green) 42%, var(--gold)); background: linear-gradient(100deg,#edf3e8,#fffaf0); }
 .tracked-loot-guide.tracked-harvest-guide > span { color: #69733e; }
+.tracked-loot-guide.tracked-achievement-guide { border-color: #b8a676; background: linear-gradient(100deg,#f8f2e4,#fffdf8); }
+.tracked-loot-guide.tracked-achievement-guide > span { color: #85682d; }
+.tracked-loot-guide.tracked-achievement-guide.is-relevant { border-color: #8fad96; box-shadow: inset 3px 0 #6f9278; background: linear-gradient(100deg,#ebf4ec,#fffdf8); }
+.tracked-loot-guide.tracked-achievement-guide.is-unrelated { opacity: .72; }
+.tracked-item-memory { display: grid; grid-template-columns: 2rem minmax(0,1fr) auto; gap: .45rem .6rem; align-items: center; margin: .5rem 0 .75rem; padding: .55rem .65rem; border: 1px solid #c8b98f; border-radius: 7px; background: linear-gradient(100deg,#f6f0df,#fffdf8); }
+.tracked-item-memory > span { display: grid; place-items: center; width: 1.8rem; height: 1.8rem; color: #fff9e9; border-radius: 50%; background: #8b7440; font-size: .62rem; font-weight: 900; }
+.tracked-item-memory > div { display: grid; min-width: 0; }
+.tracked-item-memory small { color: #8a7342; font-size: .58rem; font-weight: 800; }
+.tracked-item-memory strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #4e4021; font-size: .75rem; }
+.tracked-item-memory p { margin: .08rem 0 0; color: #68604e; font-size: .61rem; line-height: 1.45; }
+.tracked-item-memory .text-button { align-self: center; white-space: nowrap; font-size: .61rem; }
 #item-target-form { grid-column: 1 / 3; display: flex; align-items: end; gap: .4rem; }
 #item-target-form label { display: flex; align-items: center; gap: .35rem; color: var(--muted); font-size: .68rem; }
 #item-target-form input { width: 70px; min-height: 36px; padding: .3rem .45rem; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
@@ -4073,8 +4681,10 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 .tracked-loot-match > small { margin-left: auto; color: var(--muted); font-size: .64rem; }
 .tracked-loot-match.tracked-harvest-match { border-left-color: #69733e; background: linear-gradient(90deg,rgba(105,115,62,.12),rgba(190,139,35,.08)); }
 .tracked-loot-match.tracked-harvest-match > span { color: #69733e; }
+.tracked-loot-match.tracked-achievement-match { border-left-color: #6f9278; background: linear-gradient(90deg,rgba(111,146,120,.15),rgba(255,255,255,.28)); }
+.tracked-loot-match.tracked-achievement-match > span { color: #4e7458; }
 .result-tracked-achievement.result-tracked-harvest { border-color: #a59a62; background: linear-gradient(120deg,#edf3e8,#fffaf0); }
-.result-tracked-harvest > div:not(.result-tracked-actions):not(.result-harvest-progress) { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; margin-top: .45rem; }
+.result-tracked-harvest > div:not(.result-tracked-actions):not(.result-harvest-progress):not(.result-craft-path) { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: .45rem; margin-top: .45rem; }
 .result-tracked-harvest > div > p { display: grid; gap: .12rem; margin: 0; padding: .45rem .55rem; border-radius: 5px; background: rgba(255,255,255,.66); font-size: .74rem; font-weight: 800; }
 .result-tracked-harvest > div > p small { color: var(--muted); font-size: .56rem; font-weight: 700; }
 .result-tracked-harvest > div > p.is-found { box-shadow: inset 3px 0 var(--green); }
@@ -4086,10 +4696,13 @@ h1, h2, h3 { font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; }
 @media (max-width: 600px) {
   .codex-tracked-target, .tracked-loot-guide { padding: .5rem .6rem; }
   .codex-tracked-target > small, .tracked-loot-guide > small { grid-column: 1 / -1; }
+  .tracked-item-memory { grid-template-columns: 1.8rem minmax(0,1fr); padding: .5rem .6rem; }
+  .tracked-item-memory > span { width: 1.65rem; height: 1.65rem; }
+  .tracked-item-memory .text-button { grid-column: 2; justify-self: start; }
   .codex-tracked-target > .button { grid-row: 1; }
   #item-target-form { grid-column: 1 / -1; }
   .tracked-loot-match { flex-wrap: wrap; }
-  .result-tracked-harvest > div:not(.result-tracked-actions):not(.result-harvest-progress), .result-harvest-progress { grid-template-columns: 1fr; }
+  .result-tracked-harvest > div:not(.result-tracked-actions):not(.result-harvest-progress):not(.result-craft-path), .result-harvest-progress { grid-template-columns: 1fr; }
   .preset-panel { padding: .65rem; }
   .preset-panel > h3 { margin-top: 0; }
   .preset-form { gap: .45rem; margin: .65rem 0; }
